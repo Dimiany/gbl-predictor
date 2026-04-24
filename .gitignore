@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Trained artifacts — regenerate with `python -m src.model`
+models/*.joblib
+
+# Secrets — NEVER commit. .env.example shows the expected variables.
+.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

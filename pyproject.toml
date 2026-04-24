@@ -1,0 +1,44 @@
+# Project metadata + tool config.
+#
+# Keep this file short: it's intentionally just enough to (a) declare the
+# project to modern tooling and (b) configure ruff. Dependencies still live
+# in requirements.txt because the notebook cell uses
+# `%pip install -q -r requirements.txt` — we can consolidate later if we
+# want to get rid of the dual source of truth.
+
+[project]
+name = "gbl-predictor"
+version = "0.1.0"
+description = "GBL basketball score & win-probability predictor"
+requires-python = ">=3.10"
+
+# -----------------------------------------------------------------------------
+# ruff — linter + formatter. Replaces black, flake8, isort, pyupgrade.
+# -----------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+# py310 = union syntax `int | str`, match statements, etc. Our code uses these.
+target-version = "py310"
+# Don't lint auto-generated stuff or environment detritus.
+exclude = [
+    ".venv", "venv", ".git", "__pycache__",
+    "models", ".pytest_cache", ".ipynb_checkpoints",
+    "notebooks",  # exploratory notebooks, if any appear here later
+]
+
+[tool.ruff.lint]
+# A conservative starter set. Meanings:
+#   E   pycodestyle errors
+#   F   pyflakes (undefined names, unused imports, etc.)
+#   I   isort (import ordering)
+#   UP  pyupgrade (suggests modern syntax like `X | Y` over `Union[X, Y]`)
+#   B   bugbear (common mistakes)
+#   SIM simplify (readability improvements)
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# Allow long docstring/comment lines — we have pedagogical comments on purpose.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests import fixtures from each other, which look like unused imports.
+"tests/*" = ["F401"]

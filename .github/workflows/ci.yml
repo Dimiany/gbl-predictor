@@ -1,0 +1,58 @@
+# Continuous Integration: runs on every push and pull request.
+#
+# Three jobs, in order of runtime cost (cheapest first — fail fast):
+#   1. ruff check     — style/lint issues
+#   2. ruff format    — enforces a consistent format
+#   3. pytest         — the 65-test suite
+#
+# All run on a fresh Ubuntu runner against Python 3.13. We use Linux
+# (not Windows) because it's faster on GitHub's infrastructure — our
+# code has no OS-specific bits worth testing on multiple platforms for
+# this project's scale.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Cancel redundant runs: if you push twice quickly, don't waste time
+# finishing the first run — just run the latest commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          # Cache pip downloads between runs — typically saves ~30s per run.
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        # --no-warn-script-location silences a warning that's irrelevant in CI.
+        run: |
+          python -m pip install --upgrade pip --no-warn-script-location
+          pip install -r requirements.txt ruff
+
+      - name: Ruff lint
+        # Fails the job if any lint issue is present.
+        run: ruff check .
+
+      - name: Ruff format check
+        # --check means "report issues but don't modify files". Fails the
+        # job if any file isn't formatted to our standard.
+        run: ruff format --check .
+
+      - name: Pytest
+        run: pytest tests/ -v
