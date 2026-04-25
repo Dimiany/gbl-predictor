@@ -282,9 +282,7 @@ def _accuracy_row(row: pd.Series) -> str:
         row_bg = "#1a1b24"
         status_label = "PENDING"
         status_bg = "#22232a"
-        actual_cell = (
-            f'<span style="color:{_PENDING_ACCENT};font-style:italic;">awaiting</span>'
-        )
+        actual_cell = f'<span style="color:{_PENDING_ACCENT};font-style:italic;">awaiting</span>'
         actual_winner_cell = "&mdash;"
     else:
         if bool(row["winner_correct"]):

@@ -77,10 +77,7 @@ def main() -> None:
         return
 
     if result.new_result_rows:
-        print(
-            f"\nWrote {len(result.new_result_rows)} new result(s) to "
-            f"{cfg.RAW_GAMES_CSV.name}."
-        )
+        print(f"\nWrote {len(result.new_result_rows)} new result(s) to {cfg.RAW_GAMES_CSV.name}.")
     print(
         f"Replaced {cfg.UPCOMING_FIXTURES_CSV.name} with "
         f"{len(result.upcoming_rows)} upcoming fixture(s)."

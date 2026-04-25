@@ -180,9 +180,7 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
     missing = _missing_env_vars()
     if missing:
         return SyncResult(
-            error=(
-                "missing env vars: " + ", ".join(missing) + " (copy .env.example to .env)"
-            )
+            error=("missing env vars: " + ", ".join(missing) + " (copy .env.example to .env)")
         )
 
     client = FlashScoreClient(
