@@ -38,38 +38,49 @@ over a 13-team league.
 | Lint (matches CI) | `ruff check .` |
 | Format (matches CI) | `ruff format .` |
 | Record completed match results (interactive) | `python scripts/record_results.py` |
+| Sync + retrain + predict (the normal path) | Run cells 2 then 3 of `predictor.ipynb` (cell 2 auto-syncs from FlashScore before training) |
 | Predict upcoming fixtures | Run cell 3 of `predictor.ipynb` |
-| Sync results + upcoming fixtures from API (dry-run) | `python scripts/sync.py` |
-| Sync results + upcoming fixtures from API (commit) | `python scripts/sync.py --commit` |
+| View prediction history & model accuracy | Run `models_accuracy.ipynb` |
+| Sync results + upcoming fixtures from API (dry-run, escape hatch) | `python scripts/sync.py` |
+| Sync results + upcoming fixtures from API (commit, escape hatch) | `python scripts/sync.py --commit` |
 
 ## Project layout
 
 ```
 data/raw/
-  all_fixtures.csv         # completed games (the history)
-  upcoming_fixtures.csv    # games to predict
+  all_fixtures.csv         # completed games (the history) — API-sourced, kept chronological
+  upcoming_fixtures.csv    # games to predict — overwritten wholesale by sync
   rosters.csv              # players + tier (star/starter/rotation/bench)
   absences.csv             # current injuries/suspensions (time-windowed)
   adjustments.csv          # non-player margin overrides (coach, etc.)
   team_name_mapping.csv    # API team names -> our canonical names
+data/
+  prediction_history.csv   # one row per fixture predicted, upserted on each
+                           # 'Generate Predictions' click. Drives the accuracy view.
 src/
   config.py                # ALL paths, hyperparams, tier->points mapping, env vars
   features.py              # Elo + rolling stats + H2H + rest days
   model.py                 # HistGradientBoosting, walk-forward eval, ensemble
   predict.py               # fixture predictions + adjustment overlays
-  visualize.py             # HTML card renderer
+                           # (returns [] for empty fixture lists — callers safe)
+  visualize.py             # HTML renderers: fixtures table, prediction cards, accuracy table
+  ui.py                    # ipywidgets glue for predictor.ipynb (button, slot, dark zone)
   api_client.py            # thin wrapper around FlashScore (RapidAPI)
   team_name_mapping.py     # API name -> canonical name translator
-  backtest.py              # predicted-vs-actual table from walk-forward test
+  sync.py                  # reusable sync engine — run_sync() + sync_for_notebook()
+  prediction_log.py        # upsert + accuracy-view join (predictions ⨝ all_fixtures)
+  backtest.py              # predicted-vs-actual table from walk-forward test (legacy,
+                           # no longer wired into the notebook but still importable)
 scripts/
   train.py                 # retrain + evaluate + save model
   record_results.py        # interactive manual result entry
-  sync.py                  # API-based results + fixtures sync (dry-run by default)
+  sync.py                  # thin CLI wrapper around src/sync.run_sync (escape hatch)
 tests/                     # pytest suite — must stay green
 models/                    # saved joblib model (gitignored)
 .env                       # API key + league ID (GITIGNORED, never commit)
 .env.example               # template showing which env vars are needed
-predictor.ipynb            # thin driver on top of src/ (install, train, backtest, predict)
+predictor.ipynb            # thin driver on top of src/ (install → sync+train → predict)
+models_accuracy.ipynb      # aggregated table of every prediction vs its actual result
 ```
 
 ## Data conventions — IMPORTANT
@@ -118,24 +129,37 @@ predictor.ipynb            # thin driver on top of src/ (install, train, backtes
 9. **API keys live in `.env` only.** Never hardcode a key, never commit `.env`,
    never print a key. If asked to test the API, mock the HTTP session
    (see tests/test_api_client.py for the pattern).
-10. **`all_fixtures.csv` is fully API-sourced.** Do not append rows by hand.
-    Use `python scripts/sync.py --commit` to fetch new games. Running sync
-    is idempotent; safe to run any time.
+10. **`all_fixtures.csv` is fully API-sourced and kept chronological.** Do not
+    append rows by hand. The train cell of `predictor.ipynb` auto-syncs via
+    `src.sync.sync_for_notebook()` before retraining; `python scripts/sync.py
+    --commit` is the manual escape hatch. Sync is idempotent. Writes are sorted
+    oldest→newest so the bottom of the file is always the latest game.
 11. **When editing files in `src/`, remind the user to restart the Jupyter
     kernel** before re-running notebook cells. Python caches imports, and
     stale kernel state produces confusing line-number mismatches.
+12. **Auto-sync must never block the notebook.** `sync_for_notebook()` swallows
+    every exception and returns a one-line status string. If you change it,
+    keep that contract — a transient API blip can't be allowed to crash the
+    train cell.
+13. **`data/prediction_history.csv` is predictions-only.** Actuals are joined
+    in at display time from `all_fixtures.csv` (in `prediction_log.build_accuracy_view`).
+    Don't denormalize the actuals into the log unless the user explicitly asks —
+    one source of truth per fact.
 
 ## Current state
 
 <!-- Snapshot of what's true right now. Update when it changes. -->
 
-- 154 games in history (2025/26 season, Greek A1), 13 teams. All rows
-  sourced from the FlashScore API — no manual additions.
-- 6 upcoming fixtures in `upcoming_fixtures.csv` (also API-sourced).
+- 160 games in history (2025/26 season, Greek A1), 13 teams. All rows
+  API-sourced. File is sorted chronologically (oldest top, newest bottom).
+- 0 upcoming fixtures right now — regular season slate completed; next ones
+  appear automatically when the API publishes them.
+- 6 predictions logged in `data/prediction_history.csv` (round of 25/04/2026,
+  4/6 correct → 67%).
 - Model: HistGradientBoosting classifier + regressors, ensembled with Elo.
 - Tuned blend weight: `ML * 0.45 + Elo * 0.55`.
-- Walk-forward test metrics (31 games held out):
-  - Win accuracy: ~71% (ensemble), ~74% (Elo alone), ~71% (ML alone).
+- Walk-forward test metrics (~32 games held out, varies as history grows):
+  - Win accuracy: ~70% (ensemble), ~74% (Elo alone), ~71% (ML alone).
   - Margin: MAE ~12 pts, RMSE ~15 pts, R² ≈ 0.09.
   - Total points: MAE ~15 pts, RMSE ~18 pts, R² ≈ 0.13.
 - `rosters.csv` has only the 13 team stubs (no real player data); stubs

@@ -496,6 +496,12 @@ def predict_fixtures(
     if bundle is None:
         bundle = PredictorBundle.load()
 
+    # Empty input → empty output. Without this guard, the downstream
+    # ``pd.DataFrame([])[bundle.feature_cols]`` blows up with a KeyError
+    # because there are no columns to select from.
+    if not fixtures:
+        return []
+
     if history is None:
         history = pd.read_csv(cfg.RAW_GAMES_CSV)
 
