@@ -25,6 +25,7 @@ from src.features import (
     build_features,
     elo_expected_score,
     elo_update,
+    standings_rank,
 )
 
 # ---------------------------------------------------------------------------
@@ -204,3 +205,96 @@ def test_build_features_adds_target_columns():
     assert (feats[cfg.COL_MARGIN] == feats[cfg.COL_HOME_SCORE] - feats[cfg.COL_AWAY_SCORE]).all()
     assert (feats[cfg.COL_TOTAL] == feats[cfg.COL_HOME_SCORE] + feats[cfg.COL_AWAY_SCORE]).all()
     assert ((feats[cfg.COL_HOME_WIN] == 0) | (feats[cfg.COL_HOME_WIN] == 1)).all()
+
+
+# ---------------------------------------------------------------------------
+# Season W-L record
+# ---------------------------------------------------------------------------
+
+
+def test_team_state_tracks_season_wins_losses():
+    s = TeamState()
+    # Fresh state: no games played, no record yet.
+    assert s.season_wins == 0
+    assert s.season_losses == 0
+    assert math.isnan(s.season_win_pct)
+
+    s.record_game(scored=90, conceded=80, date=pd.Timestamp("2025-10-04"))  # win
+    s.record_game(scored=70, conceded=85, date=pd.Timestamp("2025-10-11"))  # loss
+    s.record_game(scored=88, conceded=75, date=pd.Timestamp("2025-10-18"))  # win
+
+    assert s.season_wins == 2
+    assert s.season_losses == 1
+    assert s.season_win_pct == pytest.approx(2 / 3)
+
+
+def test_team_state_season_margin_total():
+    # season_margin_total accumulates point differential across the whole season,
+    # used as the standings tiebreaker.
+    s = TeamState()
+    s.record_game(90, 80, pd.Timestamp("2025-10-04"))  # +10
+    s.record_game(70, 85, pd.Timestamp("2025-10-11"))  # -15
+    s.record_game(88, 75, pd.Timestamp("2025-10-18"))  # +13
+    assert s.season_margin_total == 8
+
+
+def test_build_features_season_record_no_leakage():
+    """Feature row N must show the W-L record AFTER game N-1, not after game N."""
+    feats = build_features(_toy_games())
+    # Team A's games: row 0 (home, won), row 2 (away, won), row 4 (home).
+    # Before game 5, A has played and won the previous two.
+    g5 = feats.iloc[4]
+    assert g5[cfg.COL_HOME] == "A"
+    assert g5["home_season_wins"] == 2
+    assert g5["home_season_losses"] == 0
+    assert g5["home_season_win_pct"] == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Standings rank
+# ---------------------------------------------------------------------------
+
+
+def test_standings_rank_nan_for_unplayed_team():
+    states: dict[str, TeamState] = {}
+    assert math.isnan(standings_rank(states, "A"))
+
+
+def test_standings_rank_orders_by_win_pct():
+    states: dict[str, TeamState] = {
+        "A": TeamState(),
+        "B": TeamState(),
+        "C": TeamState(),
+    }
+    # A: 2-0 (1.000), B: 1-1 (0.500), C: 0-2 (0.000) — clean ordering.
+    states["A"].record_game(90, 80, pd.Timestamp("2025-10-04"))
+    states["A"].record_game(95, 70, pd.Timestamp("2025-10-11"))
+    states["B"].record_game(70, 85, pd.Timestamp("2025-10-04"))
+    states["B"].record_game(88, 75, pd.Timestamp("2025-10-11"))
+    states["C"].record_game(60, 80, pd.Timestamp("2025-10-04"))
+    states["C"].record_game(55, 90, pd.Timestamp("2025-10-11"))
+    assert standings_rank(states, "A") == 1
+    assert standings_rank(states, "B") == 2
+    assert standings_rank(states, "C") == 3
+
+
+def test_standings_rank_uses_margin_as_tiebreaker():
+    # Two teams both 1-1: the one with the better point differential ranks higher.
+    states: dict[str, TeamState] = {"A": TeamState(), "B": TeamState()}
+    # A: won by 20, lost by 5 -> +15
+    states["A"].record_game(95, 75, pd.Timestamp("2025-10-04"))
+    states["A"].record_game(70, 75, pd.Timestamp("2025-10-11"))
+    # B: won by 5, lost by 20 -> -15
+    states["B"].record_game(80, 75, pd.Timestamp("2025-10-04"))
+    states["B"].record_game(70, 90, pd.Timestamp("2025-10-11"))
+    assert standings_rank(states, "A") == 1
+    assert standings_rank(states, "B") == 2
+
+
+def test_build_features_first_game_has_nan_rank():
+    """Round-1 fixture: no team has played yet, so neither has a rank."""
+    feats = build_features(_toy_games())
+    first = feats.iloc[0]
+    assert math.isnan(first["home_rank"])
+    assert math.isnan(first["away_rank"])
+    assert math.isnan(first["rank_diff"])

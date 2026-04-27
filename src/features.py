@@ -81,6 +81,10 @@ class TeamState:
     recent_scored: deque[int] = field(default_factory=lambda: deque(maxlen=cfg.ROLLING_WINDOW))
     recent_conceded: deque[int] = field(default_factory=lambda: deque(maxlen=cfg.ROLLING_WINDOW))
     recent_wins: deque[int] = field(default_factory=lambda: deque(maxlen=cfg.ROLLING_WINDOW))
+    # Full-season counters — separate from the rolling deques above. The
+    # deques only see the last ROLLING_WINDOW games; these accumulate forever.
+    season_wins: int = 0
+    season_margin_total: int = 0  # cumulative point differential, used as standings tiebreak
 
     # --- accessors used at feature-build time ----------------------------------
     # Each returns NaN until we have enough games. NaN is important:
@@ -113,6 +117,17 @@ class TeamState:
     def form_L5(self) -> float:
         return self._rolling_mean(self.recent_wins)
 
+    @property
+    def season_losses(self) -> int:
+        return self.games_played - self.season_wins
+
+    @property
+    def season_win_pct(self) -> float:
+        """Wins / games_played. NaN before the team has played any game."""
+        if self.games_played == 0:
+            return np.nan
+        return self.season_wins / self.games_played
+
     def rest_days(self, current_date: pd.Timestamp) -> float:
         """How many days since this team's previous game.
 
@@ -129,10 +144,13 @@ class TeamState:
         Called AFTER we've extracted features for the game — so the features
         reflect only PAST games, not the one just played.
         """
+        won = 1 if scored > conceded else 0
         self.recent_scored.append(scored)
         self.recent_conceded.append(conceded)
-        self.recent_wins.append(1 if scored > conceded else 0)
+        self.recent_wins.append(won)
         self.games_played += 1
+        self.season_wins += won
+        self.season_margin_total += scored - conceded
         self.last_game_date = date
 
 
@@ -170,6 +188,35 @@ class HeadToHead:
         self._games[(home, away)] += 1
         if home_won:
             self._wins[(home, away)] += 1
+
+
+# ---------------------------------------------------------------------------
+# Standings
+# ---------------------------------------------------------------------------
+
+
+def standings_rank(states: dict[str, TeamState], team: str) -> float:
+    """Return ``team``'s 1-based position in the league table.
+
+    Sorting key: win % desc, then cumulative margin total desc as tiebreak.
+    This isn't the OFFICIAL GBL ranking (which uses head-to-head) but it
+    matches the real table closely enough — and the model only needs an
+    ordinal "are they top of the table or bottom" signal, not the exact
+    position the league office would publish.
+
+    Returns NaN if ``team`` hasn't played a game yet, or isn't in ``states``.
+    Teams with zero games are excluded from the ranking — they have no
+    win % to sort on.
+    """
+    if team not in states or states[team].games_played == 0:
+        return np.nan
+    active = [(name, s) for name, s in states.items() if s.games_played > 0]
+    # Sort: highest win% first, then highest margin total as the tiebreaker.
+    active.sort(key=lambda item: (-item[1].season_win_pct, -item[1].season_margin_total))
+    for i, (name, _) in enumerate(active):
+        if name == team:
+            return float(i + 1)
+    return np.nan
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +277,15 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
         elo_diff_adj = (home_elo + cfg.ELO_HOME_ADVANTAGE) - away_elo
         win_prob = elo_expected_score(home_elo + cfg.ELO_HOME_ADVANTAGE, away_elo)
 
+        # Standings + W-L snapshot (state-as-of-tipoff, no leakage).
+        home_rank = standings_rank(states, home)
+        away_rank = standings_rank(states, away)
+        # rank_diff: negative = home team higher in the table (a stronger team
+        # at home). NaN early-season when ranks aren't defined for both sides.
+        rank_diff = (
+            home_rank - away_rank if not (np.isnan(home_rank) or np.isnan(away_rank)) else np.nan
+        )
+
         feature_rows.append(
             {
                 "home_elo_pre": home_elo,
@@ -249,6 +305,15 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
                 "home_games_played": h.games_played,
                 "away_games_played": a.games_played,
                 "h2h_home_winrate": h2h.home_winrate(home, away),
+                "home_season_wins": h.season_wins,
+                "home_season_losses": h.season_losses,
+                "home_season_win_pct": h.season_win_pct,
+                "away_season_wins": a.season_wins,
+                "away_season_losses": a.season_losses,
+                "away_season_win_pct": a.season_win_pct,
+                "home_rank": home_rank,
+                "away_rank": away_rank,
+                "rank_diff": rank_diff,
             }
         )
 
@@ -327,6 +392,11 @@ def features_for_fixture(
     a = states[away]
     home_elo = h.elo
     away_elo = a.elo
+    home_rank = standings_rank(states, home)
+    away_rank = standings_rank(states, away)
+    rank_diff = (
+        home_rank - away_rank if not (np.isnan(home_rank) or np.isnan(away_rank)) else np.nan
+    )
     return {
         "home_elo_pre": home_elo,
         "away_elo_pre": away_elo,
@@ -345,4 +415,13 @@ def features_for_fixture(
         "home_games_played": h.games_played,
         "away_games_played": a.games_played,
         "h2h_home_winrate": h2h.home_winrate(home, away),
+        "home_season_wins": h.season_wins,
+        "home_season_losses": h.season_losses,
+        "home_season_win_pct": h.season_win_pct,
+        "away_season_wins": a.season_wins,
+        "away_season_losses": a.season_losses,
+        "away_season_win_pct": a.season_win_pct,
+        "home_rank": home_rank,
+        "away_rank": away_rank,
+        "rank_diff": rank_diff,
     }

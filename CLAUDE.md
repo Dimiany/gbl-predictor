@@ -60,6 +60,7 @@ data/
 src/
   config.py                # ALL paths, hyperparams, tier->points mapping, env vars
   features.py              # Elo + rolling stats + H2H + rest days
+                           # + season W-L record + standings rank (win% with margin tiebreak)
   model.py                 # HistGradientBoosting, walk-forward eval, ensemble
   predict.py               # fixture predictions + adjustment overlays
                            # (returns [] for empty fixture lists — callers safe)
@@ -152,12 +153,19 @@ models_accuracy.ipynb      # aggregated table of every prediction vs its actual 
 
 - 160 games in history (2025/26 season, Greek A1), 13 teams. All rows
   API-sourced. File is sorted chronologically (oldest top, newest bottom).
-- 0 upcoming fixtures right now — regular season slate completed; next ones
-  appear automatically when the API publishes them.
+- 8 upcoming playoff fixtures (early May 2026) — regular season is done;
+  the bracket fills in automatically as FlashScore publishes new rounds.
 - 6 predictions logged in `data/prediction_history.csv` (round of 25/04/2026,
   4/6 correct → 67%).
 - Model: HistGradientBoosting classifier + regressors, ensembled with Elo.
-- Tuned blend weight: `ML * 0.45 + Elo * 0.55`.
+- Tuned blend weight: `ML * 0.45 + Elo * 0.55`. (Re-tuned each training run —
+  may shift after retraining with the new W-L / standings features.)
+- Feature set: Elo (4) + rolling L5 form (8) + rest/games-played (4) +
+  H2H (1) + season W-L record (6: wins/losses/win% per side) + standings
+  rank (3: home_rank / away_rank / rank_diff). The walk-forward evaluator
+  reports honest out-of-sample metrics — re-check the win-accuracy and R²
+  numbers after retraining; on ~150 rows the marginal lift is usually small
+  but the rank features should help in lopsided matchups.
 - Walk-forward test metrics (~32 games held out, varies as history grows):
   - Win accuracy: ~70% (ensemble), ~74% (Elo alone), ~71% (ML alone).
   - Margin: MAE ~12 pts, RMSE ~15 pts, R² ≈ 0.09.

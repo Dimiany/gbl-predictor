@@ -172,6 +172,18 @@ FEATURE_COLS: list[str] = [
     "home_games_played",
     "away_games_played",
     "h2h_home_winrate",  # historical head-to-head rate for this pairing
+    # Season-long W-L record + standings position. Win % captures cumulative
+    # quality (more stable than the L5 rolling form), and rank tells the model
+    # whether this is a top-of-table vs. bottom-of-table matchup directly.
+    "home_season_wins",
+    "home_season_losses",
+    "home_season_win_pct",
+    "away_season_wins",
+    "away_season_losses",
+    "away_season_win_pct",
+    "home_rank",
+    "away_rank",
+    "rank_diff",  # home_rank - away_rank; negative = home team higher in table
 ]
 
 # ---------------------------------------------------------------------------

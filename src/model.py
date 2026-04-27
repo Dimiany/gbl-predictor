@@ -340,27 +340,62 @@ def train_and_save(
 
 
 def _format_metrics(m: dict) -> str:
-    """Pretty-print the metrics dict for the CLI."""
+    """Pretty-print the metrics dict for the CLI.
+
+    Output is annotated with plain-English notes so a non-ML reader can make
+    sense of each number. The notes are deliberately conservative — pointing
+    out the comparison points (coin flip, always-pick-home, etc.) rather than
+    making absolute "good/bad" claims that depend on the sport and dataset.
+    """
+    ml_w = m["ensemble_ml_weight"]
+    elo_w = 1 - ml_w
     return (
         f"  Train / test games: {m['n_train']} / {m['n_test']}\n"
-        f"\n  Win classifier:\n"
+        f"    note: we train on the oldest {m['n_train']} games and TEST on the\n"
+        f"          most recent {m['n_test']}. The model never sees the test games\n"
+        f"          during training, so the metrics below are a fair estimate of\n"
+        f"          how well it would do on truly unseen future games.\n"
+        f"\n  Win classifier (does it pick the right winner?):\n"
         f"    Accuracy     : {m['accuracy']:.3f}\n"
+        f"      -> picks the winner right ~{m['accuracy'] * 100:.0f}% of the time.\n"
+        f"         Reference points: 0.50 = coin flip, ~0.60 = 'always pick home team'.\n"
         f"    Log loss     : {m['log_loss']:.3f}  (lower is better)\n"
+        f"      -> penalizes CONFIDENT wrong predictions extra hard.\n"
+        f"         <0.69 means the probabilities carry real signal; <0.50 is genuinely good.\n"
         f"    Brier score  : {m['brier_score']:.3f}  (lower is better)\n"
+        f"      -> mean squared error on the predicted probabilities.\n"
+        f"         0.25 = always guessing 50/50; below that = the probabilities are informative.\n"
         f"\n  Margin regressor (home_score - away_score):\n"
         f"    MAE          : {m['margin_mae']:.2f} pts\n"
+        f"      -> on average, the predicted margin is off by ~{m['margin_mae']:.0f} points.\n"
+        f"         So 'home wins by 7' really means 'home wins by 7 +/- {m['margin_mae']:.0f}'.\n"
         f"    RMSE         : {m['margin_rmse']:.2f} pts\n"
+        f"      -> like MAE but squares the errors first, so big misses count more.\n"
+        f"         The gap RMSE - MAE shows how often the model has BIG misses.\n"
         f"    R^2          : {m['margin_r2']:.3f}\n"
+        f"      -> fraction of margin variation the model explains. 1.0 = perfect,\n"
+        f"         0 = no better than always guessing the league average margin,\n"
+        f"         <0 = WORSE than that. Basketball margin is genuinely hard; Vegas ~0.15.\n"
         f"\n  Total regressor (home_score + away_score):\n"
         f"    MAE          : {m['total_mae']:.2f} pts\n"
+        f"      -> predicted TOTAL points typically off by ~{m['total_mae']:.0f}.\n"
         f"    RMSE         : {m['total_rmse']:.2f} pts\n"
         f"    R^2          : {m['total_r2']:.3f}\n"
-        f"\n  Elo baseline (for comparison):\n"
+        f"      -> totals are usually easier to predict than margins (no sign-flipping).\n"
+        f"\n  Elo baseline (for comparison — pure rating system, no ML at all):\n"
         f"    Accuracy     : {m['elo_baseline_accuracy']:.3f}\n"
         f"    Log loss     : {m['elo_baseline_log_loss']:.3f}\n"
         f"    Brier score  : {m['elo_baseline_brier']:.3f}\n"
-        f"\n  Ensemble (ML * {m['ensemble_ml_weight']:.2f} + Elo * {1 - m['ensemble_ml_weight']:.2f}):\n"
+        f"      -> this is the bar to beat. If ML alone can't top Elo, the extra\n"
+        f"         complexity isn't earning its keep — that's exactly when the\n"
+        f"         ENSEMBLE below saves us by leaning more on Elo.\n"
+        f"\n  Ensemble (ML * {ml_w:.2f} + Elo * {elo_w:.2f}):\n"
         f"    Accuracy     : {m['ensemble_accuracy']:.3f}\n"
         f"    Log loss     : {m['ensemble_log_loss']:.3f}\n"
         f"    Brier score  : {m['ensemble_brier']:.3f}\n"
+        f"      -> we blend ML and Elo probabilities and the auto-tuner picked\n"
+        f"         the weights ({ml_w:.0%} ML / {elo_w:.0%} Elo) by minimising log-loss\n"
+        f"         on training data via time-series cross-validation. A weight\n"
+        f"         heavily tilted toward Elo means Elo is doing most of the work\n"
+        f"         on this dataset — common when training history is small.\n"
     )
