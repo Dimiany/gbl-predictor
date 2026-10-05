@@ -298,3 +298,75 @@ def test_build_features_first_game_has_nan_rank():
     assert math.isnan(first["home_rank"])
     assert math.isnan(first["away_rank"])
     assert math.isnan(first["rank_diff"])
+
+
+# ---------------------------------------------------------------------------
+# Season rollover — a new season must not inherit last season's W-L / rank
+# ---------------------------------------------------------------------------
+
+
+def test_season_of_splits_on_season_start_month():
+    from src.features import season_of
+
+    assert season_of(pd.Timestamp("2026-06-13")) == 2025
+    assert season_of(pd.Timestamp("2026-10-04")) == 2026
+    assert season_of(pd.Timestamp("2027-03-01")) == 2026
+
+
+def test_start_season_resets_counters_and_regresses_elo():
+    s = TeamState(elo=1600.0)
+    s.start_season(2025)
+    s.record_game(90, 80, pd.Timestamp("2026-05-01"))
+    elo_before = s.elo
+
+    s.start_season(2026)
+
+    assert (s.games_played, s.season_wins, s.season_margin_total) == (0, 0, 0)
+    assert len(s.recent_scored) == 0
+    assert s.last_game_date is None
+    expected = cfg.ELO_INITIAL + cfg.ELO_SEASON_CARRYOVER * (elo_before - cfg.ELO_INITIAL)
+    assert s.elo == pytest.approx(expected)
+    # Idempotent: rolling into the same season again changes nothing.
+    s.start_season(2026)
+    assert s.elo == pytest.approx(expected)
+
+
+def test_build_features_new_season_starts_from_clean_record():
+    games = pd.DataFrame(
+        {
+            "game_date": ["01/05/2026", "08/05/2026", "04/10/2026"],
+            "home_team": ["A", "A", "A"],
+            "away_team": ["B", "B", "B"],
+            "home_score": [90, 92, 80],
+            "away_score": [80, 70, 85],
+        }
+    )
+    feats = build_features(games)
+    opener = feats.iloc[2]
+    assert opener["home_games_played"] == 0
+    assert opener["home_season_wins"] == 0
+    assert math.isnan(opener["home_rank"])  # nobody has played the new season yet
+    # Elo still carries signal: A beat B twice, so A stays ahead after regression.
+    assert opener["home_elo_pre"] > opener["away_elo_pre"]
+
+
+def test_standings_rank_ignores_teams_from_another_season():
+    states = {"A": TeamState(), "B": TeamState()}
+    states["A"].start_season(2025)
+    states["A"].record_game(90, 80, pd.Timestamp("2026-05-01"))
+    states["B"].start_season(2026)
+    states["B"].record_game(70, 80, pd.Timestamp("2026-10-04"))
+
+    assert standings_rank(states, "B", 2026) == 1
+    assert math.isnan(standings_rank(states, "A", 2026))
+
+
+def test_build_features_replaces_legacy_feature_columns():
+    # all_fixtures.csv has stale, empty columns named like features.
+    games = _toy_games()
+    games["home_avg_scored_L5"] = np.nan
+    games["home_games_played"] = -1  # stale value that must be overwritten
+    feats = build_features(games)
+    assert list(feats.columns).count("home_avg_scored_L5") == 1
+    assert list(feats.columns).count("home_games_played") == 1
+    assert feats["home_games_played"].iloc[0] == 0

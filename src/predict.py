@@ -3,9 +3,10 @@
 Each prediction includes a point estimate (score and winner) PLUS a
 confidence/uncertainty measure:
 
-* The win classifier gives a probability, not just a winner.
-* The margin regressor's RMSE on the test set is returned as a "±" band
-  around the predicted scoreline — a much more honest presentation than
+* One margin model drives both the win probability (Phi(margin / sigma))
+  and the scoreline, so the two always agree on the winner.
+* The margin model's walk-forward RMSE is returned as a "±" band around the
+  predicted scoreline — a much more honest presentation than
   "Aris 83 Olympiacos 79" with no error bar.
 """
 
@@ -20,7 +21,7 @@ import pandas as pd
 
 from src import config as cfg
 from src.features import features_for_fixture, team_state_snapshot
-from src.model import PredictorBundle, blend_probabilities
+from src.model import PredictorBundle, scoreline
 
 
 @dataclass
@@ -46,14 +47,15 @@ class Prediction:
     away: str
     predicted_home_score: int
     predicted_away_score: int
-    predicted_margin: float  # raw (unrounded) margin from the regressor
-    predicted_total: float  # raw total from the regressor
-    home_win_probability: float  # ensemble probability (ML blended with Elo), AFTER adjustment
-    home_win_probability_ml: float  # raw classifier output (for transparency)
-    home_win_probability_elo: float  # raw Elo-implied probability (for transparency)
-    score_uncertainty_pts: float  # ±pts band from margin-regressor RMSE
-    winner: str  # home team, away team, or "TIE"
+    predicted_margin: float  # unrounded margin, AFTER adjustments
+    predicted_total: float  # unrounded total points
+    home_win_probability: float  # Phi(margin / sigma), AFTER adjustments
+    home_win_probability_raw: float  # same, BEFORE adjustments (for transparency)
+    home_win_probability_elo: float  # plain Elo-implied probability (for comparison)
+    score_uncertainty_pts: float  # ±pts band from the margin model's walk-forward RMSE
+    winner: str  # the side with P(win) >= 50% — always matches the scoreline
     time: str = ""  # Kickoff "HH:MM" in Athens local, carried through from the Fixture
+    model_version: str = ""  # cfg.MODEL_VERSION of the model that made this prediction
     # Manual adjustments applied to this fixture's predicted margin. 0.0 means
     # no adjustment. Positive values favor the home team; negative favor away.
     margin_adjustment_applied: float = 0.0
@@ -133,6 +135,24 @@ def load_fixtures_from_csv(
         dates.append(row["fixture_date"])
 
     return fixtures, dates
+
+
+def next_round(
+    fixtures: list[Fixture],
+    dates: list[pd.Timestamp],
+    window_days: int = cfg.NEXT_ROUND_WINDOW_DAYS,
+) -> tuple[list[Fixture], list[pd.Timestamp]]:
+    """Keep only the next round: fixtures within ``window_days`` of the earliest one.
+
+    upcoming_fixtures.csv holds the whole remaining season. Predicting games
+    months ahead is noise (form and rest days are stale by then), so the UI
+    and dashboard only score the round that's actually next.
+    """
+    if not fixtures:
+        return [], []
+    cutoff = min(dates) + pd.Timedelta(days=window_days)
+    kept = [(f, d) for f, d in zip(fixtures, dates, strict=True) if d <= cutoff]
+    return [f for f, _ in kept], [d for _, d in kept]
 
 
 # ---------------------------------------------------------------------------
@@ -540,34 +560,24 @@ def predict_fixtures(
     if len(fixture_dates) != len(fixtures):
         raise ValueError("fixture_dates must have the same length as fixtures")
 
-    # Build a feature matrix in the SAME column order the model was trained on.
-    # Column order matters for tree models that reference features by index.
     feature_rows = [
         features_for_fixture(f.home, f.away, d, states, h2h)
         for f, d in zip(fixtures, fixture_dates, strict=True)
     ]
-    X = pd.DataFrame(feature_rows)[bundle.feature_cols]
-
-    # Run all three models in one go (vectorized — much faster than one at a time).
-    win_probs_ml = bundle.win_clf.predict_proba(X)[:, 1]
-    # Elo probability comes straight out of the feature matrix — no extra model call needed.
+    X = pd.DataFrame(feature_rows)
+    margins, totals, win_probs = bundle.predict(X)
+    # Plain Elo probability, shown next to the model's for comparison.
     win_probs_elo = X["home_win_prob_elo"].to_numpy()
-    # Final probability is the blend tuned during training.
-    win_probs = blend_probabilities(win_probs_ml, win_probs_elo, bundle.ensemble_ml_weight)
-    margins = bundle.margin_reg.predict(X)
-    totals = bundle.total_reg.predict(X)
 
-    # The ±band on the scoreline comes from the regressor's test-set RMSE.
-    # This is a rough but honest uncertainty estimate — the model told us
-    # during training how far off it usually is; we just report that back.
-    margin_rmse = bundle.metrics.get("margin_rmse", 0.0)
+    # The ±band on the scoreline: how far off the margin model typically was
+    # in the walk-forward evaluation.
+    margin_rmse = bundle.metrics.get("margin_rmse", bundle.margin_sigma)
 
     results: list[Prediction] = []
-    for fixture, fixture_date, p_win, p_ml, p_elo, margin, total in zip(
+    for fixture, fixture_date, p_win, p_elo, margin, total in zip(
         fixtures,
         fixture_dates,
         win_probs,
-        win_probs_ml,
         win_probs_elo,
         margins,
         totals,
@@ -581,38 +591,20 @@ def predict_fixtures(
         home_adj, home_notes = _team_adjustment_on(fixture_date, fixture.home, adjustments)
         away_adj, away_notes = _team_adjustment_on(fixture_date, fixture.away, adjustments)
         margin_shift = home_adj - away_adj
-        all_notes = home_notes + away_notes
 
         # Apply the shift to the margin; total points is left alone — an
         # injury usually changes WHO scores more, not how many points get
         # scored overall. This is a reasonable first-order model.
         adjusted_margin = float(margin) + margin_shift
-
-        # Shift the win probability coherently with the margin shift.
+        # Same Phi(margin / sigma) mapping as the model, so probability and
+        # scoreline stay in agreement after the shift too.
         adjusted_p_win = _adjusted_win_prob(
             base_prob=float(p_win),
             predicted_margin=float(margin),
             margin_shift=margin_shift,
-            sigma=margin_rmse,
+            sigma=bundle.margin_sigma,
         )
-
-        # Derive the two scores from the ADJUSTED margin and the unadjusted total.
-        #   home = (total + margin) / 2
-        #   away = (total - margin) / 2
-        home_score = (total + adjusted_margin) / 2.0
-        away_score = (total - adjusted_margin) / 2.0
-
-        # Round only at the end — keeping the raw float around means we can
-        # show "predicted margin: +3.4" if the caller wants it.
-        home_rounded = int(round(home_score))
-        away_rounded = int(round(away_score))
-
-        if home_rounded > away_rounded:
-            winner = fixture.home
-        elif away_rounded > home_rounded:
-            winner = fixture.away
-        else:
-            winner = "TIE"
+        home_score, away_score = scoreline(adjusted_margin, float(total))
 
         results.append(
             Prediction(
@@ -620,18 +612,19 @@ def predict_fixtures(
                 matchday=fixture.matchday,
                 home=fixture.home,
                 away=fixture.away,
-                predicted_home_score=home_rounded,
-                predicted_away_score=away_rounded,
+                predicted_home_score=home_score,
+                predicted_away_score=away_score,
                 predicted_margin=adjusted_margin,
                 predicted_total=float(total),
                 home_win_probability=adjusted_p_win,
-                home_win_probability_ml=float(p_ml),
+                home_win_probability_raw=float(p_win),
                 home_win_probability_elo=float(p_elo),
                 score_uncertainty_pts=float(margin_rmse),
-                winner=winner,
+                winner=fixture.home if adjusted_margin >= 0 else fixture.away,
                 margin_adjustment_applied=margin_shift,
-                adjustment_notes=all_notes,
+                adjustment_notes=home_notes + away_notes,
                 time=fixture.time,
+                model_version=bundle.version,
             )
         )
 

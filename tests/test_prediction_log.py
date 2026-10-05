@@ -38,7 +38,7 @@ def _make_pred(home: str, away: str, h: int, a: int, date: str = "20/04/2026") -
         predicted_margin=float(h - a),
         predicted_total=float(h + a),
         home_win_probability=0.62 if winner == home else 0.38,
-        home_win_probability_ml=0.6,
+        home_win_probability_raw=0.6,
         home_win_probability_elo=0.65,
         score_uncertainty_pts=15.0,
         winner=winner,
@@ -181,3 +181,56 @@ def test_append_noop_on_empty_input(tmp_path: Path, preds) -> None:
         return
     append_predictions(preds, path=path)
     assert not path.exists()
+
+
+def _write_result(path: Path, date: str, home: str, away: str, hs: int, as_: int) -> None:
+    pd.DataFrame(
+        [
+            {
+                cfg.COL_DATE: date,
+                cfg.COL_HOME: home,
+                cfg.COL_AWAY: away,
+                cfg.COL_HOME_SCORE: hs,
+                cfg.COL_AWAY_SCORE: as_,
+            }
+        ]
+    ).to_csv(path, index=False)
+
+
+def test_accuracy_view_matches_game_rescheduled_by_two_days(tmp_path: Path) -> None:
+    # Logged for 13/05, actually played 15/05 — still the same game.
+    log_path, fixtures_path = tmp_path / "h.csv", tmp_path / "f.csv"
+    _write_result(fixtures_path, "15/05/2026", "PAO", "OSFP", 90, 80)
+    append_predictions([_make_pred("PAO", "OSFP", 88, 80, date="13/05/2026")], path=log_path)
+
+    view = build_accuracy_view(log_path=log_path, fixtures_path=fixtures_path)
+    assert view.iloc[0]["actual_home_score"] == 90
+    assert bool(view.iloc[0]["winner_correct"]) is True
+
+
+def test_accuracy_view_ignores_same_pairing_far_apart(tmp_path: Path) -> None:
+    log_path, fixtures_path = tmp_path / "h.csv", tmp_path / "f.csv"
+    _write_result(fixtures_path, "01/02/2026", "PAO", "OSFP", 90, 80)
+    append_predictions([_make_pred("PAO", "OSFP", 88, 80, date="13/05/2026")], path=log_path)
+
+    view = build_accuracy_view(log_path=log_path, fixtures_path=fixtures_path)
+    assert pd.isna(view.iloc[0]["actual_home_score"])
+
+
+def test_log_records_model_version_and_backfills_legacy(tmp_path: Path) -> None:
+    from src.prediction_log import LEGACY_MODEL_VERSION
+
+    log_path, fixtures_path = tmp_path / "h.csv", tmp_path / "f.csv"
+    _write_result(fixtures_path, "20/04/2026", "PAO", "OSFP", 90, 80)
+    old = _make_pred("AEK", "ARIS", 80, 70)  # no version: an old-model row
+    new = _make_pred("PAO", "OSFP", 88, 80)
+    new.model_version = "margin-v2"
+    append_predictions([old, new], path=log_path)
+    # Simulate a pre-versioning log file: blank version on the old row.
+    df = pd.read_csv(log_path)
+    df.loc[df["home"] == "AEK", "model_version"] = None
+    df.to_csv(log_path, index=False)
+
+    view = build_accuracy_view(log_path=log_path, fixtures_path=fixtures_path).set_index("home")
+    assert view.at["PAO", "model_version"] == "margin-v2"
+    assert view.at["AEK", "model_version"] == LEGACY_MODEL_VERSION

@@ -21,3 +21,9 @@ Thumbs.db
 
 # Scratch CSVs in data/raw/
 data/raw/test*.csv
+
+# Generated dashboard — rebuild with `python scripts/build_dashboard.py`
+dashboard/
+
+# Timestamp of the last API sync (desktop launcher bookkeeping)
+data/.last_sync

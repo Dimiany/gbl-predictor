@@ -92,6 +92,9 @@ class RawGame:
     away_team_api_name: str
     home_score: int
     away_score: int
+    # FlashScore's id for the match — needed to look up the final score via
+    # /matches/details when /results only gives us the regulation-time tie.
+    match_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -134,6 +137,7 @@ class FlashScoreClient:
     # you change them here, nowhere else.
     _RESULTS_PATH = "api/flashscore/v2/tournaments/results"
     _FIXTURES_PATH = "api/flashscore/v2/tournaments/fixtures"
+    _DETAILS_PATH = "api/flashscore/v2/matches/details"
 
     def __init__(
         self,
@@ -272,6 +276,7 @@ class FlashScoreClient:
                 away_team_api_name=raw["away_team"]["name"],
                 home_score=int(home_score),
                 away_score=int(away_score),
+                match_id=str(raw.get("match_id", "")),
             )
         except (KeyError, TypeError, ValueError):
             return None
@@ -320,3 +325,20 @@ class FlashScoreClient:
             },
             parser=self._parse_fixture,
         )
+
+    def fetch_final_score(self, match_id: str) -> tuple[int, int] | None:
+        """Return the FINAL (home, away) score of one match, overtime included.
+
+        /results reports the regulation-time score, so an overtime game shows
+        up as a tie (e.g. 69-69 instead of 93-86). /matches/details carries
+        the full score in ``home_total`` / ``away_total``. One request per
+        call — only use it for games that look tied.
+
+        Returns None if the payload has no usable totals.
+        """
+        payload = self._get(self._DETAILS_PATH, {"match_id": match_id})
+        try:
+            scores = payload["scores"]
+            return int(scores["home_total"]), int(scores["away_total"])
+        except (KeyError, TypeError, ValueError):
+            return None

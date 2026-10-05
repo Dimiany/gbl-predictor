@@ -39,7 +39,9 @@ over a 13-team league.
 | Format (matches CI) | `ruff format .` |
 | Record completed match results (interactive) | `python scripts/record_results.py` |
 | Sync + retrain + predict (the normal path) | Run cells 2 then 3 of `predictor.ipynb` (cell 2 auto-syncs from FlashScore before training) |
-| Predict upcoming fixtures | Run cell 3 of `predictor.ipynb` |
+| Predict upcoming fixtures (next round only) | Run cell 3 of `predictor.ipynb` |
+| **What the user actually does** (no terminal): double-click the desktop shortcut "GBL Predictor" → `GBL Predictor.bat` → `scripts/serve.py`; the page's ⟳ Ανανέωση button runs the full update | — |
+| Sync + retrain + predict + build HTML dashboard | `python scripts/build_dashboard.py` (`--no-sync` to skip API+retrain, `--no-log` to skip logging, `--open` to open it) |
 | View prediction history & model accuracy | Run `models_accuracy.ipynb` |
 | Sync results + upcoming fixtures from API (dry-run, escape hatch) | `python scripts/sync.py` |
 | Sync results + upcoming fixtures from API (commit, escape hatch) | `python scripts/sync.py --commit` |
@@ -61,11 +63,12 @@ src/
   config.py                # ALL paths, hyperparams, tier->points mapping, env vars
   features.py              # Elo + rolling stats + H2H + rest days
                            # + season W-L record + standings rank (win% with margin tiebreak)
-  model.py                 # HistGradientBoosting, walk-forward eval, ensemble
+  model.py                 # linear margin + total models, P = Phi(margin/sigma), rolling walk-forward
   predict.py               # fixture predictions + adjustment overlays
                            # (returns [] for empty fixture lists — callers safe)
   visualize.py             # HTML renderers: fixtures table, prediction cards, accuracy table
   ui.py                    # ipywidgets glue for predictor.ipynb (button, slot, dark zone)
+  dashboard.py             # static HTML dashboard (standings, Elo, next round, results, schedule)
   api_client.py            # thin wrapper around FlashScore (RapidAPI)
   team_name_mapping.py     # API name -> canonical name translator
   sync.py                  # reusable sync engine — run_sync() + sync_for_notebook()
@@ -76,6 +79,10 @@ scripts/
   train.py                 # retrain + evaluate + save model
   record_results.py        # interactive manual result entry
   sync.py                  # thin CLI wrapper around src/sync.run_sync (escape hatch)
+  build_dashboard.py       # sync + retrain + log next round + write dashboard/index.html
+  serve.py                 # local server (127.0.0.1:8765) behind the Refresh button
+GBL Predictor.bat          # double-click launcher (desktop shortcut points here)
+dashboard/                 # generated index.html (gitignored)
 tests/                     # pytest suite — must stay green
 models/                    # saved joblib model (gitignored)
 .env                       # API key + league ID (GITIGNORED, never commit)
@@ -118,8 +125,9 @@ models_accuracy.ipynb      # aggregated table of every prediction vs its actual 
    (e.g. `record_results.py`) may write to them.
 3. **Never use random train/test splits.** Time-based / walk-forward only.
 4. **Always pass `dayfirst=True`** when reading CSV dates with pandas.
-5. **Don't over-engineer for ~150 rows.** On this dataset, Elo alone still
-   nearly matches the full ML model. Simple additions beat sophisticated ones.
+5. **Don't over-engineer for ~180 rows.** A rolling walk-forward comparison
+   (05/10/2026) found gradient boosting the worst-calibrated option; a 3-feature
+   linear margin model matched the ML+Elo blend and replaced it. Simple wins.
 6. **Retraining is a few-second operation.** Offer to retrain after any
    change to `all_fixtures.csv`.
 7. **Prefer editing existing files over adding new ones.** Abstractions
@@ -147,29 +155,50 @@ models_accuracy.ipynb      # aggregated table of every prediction vs its actual 
     Don't denormalize the actuals into the log unless the user explicitly asks —
     one source of truth per fact.
 
+## FlashScore API quirks (handled in src/sync.py — keep it that way)
+
+- `/tournaments/results` gives the **regulation-time** score, so overtime games
+  look tied. Sync resolves every tie via `/matches/details` (`home_total` /
+  `away_total`), one request per tie, and never writes a tie to history.
+- The API sometimes lists the same game twice; sync dedupes results, fixtures,
+  and the written history on (date, home, away).
+- Season IDs are NOT sequential: 2025/26 = `187`, 2026/27 = `190`
+  (`FLASHSCORE_TOURNAMENT_TEMPLATE_ID=xn32I3T4`). There is no seasons-list
+  endpoint; probe `/tournaments/results` with candidate IDs.
+- Free plan: 500 requests/month. A normal sync costs ~5-10.
+
+## Seasons
+
+`all_fixtures.csv` holds multiple seasons. `features.season_of()` derives the
+season from the date (Aug+ = new season). At each team's first game of a new
+season, `TeamState.start_season()` resets W-L, games played, L5 form and rest
+days, and regresses Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings
+rank only teams in the same season.
+
 ## Current state
 
 <!-- Snapshot of what's true right now. Update when it changes. -->
 
-- 160 games in history (2025/26 season, Greek A1), 13 teams. All rows
-  API-sourced. File is sorted chronologically (oldest top, newest bottom).
-- 8 upcoming playoff fixtures (early May 2026) — regular season is done;
-  the bracket fills in automatically as FlashScore publishes new rounds.
-- 6 predictions logged in `data/prediction_history.csv` (round of 25/04/2026,
-  4/6 correct → 67%).
-- Model: HistGradientBoosting classifier + regressors, ensembled with Elo.
-- Tuned blend weight: `ML * 0.45 + Elo * 0.55`. (Re-tuned each training run —
-  may shift after retraining with the new W-L / standings features.)
-- Feature set: Elo (4) + rolling L5 form (8) + rest/games-played (4) +
-  H2H (1) + season W-L record (6: wins/losses/win% per side) + standings
-  rank (3: home_rank / away_rank / rank_diff). The walk-forward evaluator
-  reports honest out-of-sample metrics — re-check the win-accuracy and R²
-  numbers after retraining; on ~150 rows the marginal lift is usually small
-  but the rank features should help in lopsided matchups.
-- Walk-forward test metrics (~32 games held out, varies as history grows):
-  - Win accuracy: ~70% (ensemble), ~74% (Elo alone), ~71% (ML alone).
-  - Margin: MAE ~12 pts, RMSE ~15 pts, R² ≈ 0.09.
-  - Total points: MAE ~15 pts, RMSE ~18 pts, R² ≈ 0.13.
+- 181 games in history as of 05/10/2026: 174 from 2025/26 (regular season +
+  playoffs; champion Olympiacos) and 7 from 2026/27 round 1. 14 teams in
+  2026/27: Panionios relegated; Lefkadas and Vikos new (identity-mapped in
+  team_name_mapping.csv — the user may want to rename them).
+- 175 upcoming 2026/27 fixtures (through April 2027). The UI and dashboard
+  only predict the next round (`predict.next_round`, 4-day window).
+- `data/prediction_history.csv`: 2025/26 predictions (model `ensemble-v1`,
+  blank `model_version`) graded 12/14; round 2 of 2026/27 (10-11/10) logged
+  with `margin-v2`, pending. Grading tolerates games rescheduled by ≤3 days.
+- Model `margin-v2` (cfg.MODEL_VERSION; bump it whenever the method changes):
+  - margin = LinearRegression(elo_diff_adj, form_diff, win_pct_diff)
+  - P(home win) = Phi(margin / sigma), sigma = residual std (~12.4)
+  - total = Ridge(alpha=50) on the four L5 scored/conceded columns
+  - scoreline from (margin, total), rounded so it never ties and always
+    agrees with the probability. Old setup (HGB classifier + regressors
+    blended with Elo) could disagree — e.g. Aris–AEK 10/10/2026.
+- Rolling walk-forward (60-game warm-up, refit every game day; 121 games):
+  - Win accuracy 73% (Elo alone 76%; always-home 63%; ±4 noise).
+  - Log loss 0.506 (Elo 0.552), Brier 0.171 (Elo 0.183).
+  - Margin MAE 10.1 pts, R² 0.30. Total MAE 15.4 pts.
 - `rosters.csv` has only the 13 team stubs (no real player data); stubs
   are silently skipped by the loader.
 - `absences.csv` and `adjustments.csv` are empty.
@@ -178,14 +207,22 @@ models_accuracy.ipynb      # aggregated table of every prediction vs its actual 
 
 <!-- For future sessions asking "why doesn't this work better?" -->
 
-- Margin R² ~0.09 — barely positive. ~150 rows is too few to beat Elo
-  decisively; no sophisticated tuning will change that.
+- Margin R² ~0.30, but accuracy differences between models are within
+  noise on ~120 evaluated games; compare log loss / Brier, not accuracy.
+- Promoted teams start at Elo 1500, which overrates them early on.
 - No box-score features (pace, eFG%, ORtg/DRtg). FlashScore doesn't
   expose those either; would need a different feed.
 - No live injury feed; absences are user-entered via rosters.csv +
   absences.csv (tier-based margin adjustments).
 - Team-name string match is exact across files — no fuzzy matching at
   lookup time, only at fixture-validation time.
+
+## The user does not use the terminal
+
+They said so explicitly. Anything they need to do must be a button on the
+site or a double-click. When a change needs a manual step (new API key, new
+team mapping), do it for them and tell them in plain Greek what changed.
+Keep the in-site Οδηγίες page (`pages.help` in src/dashboard.py) current.
 
 ## When in doubt
 

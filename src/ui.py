@@ -85,11 +85,12 @@ def show_predictions_ui(bundle) -> None:
     import ipywidgets as widgets
     from IPython.display import HTML, display
 
-    from src.predict import load_fixtures_from_csv, predict_fixtures
+    from src.predict import load_fixtures_from_csv, next_round, predict_fixtures
     from src.prediction_log import append_predictions
     from src.visualize import render_fixtures_table_html, render_predictions_html
 
-    fixtures, fixture_dates = load_fixtures_from_csv()
+    # The CSV holds the whole remaining season — only score the next round.
+    fixtures, fixture_dates = next_round(*load_fixtures_from_csv())
 
     # 1. Inject CSS + render the upcoming-fixtures table. The CSS is harmless
     #    if injected multiple times (idempotent <style> block).

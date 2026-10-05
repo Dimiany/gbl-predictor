@@ -15,7 +15,7 @@ Two entry points:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
@@ -33,6 +33,12 @@ class SyncResult:
     """
 
     new_result_rows: list[dict] = field(default_factory=list)
+    # Existing history rows stored as regulation-time ties that the API's
+    # /matches/details now resolves to a real (overtime) result.
+    corrected_result_rows: list[dict] = field(default_factory=list)
+    # Tied games we couldn't resolve this run — left out so a fake tie is
+    # never written. The next sync retries them.
+    unresolved_ties: list[str] = field(default_factory=list)
     upcoming_rows: list[dict] = field(default_factory=list)
     unmapped_team_names: set[str] = field(default_factory=set)
     committed: bool = False
@@ -53,6 +59,10 @@ class SyncResult:
         else:
             most_recent_date = max(r[cfg.COL_DATE] for r in self.new_result_rows)
             head = f"Sync: {n_new} new result(s) added (most recent {most_recent_date})"
+        if self.corrected_result_rows:
+            head += f"; {len(self.corrected_result_rows)} overtime score(s) corrected"
+        if self.unresolved_ties:
+            head += f"; {len(self.unresolved_ties)} tied game(s) skipped (retry next sync)"
         return f"{head}; {n_up} upcoming fixture(s) on file."
 
 
@@ -82,22 +92,70 @@ def _translate_teams(
     return home, away
 
 
-def _build_result_rows(
+def _history_keys(history: pd.DataFrame, *, tied: bool) -> set[tuple]:
+    """Keys of history rows whose stored score is (``tied``) or isn't a tie."""
+    if history.empty:
+        return set()
+    is_tie = history[cfg.COL_HOME_SCORE] == history[cfg.COL_AWAY_SCORE]
+    rows = history[is_tie if tied else ~is_tie]
+    dates = pd.to_datetime(rows[cfg.COL_DATE], dayfirst=True)
+    return set(zip(dates, rows[cfg.COL_HOME], rows[cfg.COL_AWAY], strict=True))
+
+
+def _resolve_overtime(
     games: list[RawGame],
     history: pd.DataFrame,
     mapping: dict[str, str],
+    client: FlashScoreClient,
+) -> tuple[list[RawGame], list[str]]:
+    """Replace regulation-time ties with the final score from /matches/details.
+
+    Basketball has no ties — a tied /results score means the game went to
+    overtime. We only spend a details request on ties that history doesn't
+    already hold a real score for, so a normal sync costs 0-2 extra calls.
+
+    Returns (games, unresolved): ties we couldn't resolve are dropped from
+    ``games`` rather than written as a fake tie.
+    """
+    settled = _history_keys(history, tied=False)
+    resolved: list[RawGame] = []
+    unresolved: list[str] = []
+    for g in games:
+        if g.home_score != g.away_score:
+            resolved.append(g)
+            continue
+        home = canonicalize(g.home_team_api_name, mapping)
+        away = canonicalize(g.away_team_api_name, mapping)
+        # g.date is ISO (YYYY-MM-DD) — parse WITHOUT dayfirst, which would
+        # swap day and month on ISO strings.
+        if (pd.Timestamp(g.date), home, away) in settled:
+            resolved.append(g)  # history already has the real score
+            continue
+        try:
+            final = client.fetch_final_score(g.match_id) if g.match_id else None
+        except APIClientError:
+            final = None
+        if final is None or final[0] == final[1]:
+            unresolved.append(f"{g.date} {g.home_team_api_name} - {g.away_team_api_name}")
+            continue
+        resolved.append(replace(g, home_score=final[0], away_score=final[1]))
+    return resolved, unresolved
+
+
+def _game_rows(
+    games: list[RawGame],
+    mapping: dict[str, str],
     unmapped: set[str],
 ) -> list[dict]:
-    """Translate API games to our schema and return only rows new to history."""
-    candidates: list[dict] = []
+    """Translate API games to our all_fixtures.csv schema."""
+    rows: list[dict] = []
     for g in games:
         home, away = _translate_teams(g.home_team_api_name, g.away_team_api_name, mapping, unmapped)
         if home is None or away is None:
             continue
-        our_date = pd.Timestamp(g.date).strftime("%d/%m/%Y")
-        candidates.append(
+        rows.append(
             {
-                cfg.COL_DATE: our_date,
+                cfg.COL_DATE: pd.Timestamp(g.date).strftime("%d/%m/%Y"),
                 cfg.COL_HOME: home,
                 cfg.COL_AWAY: away,
                 cfg.COL_HOME_SCORE: g.home_score,
@@ -107,20 +165,73 @@ def _build_result_rows(
                 cfg.COL_HOME_WIN: int(g.home_score > g.away_score),
             }
         )
+    return rows
 
-    if history.empty:
-        return candidates
 
-    history_dates = pd.to_datetime(history[cfg.COL_DATE], dayfirst=True)
-    new_rows = []
+def _build_tie_corrections(candidates: list[dict], history: pd.DataFrame) -> list[dict]:
+    """API rows (already overtime-resolved) whose history row is still a tie."""
+    tied_keys = _history_keys(history, tied=True)
+    corrections: list[dict] = []
+    seen: set[tuple] = set()
     for row in candidates:
+        if row["score_diff"] == 0:
+            continue
         row_date = pd.to_datetime(row[cfg.COL_DATE], dayfirst=True)
-        exists = (
-            (history_dates == row_date)
+        key = (row_date, row[cfg.COL_HOME], row[cfg.COL_AWAY])
+        if key in tied_keys and key not in seen:
+            seen.add(key)
+            corrections.append(row)
+    return corrections
+
+
+def _apply_corrections(history: pd.DataFrame, corrections: list[dict]) -> pd.DataFrame:
+    """Overwrite the score columns of every history row matching a correction."""
+    history = history.copy()
+    dates = pd.to_datetime(history[cfg.COL_DATE], dayfirst=True)
+    score_cols = [
+        cfg.COL_HOME_SCORE,
+        cfg.COL_AWAY_SCORE,
+        "score_diff",
+        cfg.COL_TOTAL,
+        cfg.COL_HOME_WIN,
+    ]
+    for row in corrections:
+        mask = (
+            (dates == pd.to_datetime(row[cfg.COL_DATE], dayfirst=True))
             & (history[cfg.COL_HOME] == row[cfg.COL_HOME])
             & (history[cfg.COL_AWAY] == row[cfg.COL_AWAY])
-        ).any()
-        if not exists:
+        )
+        history.loc[mask, score_cols] = [row[c] for c in score_cols]
+    return history
+
+
+def _build_result_rows(
+    games: list[RawGame],
+    history: pd.DataFrame,
+    mapping: dict[str, str],
+    unmapped: set[str],
+) -> list[dict]:
+    """Translate API games to our schema and return only rows new to history.
+
+    The API occasionally lists the same game twice, so duplicates within the
+    response are dropped too — not just games already in history.
+    """
+    candidates = _game_rows(games, mapping, unmapped)
+
+    known: set[tuple] = set()
+    if not history.empty:
+        history_dates = pd.to_datetime(history[cfg.COL_DATE], dayfirst=True)
+        known = set(zip(history_dates, history[cfg.COL_HOME], history[cfg.COL_AWAY], strict=True))
+
+    new_rows = []
+    for row in candidates:
+        key = (
+            pd.to_datetime(row[cfg.COL_DATE], dayfirst=True),
+            row[cfg.COL_HOME],
+            row[cfg.COL_AWAY],
+        )
+        if key not in known:
+            known.add(key)
             new_rows.append(row)
     return new_rows
 
@@ -151,6 +262,7 @@ def _build_upcoming_rows(
         fx_date = pd.Timestamp(f.date)
         if (fx_date, home, away) in played_keys:
             continue
+        played_keys.add((fx_date, home, away))  # also skips API-side duplicates
         rows.append(
             {
                 "fixture_date": fx_date.strftime("%d/%m/%Y"),
@@ -204,9 +316,14 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
         print(f"  API returned {len(results)} finished game(s)")
 
     history = pd.read_csv(cfg.RAW_GAMES_CSV)
+    results, unresolved_ties = _resolve_overtime(results, history, mapping, client)
     new_result_rows = _build_result_rows(results, history, mapping, unmapped)
+    corrected_rows = _build_tie_corrections(_game_rows(results, mapping, set()), history)
     if verbose:
         print(f"  New rows to append: {len(new_result_rows)}")
+        print(f"  Overtime scores to correct: {len(corrected_rows)}")
+        if unresolved_ties:
+            print(f"  Unresolved tied games (skipped, retried next sync): {len(unresolved_ties)}")
 
     tentative_full_history = history
     if new_result_rows:
@@ -226,6 +343,8 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
         # Still return what we got; caller can decide what to do.
         return SyncResult(
             new_result_rows=new_result_rows,
+            corrected_result_rows=corrected_rows,
+            unresolved_ties=unresolved_ties,
             unmapped_team_names=unmapped,
             error=f"API error fetching fixtures: {exc}",
         )
@@ -238,6 +357,8 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
 
     result = SyncResult(
         new_result_rows=new_result_rows,
+        corrected_result_rows=corrected_rows,
+        unresolved_ties=unresolved_ties,
         upcoming_rows=upcoming_rows,
         unmapped_team_names=unmapped,
     )
@@ -248,9 +369,9 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
     # Write to disk. We treat the two files separately: only rewrite history
     # if there's something new, but ALWAYS overwrite upcoming_fixtures.csv
     # because the API snapshot is authoritative.
-    if new_result_rows:
+    if new_result_rows or corrected_rows:
         updated_history = pd.concat(
-            [history, pd.DataFrame(new_result_rows)],
+            [_apply_corrections(history, corrected_rows), pd.DataFrame(new_result_rows)],
             ignore_index=True,
         )
         # Sort chronologically (oldest first, newest at the bottom) so the file
@@ -259,8 +380,11 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
         updated_history = updated_history.assign(
             _sort_key=pd.to_datetime(updated_history[cfg.COL_DATE], dayfirst=True)
         )
+        # One row per game: rows written before API-side duplicates were
+        # filtered can appear twice, double-counting that game in Elo and W-L.
         updated_history = (
             updated_history.sort_values("_sort_key", kind="stable")
+            .drop_duplicates(subset=["_sort_key", cfg.COL_HOME, cfg.COL_AWAY], keep="first")
             .drop(columns=["_sort_key"])
             .reset_index(drop=True)
         )

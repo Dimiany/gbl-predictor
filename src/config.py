@@ -113,6 +113,17 @@ TEAM_NAME_MAPPING_CSV: Path = RAW_DATA_DIR / "team_name_mapping.csv"
 # Where trained artifacts live. joblib is the standard way to persist sklearn models.
 MODEL_FILE: Path = MODELS_DIR / "gbl_model.joblib"
 
+# The static HTML dashboard written by scripts/build_dashboard.py (gitignored —
+# it's regenerated from the data on every build).
+DASHBOARD_FILE: Path = PROJECT_ROOT / "dashboard" / "index.html"
+# When the site's data was last synced from the API (written by
+# dashboard.update_site). The desktop launcher only re-syncs if this is stale.
+LAST_SYNC_FILE: Path = DATA_DIR / ".last_sync"
+# Local-only port for scripts/serve.py (the Refresh button's backend).
+SERVE_PORT: int = 8765
+# The launcher re-syncs on start-up if the last sync is older than this.
+AUTO_SYNC_AFTER_HOURS: float = 6.0
+
 # ---------------------------------------------------------------------------
 # Column names (single source of truth — avoids typos across files)
 # ---------------------------------------------------------------------------
@@ -138,6 +149,22 @@ ELO_K: float = 20.0
 ELO_HOME_ADVANTAGE: float = 65.0
 # The divisor in the Elo expected-score formula (standard chess value).
 ELO_DIVISOR: float = 400.0
+# At each new season every rating is pulled back toward ELO_INITIAL, keeping
+# this fraction of its distance from the mean. Off-season roster turnover in
+# the GBL is heavy, so last June's rating is only partly informative in October.
+# 1.0 = full carry-over, 0.0 = everyone restarts at 1500.
+ELO_SEASON_CARRYOVER: float = 0.75
+
+# ---------------------------------------------------------------------------
+# Seasons
+# ---------------------------------------------------------------------------
+# A GBL season runs ~October to June. Games from this month onward belong to
+# the season starting that year (e.g. 2026-10-04 -> 2026; 2027-03-01 -> 2026).
+SEASON_START_MONTH: int = 8
+
+# A GBL round is spread over ~3 days (Sat-Mon). Fixtures within this many days
+# of the earliest upcoming one count as "the next round".
+NEXT_ROUND_WINDOW_DAYS: int = 4
 
 # ---------------------------------------------------------------------------
 # Rolling-window feature parameters
@@ -198,41 +225,34 @@ TARGET_MARGIN: str = COL_MARGIN
 TARGET_TOTAL: str = COL_TOTAL
 
 # ---------------------------------------------------------------------------
-# Model hyperparameters
+# Model (see src/model.py for why it's linear)
 # ---------------------------------------------------------------------------
-# HistGradientBoosting is the right default on small tabular data: it handles
-# missing values natively (no imputation needed), is fast, and rarely overfits
-# badly out of the box. Random Forests tend to overfit on ~140 rows.
-GBM_PARAMS: dict = {
-    "max_iter": 300,
-    "learning_rate": 0.05,
-    "max_depth": 5,
-    "min_samples_leaf": 10,
-    "l2_regularization": 1.0,
-    "random_state": 42,
-}
+# Bumped whenever the prediction method changes. Logged next to every
+# prediction in data/prediction_history.csv, so old and new models' records
+# stay distinguishable. Rows without a version came from "ensemble-v1"
+# (HistGradientBoosting classifier blended with Elo, until 05/10/2026).
+MODEL_VERSION: str = "margin-v2"
 
-# Walk-forward evaluation: we train on the first TRAIN_FRACTION of games
-# (ordered by DATE) and evaluate on the remaining ones. This mimics real usage:
-# at any given point in the season, we only know games that already happened.
-TRAIN_FRACTION: float = 0.8
+# Inputs of the margin model (derived in model.model_inputs):
+#   elo_diff_adj — Elo gap incl. home court; form_diff — L5 margin difference;
+#   win_pct_diff — season win-% difference.
+MARGIN_FEATURES: list[str] = ["elo_diff_adj", "form_diff", "win_pct_diff"]
+
+# Inputs of the total-points model: each side's L5 scoring and conceding.
+TOTAL_FEATURES: list[str] = [
+    "home_avg_scored_L5",
+    "home_avg_conceded_L5",
+    "away_avg_scored_L5",
+    "away_avg_conceded_L5",
+]
+# Ridge shrinkage for the total model — L5 averages are noisy, so the
+# prediction should lean toward the league mean.
+TOTAL_RIDGE_ALPHA: float = 50.0
+
+# Rolling walk-forward evaluation: score every game day using only earlier
+# days, once at least this many games are available to train on.
+WALK_FORWARD_WARMUP: int = 60
 
 # Minimum games a team must have played before we trust its rolling features.
-# Below this, L5 features are NaN and the model falls back on Elo.
+# Below this, L5 features are NaN and the model treats form as neutral.
 MIN_GAMES_FOR_ROLLING: int = 3
-
-# ---------------------------------------------------------------------------
-# Ensemble blend
-# ---------------------------------------------------------------------------
-# The final reported win probability is a weighted average of the ML
-# classifier's prediction and the Elo-implied probability:
-#
-#     final = ENSEMBLE_ML_WEIGHT * p_ml + (1 - ENSEMBLE_ML_WEIGHT) * p_elo
-#
-# Why blend? On small datasets (hundreds of games, not thousands) a simple
-# rating system like Elo is hard to beat, because complex models overfit.
-# Blending hedges between the two and is almost always at least as good as
-# either alone. The exact weight is picked automatically during training by
-# minimising log-loss on the training set — this value is just the fallback
-# used if the auto-tuning fails for some reason.
-ENSEMBLE_ML_WEIGHT_DEFAULT: float = 0.4

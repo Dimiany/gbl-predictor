@@ -35,7 +35,17 @@ LOG_COLUMNS = [
     "predicted_winner",
     "home_win_probability",
     "prediction_made_at",
+    # Which model made the prediction (cfg.MODEL_VERSION). Blank on rows
+    # logged before versioning existed — those came from "ensemble-v1".
+    "model_version",
 ]
+
+# Version label for log rows written before the column existed.
+LEGACY_MODEL_VERSION = "ensemble-v1"
+
+# A logged fixture still matches its result if the game was moved by up to
+# this many days (FlashScore schedules shift; the teams are what identify it).
+RESCHEDULE_TOLERANCE_DAYS = 3
 
 _KEY_COLS = ["fixture_date", "home", "away"]
 
@@ -71,6 +81,7 @@ def append_predictions(
                 "predicted_winner": p.winner,
                 "home_win_probability": round(p.home_win_probability, 4),
                 "prediction_made_at": now,
+                "model_version": p.model_version,
             }
             for p in preds
         ]
@@ -82,6 +93,28 @@ def append_predictions(
     merged = merged.drop_duplicates(subset=_KEY_COLS, keep="last").reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(path, index=False)
+
+
+def _match_rescheduled(log: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:
+    """Fill actuals for logged fixtures whose game was played a few days off.
+
+    The exact-date join misses games FlashScore rescheduled after we logged
+    the prediction. Same home + away within RESCHEDULE_TOLERANCE_DAYS is the
+    same game (a pairing meets at most twice a season, months apart).
+    """
+    missing = log["actual_home_score"].isna()
+    for i in log.index[missing]:
+        same = actuals[
+            (actuals["home"] == log.at[i, "home"]) & (actuals["away"] == log.at[i, "away"])
+        ]
+        if same.empty:
+            continue
+        gap = (same["_fixture_date_dt"] - log.at[i, "_fixture_date_dt"]).abs()
+        best = gap.idxmin()
+        if gap[best] <= pd.Timedelta(days=RESCHEDULE_TOLERANCE_DAYS):
+            log.at[i, "actual_home_score"] = same.at[best, "actual_home_score"]
+            log.at[i, "actual_away_score"] = same.at[best, "actual_away_score"]
+    return log
 
 
 def build_accuracy_view(
@@ -98,6 +131,9 @@ def build_accuracy_view(
     log = load_log(log_path)
     if log.empty:
         return log
+    if "model_version" not in log.columns:
+        log["model_version"] = pd.NA
+    log["model_version"] = log["model_version"].fillna(LEGACY_MODEL_VERSION)
 
     # Parse log dates with dayfirst=True (European format) to match the rest
     # of the project — matters for the join key below.
@@ -118,6 +154,7 @@ def build_accuracy_view(
             }
         )
         log = log.merge(actuals, on=["_fixture_date_dt", "home", "away"], how="left")
+        log = _match_rescheduled(log, actuals)
     else:
         log["actual_home_score"] = pd.NA
         log["actual_away_score"] = pd.NA

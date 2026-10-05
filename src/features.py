@@ -60,6 +60,11 @@ def elo_update(
     return home_rating + delta, away_rating - delta
 
 
+def season_of(date: pd.Timestamp) -> int:
+    """Start year of the GBL season ``date`` falls in (2027-03-01 -> 2026)."""
+    return date.year if date.month >= cfg.SEASON_START_MONTH else date.year - 1
+
+
 # ---------------------------------------------------------------------------
 # Per-team running state
 # ---------------------------------------------------------------------------
@@ -85,6 +90,27 @@ class TeamState:
     # deques only see the last ROLLING_WINDOW games; these accumulate forever.
     season_wins: int = 0
     season_margin_total: int = 0  # cumulative point differential, used as standings tiebreak
+    season: int | None = None  # season (start year) the counters above belong to
+
+    def start_season(self, season: int) -> None:
+        """Roll the team into ``season`` if it isn't there already.
+
+        Everything season-scoped (W-L, games played, L5 form, rest days) starts
+        over; Elo carries over, regressed toward the mean. Idempotent — calling
+        it again for the same season is a no-op.
+        """
+        if self.season == season:
+            return
+        if self.season is not None:
+            self.elo = cfg.ELO_INITIAL + cfg.ELO_SEASON_CARRYOVER * (self.elo - cfg.ELO_INITIAL)
+            self.games_played = 0
+            self.season_wins = 0
+            self.season_margin_total = 0
+            self.last_game_date = None
+            self.recent_scored.clear()
+            self.recent_conceded.clear()
+            self.recent_wins.clear()
+        self.season = season
 
     # --- accessors used at feature-build time ----------------------------------
     # Each returns NaN until we have enough games. NaN is important:
@@ -195,8 +221,11 @@ class HeadToHead:
 # ---------------------------------------------------------------------------
 
 
-def standings_rank(states: dict[str, TeamState], team: str) -> float:
+def standings_rank(states: dict[str, TeamState], team: str, season: int | None = None) -> float:
     """Return ``team``'s 1-based position in the league table.
+
+    With ``season`` given, only teams whose counters belong to that season are
+    ranked — last season's (or relegated) teams don't pollute the new table.
 
     Sorting key: win % desc, then cumulative margin total desc as tiebreak.
     This isn't the OFFICIAL GBL ranking (which uses head-to-head) but it
@@ -210,7 +239,13 @@ def standings_rank(states: dict[str, TeamState], team: str) -> float:
     """
     if team not in states or states[team].games_played == 0:
         return np.nan
-    active = [(name, s) for name, s in states.items() if s.games_played > 0]
+    if season is not None and states[team].season != season:
+        return np.nan
+    active = [
+        (name, s)
+        for name, s in states.items()
+        if s.games_played > 0 and (season is None or s.season == season)
+    ]
     # Sort: highest win% first, then highest margin total as the tiebreaker.
     active.sort(key=lambda item: (-item[1].season_win_pct, -item[1].season_margin_total))
     for i, (name, _) in enumerate(active):
@@ -268,6 +303,10 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
 
         h = states[home]
         a = states[away]
+        # First game of a new season for either team -> reset its season state.
+        season = season_of(date)
+        h.start_season(season)
+        a.start_season(season)
 
         # --- snapshot features BEFORE recording the game -------------------
         # This ordering is what prevents data leakage: the features describe
@@ -278,8 +317,8 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
         win_prob = elo_expected_score(home_elo + cfg.ELO_HOME_ADVANTAGE, away_elo)
 
         # Standings + W-L snapshot (state-as-of-tipoff, no leakage).
-        home_rank = standings_rank(states, home)
-        away_rank = standings_rank(states, away)
+        home_rank = standings_rank(states, home, season)
+        away_rank = standings_rank(states, away, season)
         # rank_diff: negative = home team higher in the table (a stronger team
         # at home). NaN early-season when ranks aren't defined for both sides.
         rank_diff = (
@@ -332,6 +371,9 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
     # Attach the features as columns in one shot. This is much faster than
     # setting cells one at a time inside the loop.
     features_df = pd.DataFrame(feature_rows, index=games.index)
+    # all_fixtures.csv carries legacy (empty) columns with some of the same
+    # names, e.g. home_avg_scored_L5. Drop them so each feature exists once.
+    games = games.drop(columns=[c for c in features_df.columns if c in games.columns])
     return pd.concat([games, features_df], axis=1)
 
 
@@ -366,6 +408,9 @@ def team_state_snapshot(
 
         h = states[home]
         a = states[away]
+        season = season_of(date)
+        h.start_season(season)
+        a.start_season(season)
         h.record_game(home_score, away_score, date)
         a.record_game(away_score, home_score, date)
         new_home_elo, new_away_elo = elo_update(h.elo, a.elo, home_won)
@@ -387,13 +432,19 @@ def features_for_fixture(
 
     Mirrors the per-row logic inside ``build_features`` but using the
     snapshot state rather than streaming through history.
+
+    If the fixture opens a new season for a team, its snapshot state is rolled
+    over in place (idempotent), exactly as ``build_features`` would do.
     """
     h = states[home]
     a = states[away]
+    season = season_of(fixture_date)
+    h.start_season(season)
+    a.start_season(season)
     home_elo = h.elo
     away_elo = a.elo
-    home_rank = standings_rank(states, home)
-    away_rank = standings_rank(states, away)
+    home_rank = standings_rank(states, home, season)
+    away_rank = standings_rank(states, away, season)
     rank_diff = (
         home_rank - away_rank if not (np.isnan(home_rank) or np.isnan(away_rank)) else np.nan
     )

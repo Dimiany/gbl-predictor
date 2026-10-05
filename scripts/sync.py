@@ -44,6 +44,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Read BEFORE syncing — a --commit run overwrites the file.
+    current_upcoming = pd.DataFrame()
+    if cfg.UPCOMING_FIXTURES_CSV.exists():
+        current_upcoming = pd.read_csv(cfg.UPCOMING_FIXTURES_CSV)
+
     result = run_sync(commit=args.commit, verbose=True)
 
     # --- report ---------------------------------------------------------
@@ -60,9 +65,19 @@ def main() -> None:
                 f"- {r[cfg.COL_AWAY_SCORE]} {r[cfg.COL_AWAY]}"
             )
 
-    current_upcoming = pd.DataFrame()
-    if cfg.UPCOMING_FIXTURES_CSV.exists():
-        current_upcoming = pd.read_csv(cfg.UPCOMING_FIXTURES_CSV)
+    if result.corrected_result_rows:
+        print("\nOvertime scores to correct (stored as regulation-time ties):")
+        for r in result.corrected_result_rows:
+            print(
+                f"  {r[cfg.COL_DATE]}  {r[cfg.COL_HOME]} {r[cfg.COL_HOME_SCORE]} "
+                f"- {r[cfg.COL_AWAY_SCORE]} {r[cfg.COL_AWAY]}"
+            )
+
+    if result.unresolved_ties:
+        print("\nTied games skipped (final score unavailable; retried next sync):")
+        for label in result.unresolved_ties:
+            print(f"  {label}")
+
     print(
         f"\nUpcoming fixtures: {len(current_upcoming)} currently -> "
         f"{len(result.upcoming_rows)} after sync"
@@ -78,6 +93,8 @@ def main() -> None:
 
     if result.new_result_rows:
         print(f"\nWrote {len(result.new_result_rows)} new result(s) to {cfg.RAW_GAMES_CSV.name}.")
+    if result.corrected_result_rows:
+        print(f"Corrected {len(result.corrected_result_rows)} overtime score(s).")
     print(
         f"Replaced {cfg.UPCOMING_FIXTURES_CSV.name} with "
         f"{len(result.upcoming_rows)} upcoming fixture(s)."

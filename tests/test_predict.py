@@ -125,3 +125,52 @@ def test_load_fixtures_raises_on_missing_column(tmp_path):
     with pytest.raises(ValueError) as exc_info:
         load_fixtures_from_csv(csv_path)
     assert "matchday" in str(exc_info.value)
+
+
+def test_next_round_keeps_only_fixtures_near_the_earliest():
+    from src.predict import Fixture, next_round
+
+    dates = [pd.Timestamp(d) for d in ["2026-10-11", "2026-10-10", "2026-10-17"]]
+    fixtures = [Fixture(d.strftime("%d/%m/%Y"), "", "A", "B") for d in dates]
+    kept, kept_dates = next_round(fixtures, dates, window_days=4)
+    assert kept_dates == [pd.Timestamp("2026-10-11"), pd.Timestamp("2026-10-10")]
+    assert len(kept) == 2
+
+
+def test_next_round_empty():
+    from src.predict import next_round
+
+    assert next_round([], []) == ([], [])
+
+
+def test_dashboard_standings_orders_by_win_pct_then_diff():
+    from src.dashboard import _standings
+
+    history = pd.DataFrame(
+        {
+            "game_date": pd.to_datetime(["2026-10-03", "2026-10-03", "2026-05-01"]),
+            "home_team": ["A", "C", "A"],
+            "away_team": ["B", "D", "D"],
+            "home_score": [90, 80, 50],
+            "away_score": [70, 78, 99],
+        }
+    )
+    history["_season"] = [2026, 2026, 2025]  # last season's game must be ignored
+    rows = _standings(history, 2026, {"A": 1550.0})
+
+    assert [r["team"] for r in rows] == ["A", "C", "D", "B"]
+    assert rows[0]["w"] == 1 and rows[0]["gp"] == 1 and rows[0]["diff"] == 20
+    assert rows[0]["elo"] == 1550 and rows[1]["elo"] == 1500
+    assert rows[3]["form"] == ["L"]
+
+
+@pytest.mark.parametrize(
+    "margin,total", [(0.3, 160.0), (-0.3, 160.0), (6.6, 171.0), (-12.4, 150.5), (0.0, 158.0)]
+)
+def test_scoreline_never_ties_and_keeps_winner(margin, total):
+    from src.model import scoreline
+
+    home, away = scoreline(margin, total)
+    assert home != away
+    assert (home > away) == (margin >= 0)
+    assert abs((home + away) - total) <= 1.5
