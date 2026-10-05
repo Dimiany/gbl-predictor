@@ -281,6 +281,34 @@ def _build_upcoming_rows(
     return rows
 
 
+def _team_logos(games: list, mapping: dict[str, str]) -> dict[str, str]:
+    """Canonical team name -> crest URL, from any RawGame / RawFixture list."""
+    logos: dict[str, str] = {}
+    for g in games:
+        for api_name, url in (
+            (g.home_team_api_name, g.home_logo),
+            (g.away_team_api_name, g.away_logo),
+        ):
+            team = canonicalize(api_name, mapping)
+            if team and url:
+                logos[team] = url
+    return logos
+
+
+def _write_team_logos(logos: dict[str, str]) -> None:
+    """Merge new crest URLs into TEAM_LOGOS_CSV (keeps teams not seen this sync)."""
+    if not logos:
+        return
+    existing: dict[str, str] = {}
+    if cfg.TEAM_LOGOS_CSV.exists():
+        old = pd.read_csv(cfg.TEAM_LOGOS_CSV)
+        existing = dict(zip(old["team"], old["logo_url"], strict=True))
+    existing.update(logos)
+    pd.DataFrame(sorted(existing.items()), columns=["team", "logo_url"]).to_csv(
+        cfg.TEAM_LOGOS_CSV, index=False
+    )
+
+
 def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
     """Pull results + upcoming fixtures, optionally writing them to disk.
 
@@ -395,6 +423,7 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
         columns=["fixture_date", "fixture_time", "matchday", "home_team", "away_team"],
     ).to_csv(cfg.UPCOMING_FIXTURES_CSV, index=False)
 
+    _write_team_logos(_team_logos([*results, *fixtures], mapping))
     result.committed = True
     return result
 

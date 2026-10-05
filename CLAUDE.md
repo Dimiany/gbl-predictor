@@ -56,6 +56,7 @@ data/raw/
   absences.csv             # current injuries/suspensions (time-windowed)
   adjustments.csv          # non-player margin overrides (coach, etc.)
   team_name_mapping.csv    # API team names -> our canonical names
+data/team_logos.csv        # canonical team -> crest URL (FlashScore CDN), refreshed by sync
 data/
   prediction_history.csv   # one row per fixture predicted, upserted on each
                            # 'Generate Predictions' click. Drives the accuracy view.
@@ -82,7 +83,7 @@ scripts/
   build_dashboard.py       # sync + retrain + log next round + write dashboard/index.html
   serve.py                 # local server (127.0.0.1:8765) behind the Refresh button
 GBL Predictor.bat          # double-click launcher (desktop shortcut points here)
-dashboard/                 # generated index.html (gitignored)
+dashboard/                 # generated index.html + assets/ crest cache (gitignored)
 tests/                     # pytest suite — must stay green
 models/                    # saved joblib model (gitignored)
 .env                       # API key + league ID (GITIGNORED, never commit)
@@ -181,8 +182,8 @@ rank only teams in the same season.
 
 - 181 games in history as of 05/10/2026: 174 from 2025/26 (regular season +
   playoffs; champion Olympiacos) and 7 from 2026/27 round 1. 14 teams in
-  2026/27: Panionios relegated; Lefkadas and Vikos new (identity-mapped in
-  team_name_mapping.csv — the user may want to rename them).
+  2026/27: Panionios relegated; new teams "Doxa Lefkadas" (API: Lefkadas) and
+  "Vikos Falcons Ioanninon" (API: Vikos), names chosen by the user.
 - 175 upcoming 2026/27 fixtures (through April 2027). The UI and dashboard
   only predict the next round (`predict.next_round`, 4-day window).
 - `data/prediction_history.csv`: 2025/26 predictions (model `ensemble-v1`,

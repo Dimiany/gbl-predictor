@@ -95,6 +95,9 @@ class RawGame:
     # FlashScore's id for the match — needed to look up the final score via
     # /matches/details when /results only gives us the regulation-time tie.
     match_id: str = ""
+    # Team crest URLs on FlashScore's static CDN (shown on the dashboard).
+    home_logo: str = ""
+    away_logo: str = ""
 
 
 @dataclass(frozen=True)
@@ -111,6 +114,8 @@ class RawFixture:
     time: str  # "HH:MM" in Athens local time (24h)
     home_team_api_name: str
     away_team_api_name: str
+    home_logo: str = ""
+    away_logo: str = ""
 
 
 # TypeVar lets the generic pagination helper work with either RawGame or
@@ -277,6 +282,8 @@ class FlashScoreClient:
                 home_score=int(home_score),
                 away_score=int(away_score),
                 match_id=str(raw.get("match_id", "")),
+                home_logo=raw["home_team"].get("small_image_path") or "",
+                away_logo=raw["away_team"].get("small_image_path") or "",
             )
         except (KeyError, TypeError, ValueError):
             return None
@@ -290,6 +297,8 @@ class FlashScoreClient:
                 time=time_str,
                 home_team_api_name=raw["home_team"]["name"],
                 away_team_api_name=raw["away_team"]["name"],
+                home_logo=raw["home_team"].get("small_image_path") or "",
+                away_logo=raw["away_team"].get("small_image_path") or "",
             )
         except (KeyError, TypeError, ValueError):
             return None

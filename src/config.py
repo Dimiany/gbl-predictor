@@ -109,6 +109,11 @@ FLASHSCORE_SEASON_ID: str = os.getenv("FLASHSCORE_SEASON_ID", "")
 # Maps the team names the API returns to the canonical names we use
 # everywhere else. "Kolossos Rhodes" (API) -> "Kolossos Rodou" (our canon).
 TEAM_NAME_MAPPING_CSV: Path = RAW_DATA_DIR / "team_name_mapping.csv"
+# Crest URL per canonical team name, refreshed by every sync from the API
+# payload (no extra requests). The dashboard downloads and inlines them.
+TEAM_LOGOS_CSV: Path = DATA_DIR / "team_logos.csv"
+# Basket League logo on FlashScore's CDN (from /tournaments/details).
+LEAGUE_LOGO_URL: str = "https://static.flashscore.com/res/image/data/4A1mgVjD-C8llyQ7L.png"
 
 # Where trained artifacts live. joblib is the standard way to persist sklearn models.
 MODEL_FILE: Path = MODELS_DIR / "gbl_model.joblib"

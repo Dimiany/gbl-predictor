@@ -444,3 +444,20 @@ def test_build_upcoming_rows_drops_duplicate_fixtures():
     f = RawFixture("2026-10-10", "18:00", "Panathinaikos", "Olympiacos")
     rows = _build_upcoming_rows([f, f], pd.DataFrame(), _MAPPING, set())
     assert len(rows) == 1
+
+
+def test_parsers_keep_team_logos():
+    raw = _match_with_score()
+    raw["home_team"]["small_image_path"] = "https://cdn/h.png"
+    session = MagicMock()
+    session.get.side_effect = [_fake_response(json_data=[raw]), _fake_response(json_data=[])]
+    g = _make_client(session).fetch_all_results("t", "s")[0]
+    assert g.home_logo == "https://cdn/h.png"
+    assert g.away_logo == ""  # empty string in the payload -> no logo
+
+
+def test_team_logos_maps_to_canonical_names():
+    from src.sync import _team_logos
+
+    g = RawGame("2026-10-04", "20:00", "Panathinaikos", "Olympiacos", 90, 80, "x", "p.png", "o.png")
+    assert _team_logos([g], _MAPPING) == {"Panathinaikos": "p.png", "Olympiacos": "o.png"}

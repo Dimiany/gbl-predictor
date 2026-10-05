@@ -27,3 +27,14 @@ dashboard/
 
 # Timestamp of the last API sync (desktop launcher bookkeeping)
 data/.last_sync
+
+# Personal Claude Code settings (per machine, never shared)
+.claude/settings.local.json
+
+# Any other env files with secrets; only the template is shared
+.env.*
+!.env.example
+
+# Tool caches / logs
+.ruff_cache/
+*.log
