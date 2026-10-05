@@ -144,7 +144,7 @@ def test_next_round_empty():
 
 
 def test_dashboard_standings_orders_by_win_pct_then_diff():
-    from src.dashboard import _standings
+    from src.web.data import _standings
 
     history = pd.DataFrame(
         {

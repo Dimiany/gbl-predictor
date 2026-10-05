@@ -38,3 +38,6 @@ data/.last_sync
 # Tool caches / logs
 .ruff_cache/
 *.log
+
+# Contact-form messages (personal data, stays on this machine)
+data/contact_messages.csv

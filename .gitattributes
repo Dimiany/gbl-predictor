@@ -1,0 +1,7 @@
+# Normalise line endings in the repo (LF), regardless of OS.
+* text=auto eol=lf
+# Windows batch files must keep CRLF to run in cmd.exe.
+*.bat text eol=crlf
+# Binary assets
+*.png binary
+*.joblib binary

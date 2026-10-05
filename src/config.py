@@ -124,6 +124,11 @@ DASHBOARD_FILE: Path = PROJECT_ROOT / "dashboard" / "index.html"
 # When the site's data was last synced from the API (written by
 # dashboard.update_site). The desktop launcher only re-syncs if this is stale.
 LAST_SYNC_FILE: Path = DATA_DIR / ".last_sync"
+# Contact-form messages (written by src/web/server.py; gitignored).
+CONTACT_MESSAGES_CSV: Path = DATA_DIR / "contact_messages.csv"
+# Optional address for the Contact page's mailto fallback when the page is
+# opened as a plain file. Empty = no address is published on the page.
+CONTACT_EMAIL: str = os.getenv("GBL_CONTACT_EMAIL", "")
 # Local-only port for scripts/serve.py (the Refresh button's backend).
 SERVE_PORT: int = 8765
 # The launcher re-syncs on start-up if the last sync is older than this.

@@ -69,7 +69,15 @@ src/
                            # (returns [] for empty fixture lists — callers safe)
   visualize.py             # HTML renderers: fixtures table, prediction cards, accuracy table
   ui.py                    # ipywidgets glue for predictor.ipynb (button, slot, dark zone)
-  dashboard.py             # static HTML dashboard (standings, Elo, next round, results, schedule)
+  web/                     # the website (single-file SPA, built from Python)
+    data.py                #   every number the pages show -> one JSON dict (build_dashboard)
+    render.py              #   HTML shell; inlines assets/app.css + assets/js/*.js as one IIFE
+    build.py               #   update_site(): sync -> retrain -> predict -> log -> write page
+    server.py              #   127.0.0.1:8765 server: POST /api/refresh, POST /api/contact
+    contact.py             #   contact-form storage (data/contact_messages.csv, gitignored)
+    assets/app.css         #   design tokens (GBL navy/cyan, gold "hits"), dark default
+    assets/js/NN-*.js      #   modules, loaded in file-name order: 01-core, 02-metrics,
+                           #   03-components, 04-charts, 1x-<page>.js, 90-app (router/boot)
   api_client.py            # thin wrapper around FlashScore (RapidAPI)
   team_name_mapping.py     # API name -> canonical name translator
   sync.py                  # reusable sync engine — run_sync() + sync_for_notebook()
@@ -81,7 +89,7 @@ scripts/
   record_results.py        # interactive manual result entry
   sync.py                  # thin CLI wrapper around src/sync.run_sync (escape hatch)
   build_dashboard.py       # sync + retrain + log next round + write dashboard/index.html
-  serve.py                 # local server (127.0.0.1:8765) behind the Refresh button
+  serve.py                 # thin wrapper around src.web.server.run (launcher target)
 GBL Predictor.bat          # double-click launcher (desktop shortcut points here)
 dashboard/                 # generated index.html + assets/ crest cache (gitignored)
 tests/                     # pytest suite — must stay green
@@ -223,7 +231,20 @@ rank only teams in the same season.
 They said so explicitly. Anything they need to do must be a button on the
 site or a double-click. When a change needs a manual step (new API key, new
 team mapping), do it for them and tell them in plain Greek what changed.
-Keep the in-site Οδηγίες page (`pages.help` in src/dashboard.py) current.
+Keep the in-site Οδηγίες page (`src/web/assets/js/18-help.js`) current.
+
+## Website conventions
+
+- No framework, no CDN, no npm: plain ES2020 in `src/web/assets/js`, one concern
+  per file, concatenated in file-name order into one strict-mode IIFE (shared
+  scope). New page = new `1x-<name>.js` registering `pages.<name>`.
+- DOM is built with `h()` / `s()` (text nodes only — never innerHTML with data).
+- Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
+- Chart colours (--accent/--neg per theme in app.css) are validated with the
+  dataviz palette checker; re-validate if you change them or the surfaces.
+- "Hit" = favourite probability ≥ 0.8 and correct (gold). "Sharp" = correct and
+  margin within 3 points (🎯). Constants in `01-core.js`.
+- `tests/test_web.py` runs `node --check` on the bundle — keep it green.
 
 ## When in doubt
 

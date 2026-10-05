@@ -23,7 +23,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from src import config as cfg  # noqa: E402
-from src.dashboard import update_site  # noqa: E402
+from src.web import update_site  # noqa: E402
 
 
 def main() -> None:
