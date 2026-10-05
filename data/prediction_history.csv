@@ -1,15 +1,22 @@
-fixture_date,home,away,predicted_home_score,predicted_away_score,predicted_winner,home_win_probability,prediction_made_at
-25/04/2026,Panathinaikos,Mykonos,96,82,Panathinaikos,0.8839,2026-04-25 21:21:01
-25/04/2026,AEK,Olympiacos,71,98,Olympiacos,0.242,2026-04-25 21:21:01
-25/04/2026,Aris,Panionios,90,80,Aris,0.7939,2026-04-25 21:21:01
-25/04/2026,Kolossos Rodou,AS Karditsas Iaponiki,90,100,AS Karditsas Iaponiki,0.3354,2026-04-25 21:21:01
-25/04/2026,PAOK,Maroussi,93,85,PAOK,0.887,2026-04-25 21:21:01
-25/04/2026,Promitheas Vikos Cola,Iraklis,83,89,Iraklis,0.415,2026-04-25 21:21:01
-03/05/2026,PAOK,Peristeri,86,75,PAOK,0.7324,2026-04-27 11:54:10
-06/05/2026,Peristeri,PAOK,78,82,PAOK,0.4716,2026-04-27 11:54:10
-13/05/2026,Olympiacos,Kolossos Rodou,105,88,Olympiacos,0.8983,2026-04-27 11:54:10
-13/05/2026,Panathinaikos,Mykonos,107,82,Panathinaikos,0.8604,2026-04-27 11:54:10
-14/05/2026,AEK,Aris,84,67,AEK,0.7407,2026-04-27 11:54:10
-16/05/2026,Kolossos Rodou,Olympiacos,79,91,Olympiacos,0.1978,2026-04-27 11:54:10
-16/05/2026,Mykonos,Panathinaikos,87,94,Panathinaikos,0.2844,2026-04-27 11:54:10
-17/05/2026,Aris,AEK,78,72,Aris,0.6733,2026-04-27 11:54:10
+fixture_date,home,away,predicted_home_score,predicted_away_score,predicted_winner,home_win_probability,prediction_made_at,model_version
+25/04/2026,Panathinaikos,Mykonos,96,82,Panathinaikos,0.8839,2026-04-25 21:21:01,
+25/04/2026,AEK,Olympiacos,71,98,Olympiacos,0.242,2026-04-25 21:21:01,
+25/04/2026,Aris,Panionios,90,80,Aris,0.7939,2026-04-25 21:21:01,
+25/04/2026,Kolossos Rodou,AS Karditsas Iaponiki,90,100,AS Karditsas Iaponiki,0.3354,2026-04-25 21:21:01,
+25/04/2026,PAOK,Maroussi,93,85,PAOK,0.887,2026-04-25 21:21:01,
+25/04/2026,Promitheas Vikos Cola,Iraklis,83,89,Iraklis,0.415,2026-04-25 21:21:01,
+03/05/2026,PAOK,Peristeri,86,75,PAOK,0.7324,2026-04-28 11:27:28,
+06/05/2026,Peristeri,PAOK,78,82,PAOK,0.4716,2026-04-28 11:27:28,
+13/05/2026,Olympiacos,Kolossos Rodou,105,88,Olympiacos,0.8983,2026-04-28 11:27:28,
+13/05/2026,Panathinaikos,Mykonos,107,82,Panathinaikos,0.8604,2026-04-28 11:27:28,
+14/05/2026,AEK,Aris,84,67,AEK,0.7407,2026-04-28 11:27:28,
+16/05/2026,Kolossos Rodou,Olympiacos,79,91,Olympiacos,0.1978,2026-04-28 11:27:28,
+16/05/2026,Mykonos,Panathinaikos,87,94,Panathinaikos,0.2844,2026-04-28 11:27:28,
+17/05/2026,Aris,AEK,78,72,Aris,0.6733,2026-04-28 11:27:28,
+10/10/2026,Peristeri,Iraklis,89,78,Peristeri,0.8164,2026-10-05 16:49:45,margin-v2
+10/10/2026,Maroussi,Mykonos,85,83,Maroussi,0.5605,2026-10-05 16:49:45,margin-v2
+10/10/2026,PAOK,Lefkadas,89,79,PAOK,0.8011,2026-10-05 16:49:45,margin-v2
+10/10/2026,AS Karditsas Iaponiki,Vikos,86,81,AS Karditsas Iaponiki,0.6507,2026-10-05 16:49:45,margin-v2
+10/10/2026,Aris,AEK,82,85,AEK,0.4049,2026-10-05 16:49:45,margin-v2
+10/10/2026,Promitheas Vikos Cola,Panathinaikos,79,89,Panathinaikos,0.2168,2026-10-05 16:49:45,margin-v2
+11/10/2026,Olympiacos,Kolossos Rodou,90,78,Olympiacos,0.8409,2026-10-05 16:49:45,margin-v2
