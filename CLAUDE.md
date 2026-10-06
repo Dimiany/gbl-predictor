@@ -192,6 +192,10 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - Site-mode flags in `01-core.js`: `SITE`, `PUBLIC`, `SERVED`. Anything that needs
   the local server must check `SERVED`; public-only text checks `PUBLIC`.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
+- Every section gets a `sectionHead(title, plain-Greek explanation)`; the user asked
+  for explanatory headings. Score boxes are labelled «Αποτέλεσμα» / «Πρόβλεψη».
+- `autoScroll(strip)` (01-core) = endless self-scrolling strip with mouse drag,
+  pause on hover/focus/off-screen, none under reduced motion (home ticker).
 - Chart colours (`--accent`/`--neg` per theme in app.css) were validated with
   the dataviz palette checker. Re-validate if you change them or the surfaces.
 - "Hit" = favourite probability >= 0.8 and correct (gold). "Sharp" = correct

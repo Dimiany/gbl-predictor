@@ -25,7 +25,7 @@ function standingsTable(compact) {
 function nextRoundSection(link = true) {
   const nr = D.next;
   return h('section', null,
-    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)}` : '',
+    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
       link ? h('a', {href: '#/predictions'}, 'Όλες οι προβλέψεις →') : infoDot('prob')),
     nr.length ? h('div', {class: 'cards'}, nr.map(predCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχουν προγραμματισμένοι αγώνες.'));
 }
@@ -46,12 +46,15 @@ pages.home = () => {
   const feat = D.next.find(p => isFocus(p.home, p.away)) || D.next[0];
   return [
     hero(feat),
-    played.length ? h('div', {class: 'ticker-wrap'}, h('section', {class: 'ticker', 'aria-label': 'Τελευταία αποτελέσματα'}, played.slice(0, 12).map(tickerItem))) : null,
-    h('section', {class: 'kpis'},
+    played.length ? h('section', null,
+      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'τι έγινε και τι είχε πει το μοντέλο · σύρε με το ποντίκι ή άφησέ το να κυλά', h('a', {href: '#/predictions/all'}, 'Όλοι οι αγώνες →')),
+      resultsTicker(played.slice(0, 14))) : null,
+    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: '#/model'}, 'Λεπτομέρειες →')),
+      h('div', {class: 'kpis'},
       kpi('Ακρίβεια μοντέλου', pct(M.acc), `σε ${M.n_test} αγώνες εκτός δείγματος · Elo μόνο ${pct(M.elo_acc)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
       kpi('🔥 Σίγουρες προβλέψεις', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές όταν το μοντέλο λέει ≥ ${HIT_THRESHOLD * 100}%` : 'καμία ακόμα', {info: 'hit', gold: true}),
       kpi('Ρεκόρ προβλέψεων', graded.length ? `${correct}/${graded.length}` : '–', graded.length ? `${pct(correct / graded.length)} σωστοί · ${pending} σε αναμονή` : `${pending} σε αναμονή`, {info: 'record'}),
-      kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι κατά μέσο όρο · σύνολο ±${M.total_mae}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}})),
+      kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι κατά μέσο όρο · σύνολο ±${M.total_mae}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}}))),
     nextRoundSection(),
     hits.length ? h('section', null,
       sectionHead('🔥 Hall of Fame', `${hits.length} σίγουρες προβλέψεις που βγήκαν`, h('a', {href: '#/predictions/hits'}, 'Όλες →')),
@@ -59,14 +62,14 @@ pages.home = () => {
     h('div', {class: 'grid-2'},
       h('section', {class: 'panel'}, sectionHead('Βαθμολογία', season, h('a', {href: '#/standings'}, 'Πλήρης →')), standingsTable(true)),
       h('div', {class: 'stack'},
-        fs ? h('section', {class: 'panel'}, sectionHead(h('span', {style: 'display:inline-flex;gap:10px;align-items:center'}, crest(state.focus, 24), state.focus), `${fs.pos}ος · ${fs.w}-${fs.l}`, h('a', {href: teamHref(state.focus)}, 'Σελίδα ομάδας →')),
+        fs ? h('section', {class: 'panel'}, sectionHead(h('span', {style: 'display:inline-flex;gap:10px;align-items:center'}, crest(state.focus, 24), state.focus), `η ομάδα σου · ${fs.pos}ος · ${fs.w}-${fs.l}`, h('a', {href: teamHref(state.focus)}, 'Σελίδα ομάδας →')),
           h('div', {class: 'tile-row'}, h('span', null, 'Φόρμα'), formChips(fs.form)),
           h('div', {class: 'tile-row'}, h('span', null, 'Elo'), h('b', null, fs.elo)),
           h('div', {class: 'tile-row'}, h('span', null, 'Πόντοι / αγώνα'), h('span', null, `${(fs.pf / fs.gp).toFixed(1)} υπέρ · ${(fs.pa / fs.gp).toFixed(1)} κατά`)),
           focusNext ? h('div', {class: 'tile-row'}, h('span', null, 'Επόμενος'), h('span', null, `${dayLabel(focusNext.d)} · ${focusNext.home === state.focus ? 'vs ' + focusNext.away : '@ ' + focusNext.home}`)) : null,
           focusPred ? h('div', {class: 'tile-row'}, h('span', null, 'Πρόβλεψη'), h('b', null, `${focusPred.phs}–${focusPred.pas} · ${state.focus} ${pct(focusPred.home === state.focus ? focusPred.p : 1 - focusPred.p)}`)) : null) : null,
         h('section', {class: 'panel'}, sectionHead('Elo', 'δύναμη σε σχέση με το 1500', infoDot('elo')), h('div', {class: 'chart', 'data-chart': 'bars'})))),
-    h('section', {class: 'panel'}, sectionHead('Τελευταία αποτελέσματα', 'η πρόβλεψη δίπλα στο πραγματικό σκορ · 🔥 = σίγουρη επιτυχία', h('a', {href: '#/predictions/all'}, 'Όλοι οι αγώνες →')),
+    h('section', {class: 'panel'}, sectionHead('Πρόβλεψη και αποτέλεσμα, αναλυτικά', 'οι 10 τελευταίοι αγώνες · 🔥 = σίγουρη επιτυχία · 🎯 = διαφορά μέσα σε ±3', h('a', {href: '#/predictions/all'}, 'Όλοι οι αγώνες →')),
       resultsTable(played.slice(0, 10))),
   ];
 };
