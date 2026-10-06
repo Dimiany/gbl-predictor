@@ -455,7 +455,7 @@ def render_page(
     <nav id="nav" aria-label="Κύρια πλοήγηση">{static_nav(page.path)}</nav>
     <div class="head-tools">
       <button id="refresh" class="btn btn-primary" type="button" title="Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"><span class="spin" aria-hidden="true">⟳</span> Ανανέωση</button>
-      <label class="focus-pick"><span>Η ομάδα μου</span><select id="focus"></select></label>
+      <label class="focus-pick"><span>Η ομάδα μου</span><select id="focus" aria-label="Η ομάδα μου"></select></label>
       <a class="icon-btn" href="{page_path("help")}" aria-label="Οδηγίες" title="Οδηγίες">?</a>
       <button id="theme" class="icon-btn" type="button" aria-label="Αλλαγή θέματος" title="Σκοτεινό / φωτεινό">◐</button>
     </div>

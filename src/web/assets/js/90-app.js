@@ -155,7 +155,7 @@ if (SITE.mode === 'preview') {
 
 // ---------------------------------------------------------------- footer
 (function buildFooter() {
-  const col = (title, links) => h('div', {class: 'foot-col'}, h('h4', null, title), links.map(([href, t]) => h('a', {href}, t)));
+  const col = (title, links) => h('div', {class: 'foot-col'}, h('h2', null, title), links.map(([href, t]) => h('a', {href}, t)));
   document.getElementById('foot').replaceChildren(
     h('div', {class: 'foot-inner'},
       h('div', {class: 'foot-col'},
