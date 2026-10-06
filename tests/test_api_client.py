@@ -461,3 +461,59 @@ def test_team_logos_maps_to_canonical_names():
 
     g = RawGame("2026-10-04", "20:00", "Panathinaikos", "Olympiacos", 90, 80, "x", "p.png", "o.png")
     assert _team_logos([g], _MAPPING) == {"Panathinaikos": "p.png", "Olympiacos": "o.png"}
+
+
+def test_fetch_match_crests_reads_full_size_images():
+    payload = {
+        "home_team": {
+            "name": "Panathinaikos",
+            "image_path": "big-p.png",
+            "small_image_path": "p.png",
+        },
+        "away_team": {"name": "Olympiacos", "small_image_path": "o.png"},  # no full-size one
+    }
+    session = MagicMock()
+    session.get.return_value = _fake_response(json_data=payload)
+    assert _make_client(session).fetch_match_crests("m1") == {"Panathinaikos": "big-p.png"}
+
+
+def test_fetch_crests_spends_requests_only_on_missing_teams():
+    from src.sync import _fetch_crests
+
+    old = RawGame("2026-10-03", "20:00", "Panathinaikos", "Olympiacos", 90, 80, "old")
+    new = RawGame("2026-10-04", "20:00", "Olympiacos", "Panathinaikos", 85, 80, "new")
+    client = MagicMock()
+    client.fetch_match_crests.return_value = {"Panathinaikos": "P.png", "Olympiacos": "O.png"}
+    crests = _fetch_crests([old, new], _MAPPING, set(), client)
+    assert crests == {"Panathinaikos": "P.png", "Olympiacos": "O.png"}
+    client.fetch_match_crests.assert_called_once_with("new")  # newest game covers both
+
+    client.reset_mock()
+    assert _fetch_crests([old, new], _MAPPING, {"Panathinaikos", "Olympiacos"}, client) == {}
+    client.fetch_match_crests.assert_not_called()
+
+
+def test_fetch_crests_never_fails_the_sync():
+    from src.api_client import APIClientError
+    from src.sync import _fetch_crests
+
+    g = RawGame("2026-10-04", "20:00", "Panathinaikos", "Olympiacos", 90, 80, "m")
+    client = MagicMock()
+    client.fetch_match_crests.side_effect = APIClientError("429")
+    assert _fetch_crests([g], _MAPPING, set(), client) == {}
+
+
+def test_write_team_logos_keeps_full_size_crests(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from src import config as cfg
+    from src.sync import _write_team_logos
+
+    monkeypatch.setattr(cfg, "TEAM_LOGOS_CSV", tmp_path / "logos.csv")
+    _write_team_logos({"AEK": "a-small.png"}, {"AEK": "a-big.png"})
+    _write_team_logos({"AEK": "a-small-2.png", "PAOK": "p-small.png"})  # later sync, no crests
+    df = pd.read_csv(cfg.TEAM_LOGOS_CSV, dtype=str, keep_default_na=False)
+    assert df.to_dict("records") == [
+        {"team": "AEK", "logo_url": "a-small-2.png", "crest_url": "a-big.png"},
+        {"team": "PAOK", "logo_url": "p-small.png", "crest_url": ""},
+    ]

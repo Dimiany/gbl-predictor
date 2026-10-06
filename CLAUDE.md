@@ -145,6 +145,9 @@ dashboard/, models/            generated, gitignored
   tied. Sync resolves each tie with `/matches/details` (`home_total`/`away_total`)
   and never writes a tie.
 - The API sometimes lists a game twice: sync dedupes on (date, home, away).
+- List endpoints only have 30x30 crests (`small_image_path`). `/matches/details` has
+  100x100 (`image_path`): sync fetches those once per team into
+  `team_logos.csv:crest_url` (at most `CREST_REQUESTS_PER_SYNC`), and the site prefers them.
 - Season IDs aren't sequential: 2025/26 = `187`, 2026/27 = `190`, template
   `xn32I3T4`. No seasons endpoint; probe `/tournaments/results` with candidates.
 - Free plan: 500 requests a month, about 5-10 per sync. The nightly cloud run

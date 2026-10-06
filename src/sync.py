@@ -295,18 +295,81 @@ def _team_logos(games: list, mapping: dict[str, str]) -> dict[str, str]:
     return logos
 
 
-def _write_team_logos(logos: dict[str, str]) -> None:
-    """Merge new crest URLs into TEAM_LOGOS_CSV (keeps teams not seen this sync)."""
-    if not logos:
+def _fetch_crests(
+    games: list[RawGame],
+    mapping: dict[str, str],
+    have: set[str],
+    client: FlashScoreClient,
+    budget: int = cfg.CREST_REQUESTS_PER_SYNC,
+) -> dict[str, str]:
+    """Full-size crests for teams that don't have one yet: canonical team -> URL.
+
+    Each /matches/details request returns both teams' crests, so newest games
+    are tried first and a request is only spent on a game that covers a team
+    still missing. After the first sync of a season this costs nothing.
+    """
+    missing = {
+        t
+        for g in games
+        for t in (
+            canonicalize(g.home_team_api_name, mapping),
+            canonicalize(g.away_team_api_name, mapping),
+        )
+        if t
+    } - have
+    crests: dict[str, str] = {}
+    for g in sorted(games, key=lambda g: (g.date, g.time), reverse=True):
+        if not missing or budget <= 0:
+            break
+        teams = {
+            canonicalize(g.home_team_api_name, mapping),
+            canonicalize(g.away_team_api_name, mapping),
+        }
+        if not g.match_id or not teams & missing:
+            continue
+        budget -= 1
+        try:
+            found = client.fetch_match_crests(g.match_id)
+        except APIClientError:
+            break  # crests are cosmetic: never fail a sync over them
+        for api_name, url in found.items():
+            team = canonicalize(api_name, mapping)
+            if team:
+                crests[team] = url
+                missing.discard(team)
+    return crests
+
+
+def _read_team_logos() -> pd.DataFrame:
+    """TEAM_LOGOS_CSV as (team, logo_url, crest_url); crest_url may be empty."""
+    if not cfg.TEAM_LOGOS_CSV.exists():
+        return pd.DataFrame(columns=["team", "logo_url", "crest_url"])
+    df = pd.read_csv(cfg.TEAM_LOGOS_CSV, dtype=str, keep_default_na=False)
+    if "crest_url" not in df.columns:
+        df["crest_url"] = ""
+    return df[["team", "logo_url", "crest_url"]]
+
+
+def _write_team_logos(logos: dict[str, str], crests: dict[str, str] | None = None) -> None:
+    """Merge new crest URLs into TEAM_LOGOS_CSV (keeps teams not seen this sync).
+
+    ``logo_url`` is the small list-endpoint image, refreshed every sync;
+    ``crest_url`` is the full-size one, fetched once per team and kept.
+    """
+    crests = crests or {}
+    if not logos and not crests:
         return
-    existing: dict[str, str] = {}
-    if cfg.TEAM_LOGOS_CSV.exists():
-        old = pd.read_csv(cfg.TEAM_LOGOS_CSV)
-        existing = dict(zip(old["team"], old["logo_url"], strict=True))
-    existing.update(logos)
-    pd.DataFrame(sorted(existing.items()), columns=["team", "logo_url"]).to_csv(
-        cfg.TEAM_LOGOS_CSV, index=False
-    )
+    old = _read_team_logos()
+    small = dict(zip(old["team"], old["logo_url"], strict=True)) | logos
+    large = dict(zip(old["team"], old["crest_url"], strict=True)) | crests
+    teams = sorted(set(small) | set(large))
+    pd.DataFrame(
+        {
+            "team": teams,
+            "logo_url": [small.get(t, "") for t in teams],
+            "crest_url": [large.get(t, "") for t in teams],
+        }
+    ).to_csv(cfg.TEAM_LOGOS_CSV, index=False)
 
 
 def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
@@ -423,7 +486,12 @@ def run_sync(commit: bool = False, verbose: bool = False) -> SyncResult:
         columns=["fixture_date", "fixture_time", "matchday", "home_team", "away_team"],
     ).to_csv(cfg.UPCOMING_FIXTURES_CSV, index=False)
 
-    _write_team_logos(_team_logos([*results, *fixtures], mapping))
+    known = _read_team_logos()
+    have = set(known.loc[known["crest_url"] != "", "team"])
+    _write_team_logos(
+        _team_logos([*results, *fixtures], mapping),
+        _fetch_crests(results, mapping, have, client),
+    )
     result.committed = True
     return result
 

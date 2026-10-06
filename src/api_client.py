@@ -351,3 +351,17 @@ class FlashScoreClient:
             return int(scores["home_total"]), int(scores["away_total"])
         except (KeyError, TypeError, ValueError):
             return None
+
+    def fetch_match_crests(self, match_id: str) -> dict[str, str]:
+        """API team name -> full-size crest URL for both teams of one match.
+
+        List endpoints only carry ``small_image_path`` (30x30 px, blurry on the
+        site); /matches/details also has ``image_path`` (100x100). One request.
+        """
+        payload = self._get(self._DETAILS_PATH, {"match_id": match_id})
+        crests: dict[str, str] = {}
+        for side in ("home_team", "away_team"):
+            team = payload.get(side) if isinstance(payload, dict) else None
+            if isinstance(team, dict) and team.get("name") and team.get("image_path"):
+                crests[team["name"]] = team["image_path"]
+        return crests
