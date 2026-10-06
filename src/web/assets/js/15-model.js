@@ -61,5 +61,5 @@ pages.model = ({tab}) => [
     {key: 'performance', label: 'Απόδοση', render: performanceTab},
     {key: 'metrics', label: 'Οδηγός δεικτών', count: Object.keys(METRICS).length, render: metricsTab},
     {key: 'how', label: 'Πώς δουλεύει', render: howTab},
-  ], tab, 'model'),
+  ], tab, k => url('model', k)),
 ];

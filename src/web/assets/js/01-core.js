@@ -2,7 +2,8 @@
 // All modules are concatenated (in file-name order) into one strict-mode IIFE by
 // src/web/render.py, so top-level declarations here are visible to later files.
 
-const D = JSON.parse(document.getElementById('data').textContent);
+/** Everything the pages show, from data.js (src/web/data.py + render.route_table). */
+const D = window.TIPOFF_DATA;
 /** Site name and lines (src/config.py SITE_*). */
 const BRAND = D.brand || {name: 'TipOff', tagline: 'Greek Basketball Predictor', slogan: '', url: ''};
 const NS = 'http://www.w3.org/2000/svg';
@@ -29,6 +30,30 @@ const roundNo = Math.max(0, ...D.standings.map(r => r.gp)) + 1;
 
 /** Page registry: pages[name] = ({tab, name}) => Node[]. Filled by the 1x-*.js files. */
 const pages = {};
+
+// ---------------------------------------------------------------- addresses
+// Every page, tab and team has its own address (/vathmologia, /omades/paok/apotelesmata).
+// The slugs and each address's title come from src/web/render.py (PAGE_SLUGS, TAB_SLUGS).
+const ROUTES = D.routes || {pages: {}, tabs: {}, meta: {}};
+/** Same rule as render.slug(): "AS Karditsas Iaponiki" -> "as-karditsas-iaponiki". */
+const slugOf = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const joinPath = (...parts) => '/' + parts.filter(Boolean).join('/');
+/** Address of a page and, optionally, one of its tabs: url('model', 'how') -> '/montelo/pos-doulevei'. */
+const url = (page, tab) => joinPath(ROUTES.pages[page || 'home'], tab && ROUTES.tabs[page]?.[tab]);
+/** Address of a team page (and tab). */
+const teamHref = (t, tab) => joinPath(ROUTES.pages.teams, slugOf(t), tab && ROUTES.tabs.team?.[tab]);
+/** Tab key for an address part ('' = the first tab, which lives at the page's own address). */
+const tabFromSlug = (group, part) => Object.keys(ROUTES.tabs[group] || {}).find(k => ROUTES.tabs[group][k] === (part || ''));
+
+/** Title, description and canonical for the current address (the static <head> of every
+ *  page has them too; this keeps them right as the visitor moves around). */
+function applyMeta(fallbackTitle) {
+  const [title, desc] = ROUTES.meta[location.pathname] || [fallbackTitle, null];
+  if (title) document.title = title;
+  if (desc) document.querySelector('meta[name="description"]')?.setAttribute('content', desc);
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = BRAND.url + (location.pathname === '/' ? '/' : location.pathname);
+}
 
 const state = {
   focus: STANDING[localStorage.getItem('gbl-focus')] ? localStorage.getItem('gbl-focus') : D.focus,
@@ -73,7 +98,6 @@ const signed = x => (x > 0 ? '+' : '') + x;
 const streakGr = st => st.replace('W', 'Ν').replace('L', 'Η');
 
 // ---------------------------------------------------------------- teams & picks
-const teamHref = t => '#/team/' + encodeURIComponent(t);
 const isFocus = (...teams) => teams.includes(state.focus);
 const record = t => STANDING[t] ? `${STANDING[t].w}-${STANDING[t].l}` : '';
 const winnerOf = g => g.hs > g.as ? g.home : g.away;

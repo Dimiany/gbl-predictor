@@ -28,8 +28,8 @@ function eloBars(host) {
     stext(g, d >= 0 ? mid + w + 6 : mid - w - 6, y + barH - 3, String(r.elo), {'text-anchor': d >= 0 ? 'start' : 'end'});
     const hit = s('rect', {x: 0, y: y - 4, width: W, height: rowH, class: 'bar-hit', tabindex: 0, role: 'link', 'aria-label': `${r.team}, Elo ${r.elo}`}, g);
     hover(hit, () => [{text: `Elo ${r.elo}`}, {text: `${r.team} · ${signed(d)} από τον μέσο όρο`}, {text: `${r.pos}ος · ${r.w}-${r.l} · κλικ για τη σελίδα της`}]);
-    hit.addEventListener('click', () => { location.hash = teamHref(r.team); });
-    hit.addEventListener('keydown', e => { if (e.key === 'Enter') location.hash = teamHref(r.team); });
+    hit.addEventListener('click', () => go(teamHref(r.team)));
+    hit.addEventListener('keydown', e => { if (e.key === 'Enter') go(teamHref(r.team)); });
   });
   s('line', {x1: mid, x2: mid, y1: top - 4, y2: H - 20, class: 'baseline'}, svg);
 }

@@ -1,8 +1,8 @@
 """The TipOff website: data assembly, rendering, local server.
 
 data.py     every number the pages show (build_dashboard)
-render.py   HTML shell + bundled assets/app.css and assets/js/*.js
-build.py    update_site(): sync -> retrain -> predict -> log -> write page
+render.py   one HTML page per address + shared app.css, app.js, data.js
+build.py    update_site(): sync -> retrain -> predict -> log -> write pages
 server.py   127.0.0.1 server behind the Refresh button and contact form
 contact.py  contact-form storage
 """

@@ -32,7 +32,7 @@ function upcomingList(name, limit) {
 
 pages.team = ({name, tab}) => {
   const r = STANDING[name];
-  if (!r) return [pageBanner('Δεν βρέθηκε η ομάδα', null, h('a', {class: 'btn btn-ghost', href: '#/teams'}, '← Όλες οι ομάδες'))];
+  if (!r) return [pageBanner('Δεν βρέθηκε η ομάδα', null, h('a', {class: 'btn btn-ghost', href: url('teams')}, '← Όλες οι ομάδες'))];
   const games = played.filter(g => g.home === name || g.away === name);
   const thisSeason = games.filter(g => g.s === season), lastSeason = games.filter(g => g.s !== season);
   const withPick = games.filter(g => g.pick), okN = withPick.filter(g => outcome(g).ok).length;
@@ -41,7 +41,7 @@ pages.team = ({name, tab}) => {
   return [
     h('section', {class: 'banner'}, h('div', {class: 'banner-inner'},
       h('div', null,
-        h('div', {class: 'crumb'}, h('a', {href: '#/teams'}, 'Ομάδες'), ' / ', name),
+        h('div', {class: 'crumb'}, h('a', {href: url('teams')}, 'Ομάδες'), ' / ', name),
         h('div', {class: 'team-banner-row'}, crest(name, 68),
           h('div', null, h('div', {class: 'eyebrow'}, `Stoiximan GBL · ${season}`), h('h1', null, name),
             h('p', {class: 'hero-sub'}, `${r.pos}ος στη βαθμολογία · ${r.w}-${r.l} · σερί ${streakGr(r.streak)}`)))),
@@ -55,12 +55,12 @@ pages.team = ({name, tab}) => {
       kpi('Το μοντέλο στους αγώνες της', withPick.length ? `${okN}/${withPick.length}` : '–', `σωστοί νικητές · 🔥 ${hitsN} σίγουρες επιτυχίες`, {info: 'acc'}))),
     tabs('team', [
       {key: 'overview', label: 'Επισκόπηση', render: () => [h('div', {class: 'grid-2'},
-        h('section', {class: 'panel'}, sectionHead('Επόμενοι αγώνες', null, h('a', {href: `${teamHref(name)}/schedule`}, 'Όλοι →')), upcomingList(name, 6)),
+        h('section', {class: 'panel'}, sectionHead('Επόμενοι αγώνες', null, h('a', {href: teamHref(name, 'schedule')}, 'Όλοι →')), upcomingList(name, 6)),
         h('section', {class: 'panel'}, sectionHead('Εξέλιξη Elo', `${name} με μπλε · οι υπόλοιπες με γκρι`, infoDot('elo')), h('div', {class: 'chart', 'data-chart': 'lines', 'data-team': name})))]},
       {key: 'results', label: 'Αποτελέσματα', count: games.length, render: () => [
         h('section', {class: 'panel'}, sectionHead('Αποτελέσματα ' + season, 'με την πρόβλεψη του μοντέλου'), resultsTable(thisSeason, {empty: 'Κανένας αγώνας ακόμα.'})),
         lastSeason.length ? h('details', {class: 'panel'}, h('summary', null, `Προηγούμενη σεζόν · ${lastSeason.length} αγώνες`), resultsTable(lastSeason)) : null]},
       {key: 'schedule', label: 'Πρόγραμμα', count: remaining, render: () => [h('section', {class: 'panel'}, sectionHead('Όλο το πρόγραμμα'), upcomingList(name, 99))]},
-    ], tab, `team/${encodeURIComponent(name)}`),
+    ], tab, k => teamHref(name, k)),
   ];
 };

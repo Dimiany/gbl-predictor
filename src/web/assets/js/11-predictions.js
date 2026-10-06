@@ -65,5 +65,5 @@ pages.predictions = ({tab}) => [
     {key: 'all', label: 'Όλοι οι αγώνες', count: played.length, render: () => [h('section', {class: 'panel'},
       sectionHead('Όλοι οι αγώνες', 'με την πρόβλεψη του μοντέλου'), resultsTable(played),
       h('p', {class: 'foot-note'}, '«Πριν τον αγώνα»: καταγεγραμμένη πρόβλεψη. «Αναδρομική»: βγήκε μετά, από μοντέλο που είδε μόνο τους αγώνες πριν από την αγωνιστική. «Walk-forward»: πρόβλεψη από μοντέλο εκπαιδευμένο μόνο σε προηγούμενους αγώνες, άρα κι αυτή εκτός δείγματος.'))]},
-  ], tab, 'predictions'),
+  ], tab, k => url('predictions', k)),
 ];

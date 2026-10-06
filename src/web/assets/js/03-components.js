@@ -20,7 +20,7 @@ function infoDot(key) {
   const m = METRICS[key];
   if (!m) return null;
   const btn = h('button', {class: 'info', type: 'button', 'aria-label': `Τι σημαίνει: ${m.title}`,
-    onclick: e => { e.preventDefault(); e.stopPropagation(); state.flashMetric = key; location.hash = '#/model/metrics'; }}, 'i');
+    onclick: e => { e.preventDefault(); e.stopPropagation(); state.flashMetric = key; go(url('model', 'metrics')); }}, 'i');
   return hover(btn, () => [{text: m.title}, {text: m.short}, {text: 'Κλικ για αναλυτική εξήγηση', cls: 't-sub'}]);
 }
 
@@ -35,10 +35,10 @@ function kpi(label, value, sub, opts = {}) {
 // ---------------------------------------------------------------- tabs
 /**
  * Accessible tab group. items: [{key, label, count?, render: () => Node[]}].
- * The chosen tab is remembered per `id` and mirrored in the URL (#/page/tab)
- * with replaceState, so links are shareable without re-rendering the page.
+ * Every tab has its own address: `urlFor(key)` gives it, and choosing a tab
+ * swaps the address with replaceState (shareable, no page re-render).
  */
-function tabs(id, items, initial, urlBase) {
+function tabs(id, items, initial, urlFor) {
   let current = items.some(t => t.key === initial) ? initial : (state.tabs[id] || items[0].key);
   if (!items.some(t => t.key === current)) current = items[0].key;
   const bar = h('div', {class: 'tabs', role: 'tablist'});
@@ -65,7 +65,7 @@ function tabs(id, items, initial, urlBase) {
     buttons.forEach((b, i) => { const on = items[i].key === key; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
     panel.setAttribute('aria-labelledby', `tab-${id}-${key}`);
     panel.replaceChildren(h('div', {class: 'tab-panel'}, items.find(t => t.key === key).render()));
-    if (user && urlBase) history.replaceState(null, '', `#/${urlBase}/${key}`);
+    if (user && urlFor) { history.replaceState(null, '', urlFor(key)); applyMeta(); }
     requestAnimationFrame(moveInk);
     if (user) afterRender(panel);
   }
@@ -243,7 +243,7 @@ function hero(p) {
     h('p', {class: 'hero-sub'}, nr.length
       ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · ${nr.length} αγώνες · προβλέψεις με το μοντέλο ${M.version}`
       : `Ενημέρωση ${D.updated}`),
-    h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: '#/predictions'}, 'Όλες οι προβλέψεις →'), h('a', {class: 'btn btn-ghost', href: '#/model'}, 'Πώς δουλεύει')),
+    h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: url('predictions')}, 'Όλες οι προβλέψεις →'), h('a', {class: 'btn btn-ghost', href: url('model')}, 'Πώς δουλεύει')),
     h('div', {class: 'hero-stats'},
       h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια')),
       conf.length ? h('div', {class: 'hero-stat'}, h('b', null, `${hits}/${conf.length}`), h('span', null, '🔥 σίγουρες')) : null,

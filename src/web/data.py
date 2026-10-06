@@ -14,7 +14,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import math
-import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -26,6 +25,7 @@ from src.features import build_features, elo_update, season_of, team_state_snaps
 from src.model import PredictorBundle
 from src.predict import Prediction, load_fixtures_from_csv, next_round, predict_fixtures
 from src.prediction_log import RESCHEDULE_TOLERANCE_DAYS, build_accuracy_view
+from src.web.render import slug
 
 # The team highlighted by default until the viewer picks their own.
 DEFAULT_FOCUS_TEAM = "PAOK"
@@ -265,15 +265,15 @@ def site_settings(mode: str | None = None) -> dict:
 
 def crest_file(team: str) -> Path:
     """Where scripts/fetch_crests.py stores a team's official crest."""
-    slug = re.sub(r"[^a-z0-9]+", "-", team.lower()).strip("-")
-    return cfg.CRESTS_DIR / f"{slug}.webp"
+    return cfg.CRESTS_DIR / f"{slug(team)}.webp"
 
 
 def _team_logos() -> dict[str, str]:
-    """Canonical team name -> inlined crest.
+    """Canonical team name -> crest address.
 
-    Preference: the official crest in assets/crests (192 px), then FlashScore's
-    100x100 crest, then its 30x30 list image.
+    Preference: the official crest in assets/crests (192 px, served as a file the
+    browser caches; build.write_site_files copies the folder), then FlashScore's
+    100x100 crest, then its 30x30 list image (both inlined).
     """
     if not cfg.TEAM_LOGOS_CSV.exists():
         return {}
@@ -286,7 +286,7 @@ def _team_logos() -> dict[str, str]:
     ):
         official = crest_file(team)
         if official.exists():
-            out[team] = "data:image/webp;base64," + base64.b64encode(official.read_bytes()).decode()
+            out[team] = f"/{cfg.CRESTS_DIR.name}/{official.name}"
             continue
         uri = _image_data_uri(large) or _image_data_uri(small)
         if uri:

@@ -1,9 +1,10 @@
-"""Build the static HTML dashboard: dashboard/index.html.
+"""Build the site into dashboard/ (one page per address + shared files).
 
 Usage:
     python scripts/build_dashboard.py            # sync + retrain + build
     python scripts/build_dashboard.py --no-sync  # use data/model already on disk
     python scripts/build_dashboard.py --auto     # scheduled cloud run: sync only if due
+    python scripts/build_dashboard.py --open     # then serve it on 127.0.0.1 and open it
 
 By default this is the whole "normal path" in one command: pull new results
 from FlashScore, retrain, predict the next round, log those predictions to
@@ -17,7 +18,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import webbrowser
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -33,7 +33,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--no-sync", action="store_true", help="Skip the API sync and retrain.")
     parser.add_argument("--no-log", action="store_true", help="Don't log next-round predictions.")
-    parser.add_argument("--open", action="store_true", help="Open the page in a browser.")
+    parser.add_argument("--open", action="store_true", help="Serve the site locally and open it.")
     parser.add_argument(
         "--auto", action="store_true", help="Sync + log only if due (src.web.build.sync_due)."
     )
@@ -47,9 +47,12 @@ def main() -> None:
             return
         print(f"Sync due: {reason}")
     print(update_site(sync=not args.no_sync, log=not args.no_log))
-    print(f"-> {cfg.DASHBOARD_FILE}")
+    print(f"-> {cfg.DASHBOARD_FILE.parent}")
     if args.open:
-        webbrowser.open(cfg.DASHBOARD_FILE.as_uri())
+        # The pages link their shared files by absolute path: they need a server.
+        from src.web.server import run
+
+        run(update=False)
 
 
 def _github_output(**values: str) -> None:
