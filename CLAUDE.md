@@ -69,7 +69,7 @@ TipOff.bat                   .github/workflows/site.yml           Hosting: the b
 |---|---|
 | Tests (must pass) | `python -m pytest tests/` |
 | Lint + format (match CI) | `ruff check .` and `ruff format .` |
-| Full update + build the page | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open`, `--auto` = cloud "only if due") |
+| Full update + build the site | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open` = serve on 127.0.0.1, `--auto` = cloud "only if due") |
 | Desktop app (what the user double-clicks) | desktop shortcut "TipOff" (icon `src/web/assets/tipoff.ico`) -> `TipOff.bat` -> `python scripts/serve.py` |
 | Retrain + evaluate only | `python scripts/train.py` |
 | Refresh official crests | `python scripts/fetch_crests.py [TEAM ...]` (sources: `data/crest_sources.csv`) |
@@ -100,9 +100,10 @@ src/sync.py                    run_sync() / sync_for_notebook(): API -> CSVs
 src/api_client.py              FlashScore wrapper; team_name_mapping.py translator
 src/ui.py, visualize.py        notebook widgets/HTML; backtest.py = legacy, unused by the site
 src/web/data.py                every number on the site -> one JSON dict; site_settings()
-src/web/render.py              HTML shell, hash-based CSP, inlines CSS + JS as one IIFE
+src/web/render.py              addresses (PAGE_SLUGS, TAB_SLUGS, site_pages), one HTML page per
+                               address, shared app.css / app.js (one IIFE) / data.js, CSP
 src/web/build.py               update_site(), pull_latest(), sync_due() for the cloud run
-src/web/server.py              local server: POST /api/refresh, POST /api/contact
+src/web/server.py              local server: clean addresses + 404 like Firebase, POST /api/refresh, /api/contact
 src/web/contact.py             local contact storage (data/contact_messages.csv, gitignored)
 src/web/assets/                app.css + js/NN-*.js (01-core ... 1x-pages ... 90-app)
 src/web/assets/crests/         official crests, 192 px WebP (scripts/fetch_crests.py)
@@ -192,30 +193,51 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - No framework, no CDN, no npm in the page: plain ES2020 in `assets/js`, one
   concern per file, concatenated in file-name order into one strict-mode IIFE.
   A new page = a new `1x-<name>.js` registering `pages.<name>`.
+- Real addresses (since 06/10/2026), greeklish: `/provlepseis`, `/vathmologia`,
+  `/omades`, `/omades/<slug>`, `/programma`, `/montelo`, `/schetika`,
+  `/epikoinonia`, `/odigies`; tabs below them (`/provlepseis/istoriko`,
+  `/montelo/odigos-deikton`, `/omades/paok/apotelesmata`); a page's first tab lives
+  at the page's own address. Slugs live only in `render.PAGE_SLUGS` /
+  `TAB_SLUGS` and reach the JS through `data.js` (`D.routes`). JS builds links
+  with `url(page, tab)` / `teamHref(team, tab)` and navigates with `go(path)`;
+  never hardcode an address. Old `#/...` links are redirected on load.
+- `render.site_pages()` gives every address its own Greek `<title>` and
+  description (the SEO text lives there). `render_site()` writes a ~4 KB HTML file
+  per address (`vathmologia.html`, `omades/paok.html`; Firebase `cleanUrls` +
+  `trailingSlash: false` serves them at `/vathmologia`), plus `404.html`
+  (noindex) and the shared `app.css`, `app.js`, `data.js`. The sitemap lists
+  every address. A new page or tab needs a slug and a `site_pages()` entry.
+- The pages link the shared files by absolute path, so they need a server:
+  Firebase, or `scripts/serve.py` locally (no file:// opening).
 - DOM via `h()` / `s()` (text nodes only, never innerHTML with data). The CSP
-  allows only the bundled script by hash: no inline handlers, eval or external
-  scripts. Images must be data URIs. Network: same origin + Firestore only.
+  allows scripts only from our own files (`script-src 'self'`): no inline
+  scripts or handlers, no eval, no external scripts. Images: our own files
+  (crests, icons) or data URIs. Network: same origin + Firestore only.
 - Site-mode flags in `01-core.js`: `SITE`, `PUBLIC`, `SERVED`. Anything that needs
   the local server must check `SERVED`; public-only text checks `PUBLIC`.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
 - Every section gets a `sectionHead(title, plain-Greek explanation)`; the user asked
-  for explanatory headings. Score boxes are labelled «Αποτέλεσμα» / «Πρόβλεψη».
+  for explanatory headings. The footer carries only the user-approved disclaimer
+  (maths and algorithms, «σε καμία περίπτωση» betting advice): no data credits or timestamps there. Score boxes are labelled «Αποτέλεσμα» / «Πρόβλεψη».
 - `autoScroll(strip)` (01-core) = endless self-scrolling strip with mouse drag,
   pause on hover/focus/off-screen, none under reduced motion (home ticker).
 - Chart colours (`--accent`/`--neg` per theme in app.css) were validated with
   the dataviz palette checker. Re-validate if you change them or the surfaces.
 - "Hit" = favourite probability >= 0.8 and correct (gold). "Sharp" = correct
   and margin within 3 points (🎯). Constants live in `01-core.js`.
-- `tests/test_web.py` runs `node --check` on the bundle, checks the CSP hash,
-  site modes and rules/form consistency.
+- `tests/test_web.py` runs `node --check` on the bundle and checks the CSP, the
+  addresses (unique, titled, same slug rule in Python and JS), the local server's
+  clean addresses, site modes and rules/form consistency.
 - Check visual changes with a headless Edge screenshot before calling them done.
-- Share card: `assets/og-card.jpg` (1200x630, static) is copied next to index.html
-  with robots.txt + sitemap.xml by `build.write_site_files`; Open Graph tags in
-  `render.share_meta` point at `SITE_URL`. Canonical = https://tipoff.gr/ (live only).
+- `build.write_site_files` copies the crests, icons (favicon.svg / .ico,
+  apple-touch-icon.png) and share card `assets/og-card.jpg` (1200x630, static) next
+  to the pages and writes robots.txt + sitemap.xml. Open Graph tags in
+  `render.share_meta` point at `SITE_URL`. Canonical = `SITE_URL` + the page's
+  address (live only).
   Search Console uses a DNS TXT record at papaki (Domain property).
 - Crests: official league images (esake.gr) in `assets/crests`, fitted inside
   the round frame (`.crest` has `border-radius:50%` and a white disc in dark
-  mode). `crop=sponsor` strips a sponsor logo below the crest; `crop=none`
+  mode), served as files (`/crests/<slug>.webp`). `crop=sponsor` strips a sponsor logo below the crest; `crop=none`
   keeps stars. Kolossos' "H" is part of its official crest. FlashScore
   images are only the fallback. New team: add a row and rerun fetch_crests.
 

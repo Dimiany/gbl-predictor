@@ -16,7 +16,7 @@ from src.predict import load_fixtures_from_csv
 from src.prediction_log import append_predictions, load_log
 from src.sync import sync_for_notebook
 from src.web.data import build_dashboard
-from src.web.render import ASSETS_DIR, render_html
+from src.web.render import ASSETS_DIR, ICON_FILES, render_site, site_pages
 
 
 def update_site(sync: bool = True, log: bool = True, pull: bool = False) -> str:
@@ -41,32 +41,55 @@ def update_site(sync: bool = True, log: bool = True, pull: bool = False) -> str:
     data, preds = build_dashboard(bundle)
     if log:
         append_predictions(preds)
-    cfg.DASHBOARD_FILE.parent.mkdir(parents=True, exist_ok=True)
-    cfg.DASHBOARD_FILE.write_text(render_html(data), encoding="utf-8")
-    write_site_files(cfg.DASHBOARD_FILE.parent)
-    lines.append(f"Dashboard written ({len(preds)} next-round prediction(s)).")
+    out_dir = cfg.DASHBOARD_FILE.parent
+    pages = write_pages(out_dir, render_site(data))
+    write_site_files(out_dir, paths=[p.path for p in site_pages(data)])
+    lines.append(f"Site written: {pages} pages ({len(preds)} next-round prediction(s)).")
     return "\n".join(lines)
 
 
-def write_site_files(out_dir: Path, mode: str | None = None) -> None:
-    """Files the hosting serves next to index.html: share card, robots, sitemap.
+def write_pages(out_dir: Path, files: dict[str, str]) -> int:
+    """Write render_site()'s files and drop pages left over from an earlier build
+    (e.g. a relegated team). Returns the number of HTML pages."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, content in files.items():
+        path = out_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    keep = {(out_dir / name).resolve() for name in files}
+    for old in out_dir.rglob("*.html"):
+        if old.resolve() not in keep:
+            old.unlink()
+    return sum(name.endswith(".html") for name in files)
 
-    The live site invites search engines (robots.txt + sitemap.xml pointing at
-    SITE_URL); preview builds forbid crawling, on top of their noindex header.
+
+def write_site_files(out_dir: Path, mode: str | None = None, paths: Iterable[str] = ("/",)) -> None:
+    """Files the hosting serves next to the pages: crests, icons, share card, robots, sitemap.
+
+    The live site invites search engines (robots.txt + sitemap.xml listing every
+    address under SITE_URL); preview builds forbid crawling, on top of their
+    noindex header.
     """
     mode = mode or cfg.SITE_MODE
+    shutil.copytree(cfg.CRESTS_DIR, out_dir / cfg.CRESTS_DIR.name, dirs_exist_ok=True)
     shutil.copyfile(ASSETS_DIR / cfg.SHARE_CARD_FILE, out_dir / cfg.SHARE_CARD_FILE)
+    for name, source in ICON_FILES.items():
+        shutil.copyfile(ASSETS_DIR / source, out_dir / name)
     if mode == "live":
         robots = f"User-agent: *\nAllow: /\nSitemap: {cfg.SITE_URL}/sitemap.xml\n"
     else:
         robots = "User-agent: *\nDisallow: /\n"
     (out_dir / "robots.txt").write_text(robots, encoding="utf-8")
     today = pd.Timestamp.now().strftime("%Y-%m-%d")
+    urls = "".join(
+        f"  <url><loc>{cfg.SITE_URL}{'/' if path == '/' else path}</loc>"
+        f"<lastmod>{today}</lastmod><changefreq>daily</changefreq></url>\n"
+        for path in paths
+    )
     (out_dir / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"  <url><loc>{cfg.SITE_URL}/</loc><lastmod>{today}</lastmod>"
-        "<changefreq>daily</changefreq></url>\n</urlset>\n",
+        f"{urls}</urlset>\n",
         encoding="utf-8",
     )
 

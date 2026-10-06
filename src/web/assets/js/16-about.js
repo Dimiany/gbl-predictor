@@ -16,7 +16,7 @@ pages.about = () => {
         kpi('Ακρίβεια', pct(M.acc), 'εκτός δείγματος', {count: {to: Math.round(M.acc * 100), fmt: 'pct'}, info: 'acc'}),
         kpi('🔥 Σίγουρες', conf.length ? `${confOk}/${conf.length}` : '–', '≥ 80% και σωστές', {gold: true}),
         kpi('Ομάδες', String(TEAMS.length), `Basket League ${season}`, {count: {to: TEAMS.length}})))),
-    h('section', null, sectionHead('Πώς δουλεύει, σε 4 βήματα', null, h('a', {href: '#/model/how'}, 'Λεπτομέρειες →')), howTab()[0]),
+    h('section', null, sectionHead('Πώς δουλεύει, σε 4 βήματα', null, h('a', {href: url('model', 'how')}, 'Λεπτομέρειες →')), howTab()[0]),
     h('div', {class: 'grid-2-even'},
       h('section', {class: 'panel howto'}, sectionHead('Πηγές δεδομένων'),
         h('dl', {class: 'glossary'},

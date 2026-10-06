@@ -19,7 +19,17 @@ from src import config as cfg
 from src.web import build
 from src.web.contact import ContactError, save_contact_message
 from src.web.data import site_settings
-from src.web.render import JS_DIR, bundle_js, js_modules, json_payload, render_html
+from src.web.render import (
+    JS_DIR,
+    bundle_js,
+    js_modules,
+    json_payload,
+    page_path,
+    render_html,
+    render_site,
+    site_pages,
+    slug,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -59,12 +69,110 @@ def test_json_payload_rejects_nan():
         json_payload({"x": float("nan")})
 
 
-def test_render_html_embeds_data_css_and_js():
-    page = render_html({"season": "2026/27", "games": []})
-    assert '<script id="data" type="application/json">' in page
-    assert "--brand-navy" in page  # stylesheet inlined
-    assert "// ---- 90-app.js" in page  # scripts inlined
-    assert 'data-theme="dark"' in page
+SITE_DATA = {"season": "2026/27", "games": [], "standings": [{"team": "PAOK"}, {"team": "AEK"}]}
+
+
+def test_render_site_has_shared_files_and_one_page_per_address():
+    files = render_site(SITE_DATA)
+    assert "--brand-navy" in files["app.css"]
+    assert "// ---- 90-app.js" in files["app.js"]
+    assert files["data.js"].startswith("window.TIPOFF_DATA = {")
+    for name in (
+        "index.html",
+        "vathmologia.html",
+        "provlepseis/istoriko.html",
+        "montelo/odigos-deikton.html",
+        "omades/paok.html",
+        "omades/aek/apotelesmata.html",
+        "404.html",
+    ):
+        assert name in files, name
+        assert '<script src="/app.js" defer></script>' in files[name]
+        assert 'data-theme="dark"' in files[name]
+
+
+def test_every_address_is_unique_and_has_its_own_title():
+    pages = site_pages(SITE_DATA)
+    assert pages[0].path == "/"
+    assert len({p.path for p in pages}) == len(pages)
+    assert len({p.title for p in pages}) == len(pages)
+    assert all(p.description for p in pages)
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    page = files["omades/paok/programma.html"]
+    assert "<title>PAOK: πρόγραμμα αγώνων 2026/27 · TipOff</title>" in page
+    assert f'<link rel="canonical" href="{cfg.SITE_URL}/omades/paok/programma">' in page
+
+
+def test_routes_reach_the_js():
+    js = render_site(SITE_DATA)["data.js"]
+    data = json.loads(js.removeprefix("window.TIPOFF_DATA = ").rstrip().rstrip(";"))
+    meta = data["routes"]["meta"]
+    assert meta["/vathmologia"][0].startswith("Βαθμολογία")
+    assert data["routes"]["pages"]["teams"] == "omades"
+
+
+def test_page_path_and_slug():
+    assert page_path("home") == "/"
+    assert page_path("predictions", "next") == "/provlepseis"  # first tab = page address
+    assert page_path("model", "how") == "/montelo/pos-doulevei"
+    assert (
+        page_path("team", "results", "AS Karditsas Iaponiki")
+        == "/omades/as-karditsas-iaponiki/apotelesmata"
+    )
+    assert slug("Vikos Falcons Ioanninon") == "vikos-falcons-ioanninon"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_js_slug_matches_python_slug():
+    core = (JS_DIR / "01-core.js").read_text(encoding="utf-8")
+    rule = re.search(r"^const slugOf = .*$", core, re.M).group(0)
+    names = ["AS Karditsas Iaponiki", "Promitheas Vikos Cola", "PAOK", " Doxa  Lefkadas "]
+    script = f"{rule}\nconsole.log(JSON.stringify({json.dumps(names)}.map(slugOf)));"
+    out = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
+    assert json.loads(out.stdout) == [slug(n) for n in names]
+
+
+def test_not_found_page_is_never_indexed():
+    page = render_site({**SITE_DATA, "site": {"mode": "live"}})["404.html"]
+    assert 'name="robots" content="noindex' in page
+    assert 'rel="canonical"' not in page
+
+
+def test_write_pages_drops_pages_from_an_earlier_build(tmp_path):
+    (tmp_path / "omades").mkdir()
+    (tmp_path / "omades" / "panionios.html").write_text("old", encoding="utf-8")
+    (tmp_path / "og-card.jpg").write_bytes(b"keep")
+    assert build.write_pages(tmp_path, {"index.html": "x", "omades/paok.html": "y"}) == 2
+    assert not (tmp_path / "omades" / "panionios.html").exists()
+    assert (tmp_path / "omades" / "paok.html").read_text(encoding="utf-8") == "y"
+    assert (tmp_path / "og-card.jpg").exists()
+
+
+def test_local_server_serves_clean_addresses_like_firebase(tmp_path, monkeypatch):
+    import http.server
+    import threading
+    import urllib.error
+    import urllib.request
+
+    from src.web.server import Handler
+
+    (tmp_path / "index.html").write_text("home", encoding="utf-8")
+    (tmp_path / "omades").mkdir()
+    (tmp_path / "omades" / "paok.html").write_text("paok", encoding="utf-8")
+    (tmp_path / "404.html").write_text("lost", encoding="utf-8")
+    monkeypatch.setattr(cfg, "DASHBOARD_FILE", tmp_path / "index.html")
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        assert urllib.request.urlopen(base + "/").read() == b"home"
+        assert urllib.request.urlopen(base + "/omades/paok").read() == b"paok"
+        with pytest.raises(urllib.error.HTTPError) as err:
+            urllib.request.urlopen(base + "/omades/nobody")
+        assert err.value.code == 404 and err.value.read() == b"lost"
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_save_contact_message_appends_rows_with_header(tmp_path: Path):
@@ -95,12 +203,11 @@ def test_save_contact_message_truncates_long_fields(tmp_path: Path):
 # ---------------------------------------------------------------- site modes
 
 
-def test_csp_allows_exactly_the_bundled_script():
+def test_csp_allows_only_our_own_script_files():
     page = render_html({"season": "2026/27", "games": []})
-    script = re.search(r"<script>(.*)</script>", page, re.S).group(1)
-    digest = base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode()
-    assert f"script-src 'sha256-{digest}'" in page
+    assert "script-src 'self';" in page
     assert "default-src 'none'" in page
+    assert re.search(r"<script(?![^>]*src=)", page) is None  # no inline script at all
 
 
 def test_only_preview_builds_are_noindex():
@@ -228,7 +335,7 @@ def test_overlays_inherit_the_theme():
     # Tooltip, toast and to-top read colour tokens defined on .viz-root; outside
     # it they render with a transparent background (text over the page).
     page = render_html({"season": "2026/27", "games": []})
-    root_end = page.index('<script id="data"')
+    root_end = page.index("</body>")
     for overlay in ('id="tip"', 'id="toast"', 'id="to-top"'):
         assert page.index('<div class="viz-root">') < page.index(overlay) < root_end
         assert page.rindex("</div>", 0, root_end) > page.index(overlay)
@@ -280,11 +387,14 @@ def test_every_crest_source_has_a_crop_rule():
     assert sources["team"].is_unique
 
 
-def test_page_has_inline_favicon_and_touch_icon():
+def test_page_links_favicon_and_touch_icon_files(tmp_path):
     page = render_html({"season": "2026/27", "games": []})
-    assert '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,' in page
-    assert '<link rel="apple-touch-icon" href="data:image/png;base64,' in page
-    assert "img-src 'self' data:" in page  # the CSP lets data-URI icons load
+    assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in page
+    assert '<link rel="apple-touch-icon" href="/apple-touch-icon.png">' in page
+    assert "img-src 'self' data:" in page  # own files + inlined fallback crests
+    build.write_site_files(tmp_path, mode="live")
+    for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png"):
+        assert (tmp_path / name).stat().st_size > 100, name
 
 
 def test_site_uses_the_brand_name_everywhere():
@@ -308,5 +418,8 @@ def test_site_files_invite_crawlers_only_on_live(tmp_path):
     assert (tmp_path / cfg.SHARE_CARD_FILE).stat().st_size > 10_000
     assert f"Sitemap: {cfg.SITE_URL}/sitemap.xml" in (tmp_path / "robots.txt").read_text()
     assert f"<loc>{cfg.SITE_URL}/</loc>" in (tmp_path / "sitemap.xml").read_text()
+    assert (tmp_path / "crests" / "paok.webp").exists()  # crests are files, not inlined
+    build.write_site_files(tmp_path, mode="live", paths=["/", "/vathmologia"])
+    assert f"<loc>{cfg.SITE_URL}/vathmologia</loc>" in (tmp_path / "sitemap.xml").read_text()
     build.write_site_files(tmp_path, mode="preview")
     assert "Disallow: /" in (tmp_path / "robots.txt").read_text()

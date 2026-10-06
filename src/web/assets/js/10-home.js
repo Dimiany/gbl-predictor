@@ -26,7 +26,7 @@ function nextRoundSection(link = true) {
   const nr = D.next;
   return h('section', null,
     sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
-      link ? h('a', {href: '#/predictions'}, 'Όλες οι προβλέψεις →') : infoDot('prob')),
+      link ? h('a', {href: url('predictions')}, 'Όλες οι προβλέψεις →') : infoDot('prob')),
     nr.length ? h('div', {class: 'cards'}, nr.map(predCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχουν προγραμματισμένοι αγώνες.'));
 }
 
@@ -47,9 +47,9 @@ pages.home = () => {
   return [
     hero(feat),
     played.length ? h('section', null,
-      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'τι έγινε και τι είχε πει το μοντέλο · σύρε με το ποντίκι ή άφησέ το να κυλά', h('a', {href: '#/predictions/all'}, 'Όλοι οι αγώνες →')),
+      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'τι έγινε και τι είχε πει το μοντέλο · σύρε με το ποντίκι ή άφησέ το να κυλά', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
       resultsTicker(played.slice(0, 14))) : null,
-    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: '#/model'}, 'Λεπτομέρειες →')),
+    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: url('model')}, 'Λεπτομέρειες →')),
       h('div', {class: 'kpis'},
       kpi('Ακρίβεια μοντέλου', pct(M.acc), `σε ${M.n_test} αγώνες εκτός δείγματος · Elo μόνο ${pct(M.elo_acc)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
       kpi('🔥 Σίγουρες προβλέψεις', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές όταν το μοντέλο λέει ≥ ${HIT_THRESHOLD * 100}%` : 'καμία ακόμα', {info: 'hit', gold: true}),
@@ -57,10 +57,10 @@ pages.home = () => {
       kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι κατά μέσο όρο · σύνολο ±${M.total_mae}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}}))),
     nextRoundSection(),
     hits.length ? h('section', null,
-      sectionHead('🔥 Hall of Fame', `${hits.length} σίγουρες προβλέψεις που βγήκαν`, h('a', {href: '#/predictions/hits'}, 'Όλες →')),
+      sectionHead('🔥 Hall of Fame', `${hits.length} σίγουρες προβλέψεις που βγήκαν`, h('a', {href: url('predictions', 'hits')}, 'Όλες →')),
       h('div', {class: 'hof'}, hits.slice(0, 6).map(hofCard))) : null,
     h('div', {class: 'grid-2'},
-      h('section', {class: 'panel'}, sectionHead('Βαθμολογία', season, h('a', {href: '#/standings'}, 'Πλήρης →')), standingsTable(true)),
+      h('section', {class: 'panel'}, sectionHead('Βαθμολογία', season, h('a', {href: url('standings')}, 'Πλήρης →')), standingsTable(true)),
       h('div', {class: 'stack'},
         fs ? h('section', {class: 'panel'}, sectionHead(h('span', {style: 'display:inline-flex;gap:10px;align-items:center'}, crest(state.focus, 24), state.focus), `η ομάδα σου · ${fs.pos}ος · ${fs.w}-${fs.l}`, h('a', {href: teamHref(state.focus)}, 'Σελίδα ομάδας →')),
           h('div', {class: 'tile-row'}, h('span', null, 'Φόρμα'), formChips(fs.form)),
@@ -69,7 +69,7 @@ pages.home = () => {
           focusNext ? h('div', {class: 'tile-row'}, h('span', null, 'Επόμενος'), h('span', null, `${dayLabel(focusNext.d)} · ${focusNext.home === state.focus ? 'vs ' + focusNext.away : '@ ' + focusNext.home}`)) : null,
           focusPred ? h('div', {class: 'tile-row'}, h('span', null, 'Πρόβλεψη'), h('b', null, `${focusPred.phs}–${focusPred.pas} · ${state.focus} ${pct(focusPred.home === state.focus ? focusPred.p : 1 - focusPred.p)}`)) : null) : null,
         h('section', {class: 'panel'}, sectionHead('Elo', 'δύναμη σε σχέση με το 1500', infoDot('elo')), h('div', {class: 'chart', 'data-chart': 'bars'})))),
-    h('section', {class: 'panel'}, sectionHead('Πρόβλεψη και αποτέλεσμα, αναλυτικά', 'οι 10 τελευταίοι αγώνες · 🔥 = σίγουρη επιτυχία · 🎯 = διαφορά μέσα σε ±3', h('a', {href: '#/predictions/all'}, 'Όλοι οι αγώνες →')),
+    h('section', {class: 'panel'}, sectionHead('Πρόβλεψη και αποτέλεσμα, αναλυτικά', 'οι 10 τελευταίοι αγώνες · 🔥 = σίγουρη επιτυχία · 🎯 = διαφορά μέσα σε ±3', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
       resultsTable(played.slice(0, 10))),
   ];
 };

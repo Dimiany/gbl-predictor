@@ -7,7 +7,9 @@ const NAV = [
   ['', 'Αρχική'], ['predictions', 'Προβλέψεις'], ['standings', 'Βαθμολογία'], ['teams', 'Ομάδες'],
   ['schedule', 'Πρόγραμμα'], ['model', 'Μοντέλο'], ['about', 'Σχετικά'], ['contact', 'Επικοινωνία'],
 ];
-const TITLES = Object.fromEntries([...NAV, ['help', 'Οδηγίες'], ['team', 'Ομάδα']]);
+
+pages.notfound = () => [pageBanner('Η σελίδα δεν βρέθηκε', 'Ίσως άλλαξε η διεύθυνση ή γράφτηκε λάθος.',
+  h('a', {class: 'btn btn-ghost', href: url('home')}, '← Στην αρχική'))];
 
 /** Post-render effects for any freshly inserted subtree (page or tab panel). */
 function afterRender(container) {
@@ -26,12 +28,30 @@ function afterRender(container) {
   }
 }
 
-/** #/page[/tab]  or  #/team/NAME[/tab] */
+/** Every team the data mentions (this season's and older ones), for /omades/<slug>. */
+const KNOWN_TEAMS = [...new Set([...TEAMS, ...played.flatMap(g => [g.home, g.away])])];
+
+/** /page[/tab]  or  /omades/<team>[/tab]  ->  {page, tab, name} */
 function parseRoute() {
-  const parts = location.hash.replace(/^#\/?/, '').split('/');
-  const page = parts[0] || 'home';
-  if (page === 'team') return {page, name: decodeURIComponent(parts[1] || ''), tab: parts[2]};
-  return {page: pages[page] ? page : 'home', tab: parts[1]};
+  const parts = location.pathname.split('/').filter(Boolean).map(p => decodeURIComponent(p));
+  if (!parts.length || (parts.length === 1 && parts[0] === 'index.html')) return {page: 'home'};
+  const page = Object.keys(ROUTES.pages).find(k => k !== 'home' && ROUTES.pages[k] === parts[0]);
+  const notFound = {page: 'notfound'};
+  if (!page || !pages[page]) return notFound;
+  if (page === 'teams' && parts.length > 1) {
+    const name = KNOWN_TEAMS.find(t => slugOf(t) === parts[1]);
+    const tab = tabFromSlug('team', parts[2]);
+    return name && tab && parts.length <= 3 ? {page: 'team', name, tab} : notFound;
+  }
+  if (parts.length === 1) return {page, tab: tabFromSlug(page)};
+  const tab = parts.length === 2 && tabFromSlug(page, parts[1]);
+  return tab ? {page, tab} : notFound;
+}
+
+/** Go to an address inside the site without reloading the page. */
+function go(path) {
+  if (path !== location.pathname + location.search) history.pushState(null, '', path);
+  route(true);
 }
 
 function route(scrollTop) {
@@ -45,14 +65,14 @@ function route(scrollTop) {
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
-  document.title = `${r.page === 'team' ? r.name : TITLES[active] || 'Αρχική'} · ${BRAND.name}`;
+  applyMeta(r.page === 'notfound' ? `Η σελίδα δεν βρέθηκε · ${BRAND.name}` : `${r.name || BRAND.name} · ${BRAND.name}`);
   afterRender(app);
   if (scrollTop) window.scrollTo({top: 0});
 }
 
 // ---------------------------------------------------------------- header
 const nav = document.getElementById('nav');
-nav.replaceChildren(...NAV.map(([k, label]) => h('a', {href: '#/' + k, 'data-k': k}, label)));
+nav.replaceChildren(...NAV.map(([k, label]) => h('a', {href: url(k), 'data-k': k}, label)));
 
 const focusSel = document.getElementById('focus');
 focusSel.replaceChildren(...TEAMS.slice().sort().map(t => h('option', {value: t, selected: t === state.focus}, t)));
@@ -106,12 +126,13 @@ if (SITE.mode === 'preview') {
         h('div', {class: 'foot-brand'}, h('img', {src: document.querySelector('.brand-badge img')?.src || '', alt: ''}), BRAND.name),
         h('p', {style: 'margin:0 0 6px;max-width:340px'}, h('b', null, BRAND.tagline), ' · ', BRAND.slogan),
         h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και βαθμολογείται δημόσια.')),
-      col('Σελίδες', [['#/', 'Αρχική'], ['#/predictions', 'Προβλέψεις'], ['#/standings', 'Βαθμολογία'], ['#/teams', 'Ομάδες'], ['#/schedule', 'Πρόγραμμα']]),
-      col('Μοντέλο', [['#/model', 'Απόδοση'], ['#/model/metrics', 'Οδηγός δεικτών'], ['#/model/how', 'Πώς δουλεύει'], ['#/predictions/hits', '🔥 Hall of Fame']]),
-      col('Βοήθεια', [['#/help', 'Οδηγίες'], ['#/about', 'Σχετικά'], ['#/contact', 'Επικοινωνία']])),
+      col('Σελίδες', [[url('home'), 'Αρχική'], [url('predictions'), 'Προβλέψεις'], [url('standings'), 'Βαθμολογία'], [url('teams'), 'Ομάδες'], [url('schedule'), 'Πρόγραμμα']]),
+      col('Μοντέλο', [[url('model'), 'Απόδοση'], [url('model', 'metrics'), 'Οδηγός δεικτών'], [url('model', 'how'), 'Πώς δουλεύει'], [url('predictions', 'hits'), '🔥 Hall of Fame']]),
+      col('Βοήθεια', [[url('help'), 'Οδηγίες'], [url('about'), 'Σχετικά'], [url('contact'), 'Επικοινωνία']])),
     h('div', {class: 'foot-bottom'},
-      h('span', null, `Δεδομένα & σήματα: FlashScore (RapidAPI) · μοντέλο ${M.version} · ενημέρωση ${D.updated}${PUBLIC ? ' · ενημερώνεται αυτόματα' : ''}`),
-      h('span', null, 'Ανεπίσημη εφαρμογή · δεν είναι συμβουλή στοιχηματισμού')));
+      h('p', {class: 'foot-disclaimer'},
+        'Οι προβλέψεις του ', BRAND.name, ' είναι αποτέλεσμα μαθηματικών υπολογισμών και στατιστικών αλγορίθμων: ένας τρόπος να διαβάσουμε το παιχνίδι μέσα από τους αριθμούς. ',
+        h('b', null, 'Δεν αποτελούν σε καμία περίπτωση προτάσεις ή συμβουλές στοιχηματισμού.'))));
 })();
 
 // ---------------------------------------------------------------- scroll effects
@@ -130,8 +151,28 @@ addEventListener('scroll', () => {
   });
 }, {passive: true});
 
+// ---------------------------------------------------------------- navigation
+// Links to our own pages swap the content in place (no reload); the address,
+// back/forward and "open in new tab" all behave like a normal site.
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (a.target || a.hasAttribute('download')) return;
+  const to = new URL(a.href, location.href);
+  if (to.origin !== location.origin || /\.\w+$/.test(to.pathname)) return;  // other sites, files
+  e.preventDefault();
+  go(to.pathname);
+});
+addEventListener('popstate', () => route(true));
+
+// Old links (#/standings, #/team/PAOK/results) from before the site had real addresses.
+if (location.hash.startsWith('#/')) {
+  const [p, a, b] = location.hash.slice(2).split('/').map(x => decodeURIComponent(x));
+  const to = p === 'team' ? teamHref(a || '', b) : ROUTES.pages[p || 'home'] != null ? url(p || 'home', a) : '/';
+  history.replaceState(null, '', to);
+}
+
 // ---------------------------------------------------------------- boot
-addEventListener('hashchange', () => route(true));
 let resizeTimer;
 addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => drawCharts(app), 150); });
 route(false);
