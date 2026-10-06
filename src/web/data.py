@@ -14,7 +14,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import math
+import re
 from collections import defaultdict
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -146,6 +148,7 @@ def _log_rows(log_view: pd.DataFrame) -> list[dict]:
     for _, r in log_view.iterrows():
         d = pd.to_datetime(r["fixture_date"], dayfirst=True)
         played = pd.notna(r.get("actual_home_score"))
+        made_at = pd.Timestamp(r["prediction_made_at"])
         rows.append(
             {
                 "d": d.strftime("%Y-%m-%d"),
@@ -158,6 +161,9 @@ def _log_rows(log_view: pd.DataFrame) -> list[dict]:
                 "w": r["predicted_winner"],
                 "v": r["model_version"],
                 "at": str(r["prediction_made_at"]),
+                # Made after the game day: re-predicted from pre-round data
+                # (prediction_log.predict_retroactively), not a pre-game record.
+                "retro": bool(made_at.normalize() > d),
                 "ahs": _int(r["actual_home_score"]) if played else None,
                 "aas": _int(r["actual_away_score"]) if played else None,
                 "ok": bool(r["winner_correct"]) if played else None,
@@ -199,7 +205,8 @@ def _games(history: pd.DataFrame, log_rows: list[dict], walk_forward: pd.DataFra
             gap = abs((pd.Timestamp(r["d"]) - date).days)
             if gap < best_gap:
                 best_gap = gap
-                pick = {k: r[k] for k in ("phs", "pas", "p", "w", "v")} | {"src": "log"}
+                src = "retro" if r["retro"] else "log"
+                pick = {k: r[k] for k in ("phs", "pas", "p", "w", "v")} | {"src": src}
         if pick is None:
             pick = wf.get((iso, home, away))
         out.append(
@@ -256,8 +263,18 @@ def site_settings(mode: str | None = None) -> dict:
     return {"mode": mode, "cloud_sync": cfg.CLOUD_SYNC, "firestore": firestore}
 
 
+def crest_file(team: str) -> Path:
+    """Where scripts/fetch_crests.py stores a team's official crest."""
+    slug = re.sub(r"[^a-z0-9]+", "-", team.lower()).strip("-")
+    return cfg.CRESTS_DIR / f"{slug}.webp"
+
+
 def _team_logos() -> dict[str, str]:
-    """Canonical team name -> inlined crest, for every team with a known logo URL."""
+    """Canonical team name -> inlined crest.
+
+    Preference: the official crest in assets/crests (192 px), then FlashScore's
+    100x100 crest, then its 30x30 list image.
+    """
     if not cfg.TEAM_LOGOS_CSV.exists():
         return {}
     logos = pd.read_csv(cfg.TEAM_LOGOS_CSV, dtype=str, keep_default_na=False)
@@ -267,7 +284,10 @@ def _team_logos() -> dict[str, str]:
     for team, small, large in zip(
         logos["team"], logos["logo_url"], logos["crest_url"], strict=True
     ):
-        # Prefer the 100x100 crest; the 30x30 list image is only a fallback.
+        official = crest_file(team)
+        if official.exists():
+            out[team] = "data:image/webp;base64," + base64.b64encode(official.read_bytes()).decode()
+            continue
         uri = _image_data_uri(large) or _image_data_uri(small)
         if uri:
             out[team] = uri

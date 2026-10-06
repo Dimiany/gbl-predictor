@@ -36,7 +36,7 @@ function hitsSorted() {
 }
 
 pages.home = () => {
-  const graded = D.log.filter(r => r.ok !== null), pending = D.log.length - graded.length;
+  const graded = preGameLog.filter(r => r.ok !== null), pending = preGameLog.length - graded.length;
   const correct = graded.filter(r => r.ok).length;
   const conf = confidentPicks(), confOk = conf.filter(g => outcome(g).ok).length;
   const hits = hitsSorted();

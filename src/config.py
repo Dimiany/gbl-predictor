@@ -113,6 +113,12 @@ TEAM_NAME_MAPPING_CSV: Path = RAW_DATA_DIR / "team_name_mapping.csv"
 # payload (no extra requests). The dashboard downloads and inlines them.
 TEAM_LOGOS_CSV: Path = DATA_DIR / "team_logos.csv"
 # Basket League logo on FlashScore's CDN (from /tournaments/details).
+# Official crests (scripts/fetch_crests.py): team -> source image on esake.gr,
+# stored cropped + square in src/web/assets/crests. Preferred over FlashScore.
+CREST_SOURCES_CSV: Path = DATA_DIR / "crest_sources.csv"
+CRESTS_DIR: Path = PROJECT_ROOT / "src" / "web" / "assets" / "crests"
+# 2x the largest on-page crest (68 CSS px) plus headroom, for sharp retina screens.
+CREST_SIZE: int = 192
 # Full-size crests cost one /matches/details request per game (two teams
 # each); sync spends at most this many per run, only on teams still missing one.
 CREST_REQUESTS_PER_SYNC: int = 8

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import difflib
 import math
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -180,7 +181,9 @@ def _suggest_correction(name: str, known: set[str]) -> str:
     return ""
 
 
-def validate_team_names(fixtures: list[Fixture], history: pd.DataFrame) -> None:
+def validate_team_names(
+    fixtures: list[Fixture], history: pd.DataFrame, promoted: Iterable[str] = ()
+) -> None:
     """Raise ValueError if any fixture references a team not in history.
 
     This guards against the silent-typo failure mode: if you write "PAO"
@@ -189,7 +192,7 @@ def validate_team_names(fixtures: list[Fixture], history: pd.DataFrame) -> None:
     garbage predictions. Much better to refuse to predict and point at the
     likely fix.
     """
-    known = known_teams_from_history(history)
+    known = known_teams_from_history(history) | set(promoted)
     bad: list[str] = []
     for fx in fixtures:
         for role, name in (("home", fx.home), ("away", fx.away)):
@@ -491,6 +494,7 @@ def predict_fixtures(
     history: pd.DataFrame | None = None,
     bundle: PredictorBundle | None = None,
     adjustments: pd.DataFrame | None = None,
+    promoted: Iterable[str] = (),
 ) -> list[Prediction]:
     """Predict a batch of upcoming fixtures.
 
@@ -512,6 +516,9 @@ def predict_fixtures(
         Manual margin adjustments (for injuries / etc.). Defaults to the
         contents of ``data/raw/adjustments.csv`` (or none, if that file is
         missing or empty).
+    promoted
+        Real teams with no games in ``history`` yet (newly promoted). They
+        pass the typo check and start from a fresh Elo 1500 state.
     """
     if bundle is None:
         bundle = PredictorBundle.load()
@@ -546,7 +553,7 @@ def predict_fixtures(
 
     # Guard against silent typos in fixture team names: we'd rather refuse
     # to predict than return nonsense with a neutral-rated stand-in team.
-    validate_team_names(fixtures, history)
+    validate_team_names(fixtures, history, promoted)
 
     # Build per-team current state from all historical games. This is the
     # "memory" the model uses to size up each matchup.

@@ -21,6 +21,8 @@ const LOGOS = D.logos || {};
 const season = D.season;
 const played = D.games;
 const seasonGames = played.filter(g => g.s === season);
+/** Predictions logged before tip-off: the strict record. Retroactive rows are shown but not counted. */
+const preGameLog = D.log.filter(r => !r.retro);
 const roundNo = Math.max(0, ...D.standings.map(r => r.gp)) + 1;
 
 /** Page registry: pages[name] = ({tab, name}) => Node[]. Filled by the 1x-*.js files. */

@@ -234,3 +234,39 @@ def test_log_records_model_version_and_backfills_legacy(tmp_path: Path) -> None:
     view = build_accuracy_view(log_path=log_path, fixtures_path=fixtures_path).set_index("home")
     assert view.at["PAO", "model_version"] == "margin-v2"
     assert view.at["AEK", "model_version"] == LEGACY_MODEL_VERSION
+
+
+def test_append_without_overwrite_keeps_pre_game_rows(tmp_path: Path) -> None:
+    path = tmp_path / "log.csv"
+    append_predictions([_make_pred("PAOK", "AEK", 85, 80)], path)
+    append_predictions(
+        [_make_pred("PAOK", "AEK", 70, 90), _make_pred("Aris", "Mykonos", 80, 75)],
+        path,
+        overwrite=False,
+    )
+    log = load_log(path).set_index("home")
+    assert log.loc["PAOK", "predicted_home_score"] == 85  # the real pre-game call survives
+    assert "Aris" in log.index  # the missing fixture is added
+
+
+def test_retroactive_predictions_never_see_the_window_results() -> None:
+    from src.prediction_log import predict_retroactively
+
+    history = pd.read_csv(cfg.RAW_GAMES_CSV)
+    dates = pd.to_datetime(history[cfg.COL_DATE], dayfirst=True)
+    start = dates[dates.dt.year == dates.max().year].min()  # any window with history before it
+    end = start + pd.Timedelta(days=1)
+    in_window = (dates >= start) & (dates <= end)
+
+    flipped = history.copy()  # swap every score inside the window
+    flipped.loc[in_window, [cfg.COL_HOME_SCORE, cfg.COL_AWAY_SCORE]] = history.loc[
+        in_window, [cfg.COL_AWAY_SCORE, cfg.COL_HOME_SCORE]
+    ].to_numpy()
+
+    def calls(h):
+        return [
+            (p.home, p.predicted_home_score, p.predicted_away_score)
+            for p in predict_retroactively(start, end, h)
+        ]
+
+    assert calls(history) == calls(flipped) and len(calls(history)) == in_window.sum()

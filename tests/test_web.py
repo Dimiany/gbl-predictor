@@ -195,3 +195,49 @@ def test_overlays_inherit_the_theme():
     for overlay in ('id="tip"', 'id="toast"', 'id="to-top"'):
         assert page.index('<div class="viz-root">') < page.index(overlay) < root_end
         assert page.rindex("</div>", 0, root_end) > page.index(overlay)
+
+
+# ---------------------------------------------------------------- crests
+
+
+def _crest_tools():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "fetch_crests", ROOT / "scripts" / "fetch_crests.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_crop_to_crest_drops_a_sponsor_below_the_crest():
+    from PIL import Image, ImageDraw
+
+    tools = _crest_tools()
+    img = Image.new("RGBA", (200, 300), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((20, 10, 180, 170), fill="orange")  # the crest
+    draw.rectangle((40, 220, 160, 260), fill="red")  # sponsor, 50 px below
+    assert tools.crop_to_crest(img).size == (161, 161)
+
+
+def test_fit_in_circle_keeps_every_pixel_inside_the_round_frame():
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    tools = _crest_tools()
+    shield = Image.new("RGBA", (120, 160), (0, 0, 0, 0))
+    ImageDraw.Draw(shield).rectangle((0, 0, 119, 159), fill="black")  # worst case: sharp corners
+    out = tools.fit_in_circle(shield, 192)
+    ys, xs = np.nonzero(np.asarray(out)[:, :, 3] > 8)
+    assert out.size == (192, 192)
+    assert np.sqrt((xs - 95.5) ** 2 + (ys - 95.5) ** 2).max() <= 96
+
+
+def test_every_crest_source_has_a_crop_rule():
+    import pandas as pd
+
+    sources = pd.read_csv(cfg.CREST_SOURCES_CSV)
+    assert set(sources["crop"]) <= {"sponsor", "none"}
+    assert sources["team"].is_unique

@@ -1,5 +1,5 @@
 <!-- Onboarding notes FOR Claude, loaded at the start of every session in this
-     project. Keep it under ~230 lines; content past that gets truncated.
+     project. Keep it under ~260 lines; content past that gets truncated.
      Plain prose = instructions to follow. HTML comments = the "why", for humans. -->
 
 # GBL Basketball Predictor
@@ -66,6 +66,8 @@ GBL Predictor.bat            .github/workflows/site.yml           Hosting: the b
 | Full update + build the page | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open`, `--auto` = cloud "only if due") |
 | Desktop app (what the user double-clicks) | `GBL Predictor.bat` -> `python scripts/serve.py` |
 | Retrain + evaluate only | `python scripts/train.py` |
+| Refresh official crests | `python scripts/fetch_crests.py [TEAM ...]` (sources: `data/crest_sources.csv`) |
+| Re-predict a missed round | `python scripts/backfill_predictions.py dd/mm/yyyy dd/mm/yyyy` (adds retroactive rows only) |
 | Sync only (escape hatch) | `python scripts/sync.py` (dry run), `--commit` to write |
 | Cloud update now | GitHub -> Actions -> "Site" -> Run workflow, or `gh workflow run site.yml` |
 | Notebooks (legacy UI) | `predictor.ipynb` (cell 2 sync+train, cell 3 predict), `models_accuracy.ipynb` |
@@ -80,7 +82,8 @@ data/raw/all_fixtures.csv      completed games, API-sourced, chronological (bot-
 data/raw/upcoming_fixtures.csv games to predict, replaced on every sync (bot-written)
 data/raw/team_name_mapping.csv API name -> canonical name
 data/raw/rosters.csv, absences.csv, adjustments.csv   optional override layer (user-curated)
-data/team_logos.csv            team -> FlashScore crest URL (bot-written)
+data/team_logos.csv            team -> FlashScore image URLs, small + crest_url (bot-written)
+data/crest_sources.csv         team -> official crest on esake.gr + crop rule (user-approved)
 data/prediction_history.csv    one row per predicted fixture (bot-written)
 src/config.py                  ALL paths, hyperparameters, env vars, site modes
 src/features.py                Elo, rolling L5 stats, H2H, rest, W-L, standings, seasons
@@ -96,7 +99,9 @@ src/web/build.py               update_site(), pull_latest(), sync_due() for the 
 src/web/server.py              local server: POST /api/refresh, POST /api/contact
 src/web/contact.py             local contact storage (data/contact_messages.csv, gitignored)
 src/web/assets/                app.css + js/NN-*.js (01-core ... 1x-pages ... 90-app)
-scripts/                       build_dashboard.py, serve.py, sync.py, train.py, record_results.py
+src/web/assets/crests/         official crests, 192 px WebP (scripts/fetch_crests.py)
+scripts/                       build_dashboard.py, serve.py, sync.py, train.py, fetch_crests.py,
+                               backfill_predictions.py, record_results.py
 firebase.json, firestore.rules Hosting config (serves dashboard/) + database rules
 .github/workflows/             ci.yml (lint+tests), site.yml (live), preview.yml (PR links)
 dashboard/, models/            generated, gitignored
@@ -131,7 +136,10 @@ dashboard/, models/            generated, gitignored
 7. `sync_for_notebook()` and `pull_latest()` never raise and return a status
    line. Keep that: an API or git hiccup must never block a build.
 8. `prediction_history.csv` holds predictions only. Actuals are joined at display
-   time. One source of truth per fact.
+   time. One source of truth per fact. A row made after its game day is
+   retroactive (`predict_retroactively`: fit only on games before the window).
+   The site labels it «αναδρομική» and keeps it out of the pre-game record
+   (`preGameLog`). Never overwrite a real pre-game row with one (`overwrite=False`).
 9. Bump `cfg.MODEL_VERSION` whenever the prediction method changes; it's logged
    with every prediction.
 10. After editing `src/`, remind the user to restart a running Jupyter kernel
@@ -191,6 +199,11 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - `tests/test_web.py` runs `node --check` on the bundle, checks the CSP hash,
   site modes and rules/form consistency.
 - Check visual changes with a headless Edge screenshot before calling them done.
+- Crests: official league images (esake.gr) in `assets/crests`, fitted inside
+  the round frame (`.crest` has `border-radius:50%` and a white disc in dark
+  mode). `crop=sponsor` strips a sponsor logo below the crest; `crop=none`
+  keeps stars. Kolossos' "H" is part of its official crest. FlashScore
+  images are only the fallback. New team: add a row and rerun fetch_crests.
 
 ## Current state (06/10/2026)
 
@@ -201,7 +214,8 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   (API: Lefkadas) and "Vikos Falcons Ioanninon" (API: Vikos), names chosen by
   the user.
 - `prediction_history.csv`: 2025/26 rows (blank `model_version` = `ensemble-v1`)
-  graded 12/14. Round 2 of 2026/27 (10-11/10) is logged with `margin-v2`.
+  graded 12/14. Round 1 of 2026/27 (03-04/10) was added retroactively on
+  06/10/2026 (6/7, not in the record). Round 2 (10-11/10) is logged pre-game.
   Grading tolerates games rescheduled by up to 3 days.
 - `rosters.csv` has only stubs for the 2025/26 teams (no players, no stubs yet
   for the two new teams). `absences.csv` and `adjustments.csv` are empty.
