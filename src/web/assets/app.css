@@ -439,6 +439,7 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
 
 /* ---------------------------------------------------------------- phones: tables, cards, KPIs */
 /* Wide tables scroll sideways on phones; a fade on the right edge says there is more. */
+.more-rows{display:flex;margin:14px auto 2px;padding:9px 18px;border-radius:999px;font-size:13px}
 .table-wrap.more-right{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}
 @media (max-width:760px){
   /* # and team stay put while the rest of the row scrolls. sticky-2 starts after the 40px # column. */

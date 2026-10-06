@@ -85,9 +85,10 @@ function tabs(id, items, initial, urlFor) {
  *   area?: name    grid area when opts.cards is set (rows become cards on phones)
  *   cap?: true|str caption above the value in a card (the label, or this text)}
  * opts.cards = 'results' | 'log' picks the card layout in app.css.
+ * opts.pageSize = show that many rows, then a "show more" button (long lists on phones).
  */
 function table(cols, rows, opts = {}) {
-  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1;
+  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1, shown = opts.pageSize || Infinity;
   const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '')});
   const cellClass = (c, base) => [base, c.sticky ? `sticky-${c.sticky}` : '', c.hideSm ? 'hide-sm' : '', c.area ? `c-${c.area}` : ''].filter(Boolean).join(' ') || null;
   // A fade on the right edge says "there is more, swipe" while the table can still scroll.
@@ -112,10 +113,15 @@ function table(cols, rows, opts = {}) {
       return th;
     }));
     const body = data.length
-      ? data.map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
+      ? data.slice(0, shown).map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
         'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r)))))
       : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || 'Δεν υπάρχουν δεδομένα.'))];
-    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
+    const rest = data.length - shown;
+    const more = rest > 0 ? h('button', {type: 'button', class: 'btn btn-ghost more-rows', onclick: () => {
+      shown += opts.pageSize; draw(); afterRender(wrap);
+      wrap.querySelectorAll('tbody tr')[shown - opts.pageSize]?.querySelector('a, button')?.focus({preventScroll: true});
+    }}, `Δείξε περισσότερους (${rest} ακόμα)`) : null;
+    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)), more);
     requestAnimationFrame(edge);
   }
   draw();
@@ -213,7 +219,7 @@ function resultsTable(games, opts = {}) {
     {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
     {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
     {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
-  ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results',
+  ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', pageSize: opts.pageSize ?? 40,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
 }
 
