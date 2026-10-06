@@ -285,3 +285,28 @@ def test_page_has_inline_favicon_and_touch_icon():
     assert '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,' in page
     assert '<link rel="apple-touch-icon" href="data:image/png;base64,' in page
     assert "img-src 'self' data:" in page  # the CSP lets data-URI icons load
+
+
+def test_site_uses_the_brand_name_everywhere():
+    page = render_html({"season": "2026/27", "games": []})
+    assert f"<title>{cfg.SITE_NAME} · {cfg.SITE_TAGLINE}</title>" in page
+    assert f"<b>{cfg.SITE_NAME}</b>" in page  # header
+    assert "GBL Predictor" not in page  # the old name, gone from page text and scripts
+
+
+def test_share_card_meta_points_at_the_public_site():
+    page = render_html({"season": "2026/27", "games": [], "site": {"mode": "live"}})
+    assert f'<meta property="og:image" content="{cfg.SITE_URL}/{cfg.SHARE_CARD_FILE}">' in page
+    assert '<meta name="twitter:card" content="summary_large_image">' in page
+    assert f'<link rel="canonical" href="{cfg.SITE_URL}/">' in page
+    preview = render_html({"season": "2026/27", "games": [], "site": {"mode": "preview"}})
+    assert 'rel="canonical"' not in preview  # only the live site claims the address
+
+
+def test_site_files_invite_crawlers_only_on_live(tmp_path):
+    build.write_site_files(tmp_path, mode="live")
+    assert (tmp_path / cfg.SHARE_CARD_FILE).stat().st_size > 10_000
+    assert f"Sitemap: {cfg.SITE_URL}/sitemap.xml" in (tmp_path / "robots.txt").read_text()
+    assert f"<loc>{cfg.SITE_URL}/</loc>" in (tmp_path / "sitemap.xml").read_text()
+    build.write_site_files(tmp_path, mode="preview")
+    assert "Disallow: /" in (tmp_path / "robots.txt").read_text()

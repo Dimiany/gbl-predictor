@@ -1,4 +1,4 @@
-"""The GBL Predictor website: data assembly, rendering, local server.
+"""The TipOff website: data assembly, rendering, local server.
 
 data.py     every number the pages show (build_dashboard)
 render.py   HTML shell + bundled assets/app.css and assets/js/*.js

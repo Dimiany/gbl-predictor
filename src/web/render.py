@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import json
 from pathlib import Path
+
+from src import config as cfg
 
 ASSETS_DIR = Path(__file__).with_name("assets")
 JS_DIR = ASSETS_DIR / "js"
@@ -41,14 +44,18 @@ def json_payload(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, allow_nan=False).replace("</", "<\\/")
 
 
+def favicon_data_uri() -> str:
+    svg = base64.b64encode((ASSETS_DIR / "favicon.svg").read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{svg}"
+
+
 def icon_links() -> str:
     """Favicon (SVG, every modern browser) + touch icon (PNG, phone home screens),
     both inlined as data URIs so the page stays one self-contained file."""
-    svg = base64.b64encode((ASSETS_DIR / "favicon.svg").read_bytes()).decode("ascii")
     png = base64.b64encode((ASSETS_DIR / "apple-touch-icon.png").read_bytes()).decode("ascii")
     return "\n".join(
         [
-            f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{svg}">',
+            f'<link rel="icon" type="image/svg+xml" href="{favicon_data_uri()}">',
             f'<link rel="apple-touch-icon" href="data:image/png;base64,{png}">',
             '<meta name="theme-color" content="#0b1647">',
         ]
@@ -77,6 +84,42 @@ def content_security_policy(script: str) -> str:
     )
 
 
+def share_meta(data: dict) -> str:
+    """Open Graph / Twitter card tags (link previews in Viber, Messenger, Facebook,
+    X, Slack...) and the canonical address (search engines index tipoff.gr, not
+    the *.web.app aliases). Search Console is verified by a DNS TXT record.
+
+    Previews need an absolute image URL, so the card always points at SITE_URL.
+    """
+    name, tagline, slogan, url = cfg.SITE_NAME, cfg.SITE_TAGLINE, cfg.SITE_SLOGAN, cfg.SITE_URL
+    title = html.escape(f"{name} · {tagline}", quote=True)
+    desc = html.escape(
+        f"{slogan} Προβλέψεις σκορ, πιθανότητες νίκης, βαθμολογία και στατιστικά "
+        f"για τη Stoiximan Basket League {data.get('season', '')}.",
+        quote=True,
+    )
+    image = f"{url}/{cfg.SHARE_CARD_FILE}"
+    tags = [
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{html.escape(name, quote=True)}">',
+        f'<meta property="og:title" content="{title}">',
+        f'<meta property="og:description" content="{desc}">',
+        f'<meta property="og:url" content="{url}/">',
+        f'<meta property="og:image" content="{image}">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        f'<meta property="og:image:alt" content="{title}">',
+        '<meta property="og:locale" content="el_GR">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{title}">',
+        f'<meta name="twitter:description" content="{desc}">',
+        f'<meta name="twitter:image" content="{image}">',
+    ]
+    if data.get("site", {}).get("mode") == "live":
+        tags.append(f'<link rel="canonical" href="{url}/">')
+    return "\n".join(tags)
+
+
 def render_html(data: dict) -> str:
     """Return the full single-file site."""
     script = bundle_js()
@@ -86,6 +129,7 @@ def render_html(data: dict) -> str:
         if data.get("site", {}).get("mode") == "preview"
         else ""
     )
+    name, tagline, slogan = cfg.SITE_NAME, cfg.SITE_TAGLINE, cfg.SITE_SLOGAN
     return f"""<!doctype html>
 <html lang="el" data-theme="dark">
 <head>
@@ -93,15 +137,16 @@ def render_html(data: dict) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta http-equiv="Content-Security-Policy" content="{content_security_policy(script)}">{robots}
-<meta name="description" content="Προβλέψεις, βαθμολογία και στατιστικά για την Stoiximan Basket League {data["season"]}">
-<title>GBL Predictor · {data["season"]}</title>
+<meta name="description" content="{name}: προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League {data["season"]}. {slogan}">
+<title>{name} · {tagline}</title>
 {icon_links()}
+{share_meta(data)}
 <style>{bundle_css()}</style>
 </head>
 <body>
 <div class="viz-root">
   <header class="site-head">
-    <a class="brand" href="#/" aria-label="GBL Predictor, αρχική"><span class="brand-badge" id="brand-badge" aria-hidden="true"></span><span class="brand-text"><b>GBL Predictor</b><small id="brand-season"></small></span></a>
+    <a class="brand" href="#/" aria-label="{name}, αρχική"><span class="brand-badge" aria-hidden="true"><img src="{favicon_data_uri()}" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
     <nav id="nav" aria-label="Κύρια πλοήγηση"></nav>
     <div class="head-tools">
       <button id="refresh" class="btn btn-primary" type="button" title="Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"><span class="spin" aria-hidden="true">⟳</span> Ανανέωση</button>

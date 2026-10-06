@@ -61,10 +61,10 @@ pages.contact = () => {
     if (trap.value) { thanks(); return; }
     if (!canSend) {
       if (D.contact_email) {
-        location.href = `mailto:${D.contact_email}?subject=${encodeURIComponent('[GBL Predictor] ' + topic.value)}&body=${encodeURIComponent(message.value + '\n\n— ' + name.value)}`;
+        location.href = `mailto:${D.contact_email}?subject=${encodeURIComponent(`[${BRAND.name}] ` + topic.value)}&body=${encodeURIComponent(message.value + '\n\n— ' + name.value)}`;
         return;
       }
-      showToast('Για να σταλεί το μήνυμα, άνοιξε τη σελίδα από το εικονίδιο «GBL Predictor».', 'bad', 7000);
+      showToast(`Για να σταλεί το μήνυμα, άνοιξε τη σελίδα από το εικονίδιο «${BRAND.name}».`, 'bad', 7000);
       return;
     }
     submit.disabled = true; submit.textContent = 'Αποστολή…';

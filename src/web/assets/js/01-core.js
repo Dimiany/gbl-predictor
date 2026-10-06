@@ -3,6 +3,8 @@
 // src/web/render.py, so top-level declarations here are visible to later files.
 
 const D = JSON.parse(document.getElementById('data').textContent);
+/** Site name and lines (src/config.py SITE_*). */
+const BRAND = D.brand || {name: 'TipOff', tagline: 'Greek Basketball Predictor', slogan: '', url: ''};
 const NS = 'http://www.w3.org/2000/svg';
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;

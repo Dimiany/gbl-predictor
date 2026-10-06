@@ -1,6 +1,6 @@
 """Double-click launcher target: serve the site with working Refresh / Contact buttons.
 
-Started by "GBL Predictor.bat" (the desktop shortcut points there). All logic
+Started by "TipOff.bat" (the desktop shortcut "TipOff" points there). All logic
 lives in src/web/server.py; this is the thin CLI wrapper.
 
     python scripts/serve.py               # update if stale, open the browser, serve

@@ -8,7 +8,7 @@ Usage:
 By default this is the whole "normal path" in one command: pull new results
 from FlashScore, retrain, predict the next round, log those predictions to
 data/prediction_history.csv (so the accuracy record grows), and write the page.
-Day to day, the desktop shortcut (GBL Predictor.bat -> scripts/serve.py) does
+Day to day, the desktop shortcut (TipOff.bat -> scripts/serve.py) does
 the same through the page's Refresh button.
 """
 

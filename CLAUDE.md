@@ -2,12 +2,16 @@
      project. Keep it under ~300 lines; content past that gets truncated.
      Plain prose = instructions to follow. HTML comments = the "why", for humans. -->
 
-# GBL Basketball Predictor
+# TipOff · Greek Basketball Predictor
 
 Score and win-probability predictor for the Greek Basket League (Stoiximan GBL,
 A1). A 3-feature linear margin model on top of Elo, with an optional human
 override layer (absences / adjustments). About 180 games, 14 teams. The output
 is a website: a desktop app on the user's PC plus a public copy on Firebase.
+
+Brand (since 06/10/2026): **TipOff** · *Greek Basketball Predictor*, domain
+tipoff.gr, slogan «Οι αριθμοί, πριν το τζάμπολ.» All names live in `config.SITE_*`
+(JS: `BRAND`). Internal names (repo, Firebase project `gbl-predictor`) stay.
 
 ## The user
 
@@ -22,7 +26,7 @@ is a website: a desktop app on the user's PC plus a public copy on Firebase.
 
 ```
 Desktop app (local)          GitHub Actions (cloud brain)         Firebase (public site)
-GBL Predictor.bat            .github/workflows/site.yml           Hosting: the built page
+TipOff.bat                   .github/workflows/site.yml           Hosting: the built page
  -> scripts/serve.py          nightly: sync if due -> retrain      Firestore: contact form
  -> 127.0.0.1:8765            -> predict -> log -> commit data      (REST, create-only rules)
  ⟳ Ανανέωση button             -> deploy to Firebase Hosting
@@ -66,7 +70,7 @@ GBL Predictor.bat            .github/workflows/site.yml           Hosting: the b
 | Tests (must pass) | `python -m pytest tests/` |
 | Lint + format (match CI) | `ruff check .` and `ruff format .` |
 | Full update + build the page | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open`, `--auto` = cloud "only if due") |
-| Desktop app (what the user double-clicks) | `GBL Predictor.bat` -> `python scripts/serve.py` |
+| Desktop app (what the user double-clicks) | desktop shortcut "TipOff" -> `TipOff.bat` -> `python scripts/serve.py` |
 | Retrain + evaluate only | `python scripts/train.py` |
 | Refresh official crests | `python scripts/fetch_crests.py [TEAM ...]` (sources: `data/crest_sources.csv`) |
 | Re-predict a missed round | `python scripts/backfill_predictions.py dd/mm/yyyy dd/mm/yyyy` (adds retroactive rows only) |
@@ -205,6 +209,10 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - `tests/test_web.py` runs `node --check` on the bundle, checks the CSP hash,
   site modes and rules/form consistency.
 - Check visual changes with a headless Edge screenshot before calling them done.
+- Share card: `assets/og-card.jpg` (1200x630, static) is copied next to index.html
+  with robots.txt + sitemap.xml by `build.write_site_files`; Open Graph tags in
+  `render.share_meta` point at `SITE_URL`. Canonical = https://tipoff.gr/ (live only).
+  Search Console uses a DNS TXT record at papaki (Domain property).
 - Crests: official league images (esake.gr) in `assets/crests`, fitted inside
   the round frame (`.crest` has `border-radius:50%` and a white disc in dark
   mode). `crop=sponsor` strips a sponsor logo below the crest; `crop=none`
@@ -228,7 +236,9 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - Public site live since 06/10/2026: https://gbl-predictor.web.app (Firebase
   project `gbl-predictor`, Spark plan). Test site: https://gbl-predictor-test.web.app.
   Contact messages: Firebase console → Firestore → `contact_messages`. The
-  original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain: not yet.
+  original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain **tipoff.gr**
+  (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor; www → apex
+  redirect in Firebase) live since 06/10/2026.
 
 ## Ideas backlog (agreed with the user, not started)
 
@@ -253,7 +263,7 @@ When the user says "στήσε το περιβάλλον" on another computer:
    deploys run in GitHub Actions. Add `RAPIDAPI_KEY` only if they want direct API
    calls; they get it from rapidapi.com, never copied over chat or email.
 3. `gh auth login` (browser flow), then `python -m pytest tests/` and `ruff check .`.
-4. Optional: desktop shortcut to `GBL Predictor.bat`.
+4. Optional: desktop shortcut "TipOff" to `TipOff.bat`.
 5. Claude's memory (preferences, history) is per machine. Everything the next
    session needs must live in this file.
 Never work on two machines at once without `git pull` first.
