@@ -210,7 +210,7 @@ function tickerItem(g) {
     h('span', {class: 't-team' + (hw ? '' : ' lost')}, crest(g.home, 18), h('span', null, g.home)),
     h('span', {class: 't-team' + (hw ? ' lost' : '')}, crest(g.away, 18), h('span', null, g.away)),
     h('span', {class: 't-boxes'},
-      h('span', {class: 't-box'}, h('small', null, 'Αποτέλεσμα'), h('b', null, `${g.hs}–${g.as}`)),
+      h('span', {class: 't-box t-result'}, h('small', null, 'Αποτέλεσμα'), h('b', null, `${g.hs}–${g.as}`)),
       h('span', {class: 't-box t-pred' + (o ? (o.ok ? ' ok' : ' bad') : '')}, h('small', null, 'Πρόβλεψη'),
         pk ? h('b', null, `${pk.phs}–${pk.pas}`) : h('b', {class: 'muted'}, '–'),
         pk ? h('em', null, `${pk.w} ${pctProb(pickWinnerProb)}`) : null)));
