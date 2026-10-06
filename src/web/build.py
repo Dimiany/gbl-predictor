@@ -52,22 +52,46 @@ def local_refresh_kwargs() -> dict[str, bool]:
     return {"sync": True, "log": True, "pull": False}
 
 
-def pull_latest() -> str:
-    """``git pull --ff-only`` the data the cloud run committed. Never raises."""
+CLOUD_BRANCH = "main"  # where the scheduled cloud run commits its data
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args], cwd=cfg.PROJECT_ROOT, capture_output=True, text=True, timeout=60
+    )
+
+
+def _last_line(result: subprocess.CompletedProcess) -> str:
+    lines = (result.stderr or result.stdout).strip().splitlines()
+    return lines[-1] if lines else "git error"
+
+
+def pull_latest(attempts: int = 2) -> str:
+    """Fast-forward to the data the cloud run committed. Never raises.
+
+    ``fetch origin main`` + ``merge --ff-only origin/main`` instead of a bare
+    ``git pull``: pull reads .git/FETCH_HEAD, which an editor's background
+    auto-fetch (VS Code) can rewrite mid-pull ("Cannot fast-forward to
+    multiple branches"). One retry covers any other transient failure. Only
+    on the main branch: a feature branch must not silently absorb data commits.
+    """
     try:
-        result = subprocess.run(
-            ["git", "pull", "--ff-only", "--quiet"],
-            cwd=cfg.PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
+        branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+        if branch.returncode != 0:
+            return "Pull: skipped — " + _last_line(branch)
+        if branch.stdout.strip() != CLOUD_BRANCH:
+            return f"Pull: skipped — on branch {branch.stdout.strip()!r}, not {CLOUD_BRANCH!r}"
+        error = "git error"
+        for _ in range(attempts):
+            step = _git("fetch", "--quiet", "origin", CLOUD_BRANCH)
+            if step.returncode == 0:
+                step = _git("merge", "--ff-only", "--quiet", f"origin/{CLOUD_BRANCH}")
+                if step.returncode == 0:
+                    return "Pull: up to date with GitHub."
+            error = _last_line(step)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return f"Pull: skipped — {exc}"
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip().splitlines()
-        return "Pull: skipped — " + (detail[-1] if detail else "git error")
-    return "Pull: up to date with GitHub."
+    return "Pull: skipped — " + error
 
 
 def sync_due(
