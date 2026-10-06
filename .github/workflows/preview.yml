@@ -1,6 +1,7 @@
-# Preview links: every pull request gets its own temporary copy of the site on
-# Firebase Hosting (a "preview channel"), linked in a PR comment, so a change
-# can be checked on a phone before it goes live.
+# The test site: every pull request is published to one fixed address,
+# https://gbl-predictor-test.web.app (a second Firebase Hosting site), and the
+# PR gets a comment with the link, so a change can be checked on a phone
+# before it goes live. The newest PR push wins if several are open.
 #
 # The preview never calls the API and never logs predictions (it builds from
 # the data in the branch), shows a yellow "ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ" strip, is
@@ -48,20 +49,23 @@ jobs:
       - name: Build the page (no API, no logging)
         run: python scripts/build_dashboard.py --no-sync --no-log
 
-      - name: Publish the preview link
+      - name: Publish to the test site
         env:
           SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          TEST_SITE: gbl-predictor-test
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           printf '%s' "$SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx --yes firebase-tools@15 hosting:channel:deploy "pr-$PR" --expires 7d \
-            --project "$FIREBASE_PROJECT_ID" --non-interactive --json > deploy.json
+          fb() { npx --yes firebase-tools@15 "$@" --project "$FIREBASE_PROJECT_ID" --non-interactive; }
+          # First run only: create the second Hosting site (free on the Spark plan).
+          fb hosting:sites:get "$TEST_SITE" > /dev/null 2>&1 || fb hosting:sites:create "$TEST_SITE"
+          fb deploy --only "hosting:$TEST_SITE" --message "PR #$PR"
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
-          url=$(python -c "import json; r=json.load(open('deploy.json'))['result']; print(next(iter(r.values()))['url'])")
-          body="🔎 **Δοκιμαστικό link:** $url
+          url="https://$TEST_SITE.web.app"
+          body="🔎 **Δοκιμαστικό site:** $url
 
-          Ισχύει 7 μέρες και ενημερώνεται σε κάθε νέα αλλαγή αυτού του αιτήματος."
+          Πάντα το ίδιο link: δείχνει την τελευταία αλλαγή που περιμένει έγκριση (αυτό το αίτημα, #$PR)."
           echo "$body" >> "$GITHUB_STEP_SUMMARY"
           gh pr comment "$PR" --edit-last --body "$body" || gh pr comment "$PR" --body "$body"

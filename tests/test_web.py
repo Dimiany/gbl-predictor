@@ -144,7 +144,11 @@ def test_firestore_rules_match_the_form():
 
 def test_firebase_hosting_serves_the_built_dashboard():
     conf = json.loads((ROOT / "firebase.json").read_text(encoding="utf-8"))
-    assert conf["hosting"]["public"] == cfg.DASHBOARD_FILE.parent.name
+    sites = {h["site"]: h for h in conf["hosting"]}
+    assert set(sites) == {"gbl-predictor", "gbl-predictor-test"}
+    assert {h["public"] for h in sites.values()} == {cfg.DASHBOARD_FILE.parent.name}
+    test_headers = {x["key"] for x in sites["gbl-predictor-test"]["headers"][0]["headers"]}
+    assert "X-Robots-Tag" in test_headers  # the test site stays out of search engines
     assert conf["firestore"]["rules"] == "firestore.rules"
 
 

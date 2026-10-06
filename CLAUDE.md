@@ -39,8 +39,10 @@ GBL Predictor.bat            .github/workflows/site.yml           Hosting: the b
        the same game and race for the 500-request monthly quota. -->
 - Bot commits ("data: automatic update") land on `main`. Run `git pull` before
   any work; never hand-edit data files the bot writes.
-- Work on a branch and open a PR: CI runs, preview.yml comments a preview link,
-  and the user approves. Merging to `main` deploys live (site.yml on push).
+- Work on a branch and open a PR: CI runs, preview.yml publishes it to the fixed
+  test site https://gbl-predictor-test.web.app (2nd Hosting site in firebase.json)
+  and comments the link; the user approves. Merging to `main` deploys live
+  (site.yml on push, `--only hosting:gbl-predictor`). Live: https://gbl-predictor.web.app
 - Both workflows skip until the repo variable `FIREBASE_PROJECT_ID` exists.
   Secrets: `RAPIDAPI_KEY`, `FIREBASE_SERVICE_ACCOUNT` (JSON). Variables:
   `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, `FLASHSCORE_TOURNAMENT_TEMPLATE_ID`,

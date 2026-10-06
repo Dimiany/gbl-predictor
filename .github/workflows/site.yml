@@ -103,8 +103,9 @@ jobs:
         run: |
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
           printf '%s' "$SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
-          targets=hosting
-          if [ "${{ github.event_name }}" = "push" ]; then targets=hosting,firestore:rules; fi
+          # Only the live site: firebase.json also defines the test site (preview.yml).
+          targets=hosting:gbl-predictor
+          if [ "${{ github.event_name }}" = "push" ]; then targets=$targets,firestore:rules; fi
           npx --yes firebase-tools@15 deploy --only "$targets" \
             --project "$FIREBASE_PROJECT_ID" --non-interactive
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"

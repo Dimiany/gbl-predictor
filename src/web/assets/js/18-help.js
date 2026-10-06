@@ -8,7 +8,7 @@ function cloudHelp() {
     h('ul', null,
       h('li', null, h('b', null, 'Ενημέρωση τώρα:'), ' στο github.com, στο repo → Actions → «Site» → Run workflow → Run workflow.'),
       h('li', null, h('b', null, 'Μηνύματα της φόρμας:'), ' console.firebase.google.com → Firestore Database → contact_messages.'),
-      h('li', null, h('b', null, 'Αλλαγές στο site:'), ' τις βλέπεις πρώτα σε δοκιμαστικό link (με κίτρινη λωρίδα) και ανεβαίνουν μόνο όταν πεις «ναι».')),
+      h('li', null, h('b', null, 'Αλλαγές στο site:'), ' τις βλέπεις πρώτα στο δοκιμαστικό site, πάντα στο ίδιο link: gbl-predictor-test.web.app (με κίτρινη λωρίδα). Ανεβαίνουν στο κανονικό μόνο όταν πεις «ναι».')),
     h('p', null, 'Σε αυτή την εφαρμογή, το ', h('span', {class: 'kbd'}, '⟳ Ανανέωση'), ' φέρνει τα δεδομένα που ενημέρωσε το GitHub, ώστε εφαρμογή και site να δείχνουν ακριβώς τα ίδια.'));
 }
 
