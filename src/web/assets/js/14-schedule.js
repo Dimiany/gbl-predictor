@@ -22,6 +22,7 @@ pages.schedule = () => {
     monthCtrl);
   draw();
   return [pageBanner('Πρόγραμμα', `${D.upcoming.length} αγώνες μέχρι το τέλος της κανονικής περιόδου`),
-    h('section', {class: 'panel'}, filters, box,
+    h('section', {class: 'panel'}, sectionHead('Αγώνες ανά ημέρα', 'δεξιά: η πρόβλεψη του μοντέλου (σκορ · φαβορί και πιθανότητα), μόνο για την επόμενη αγωνιστική', infoDot('prob')),
+      filters, box,
       h('p', {class: 'foot-note'}, 'Το μοντέλο προβλέπει μόνο την επόμενη αγωνιστική. Για αγώνες πιο μακριά, η φόρμα και τα ρόστερ θα έχουν αλλάξει μέχρι τότε.'))];
 };

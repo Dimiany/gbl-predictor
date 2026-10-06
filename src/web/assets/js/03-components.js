@@ -155,10 +155,11 @@ function predCard(p) {
   return tilt(h('article', {class: 'card' + (isFocus(p.home, p.away) ? ' is-focus' : '')},
     h('div', {class: 'card-when'}, h('span', null, `${dayLabel(p.d)} · ${p.t || '–'}`), confBadge(Math.max(p.p, 1 - p.p))),
     h('div', {class: 'board'},
+      h('div', {class: 'board-row board-head', 'aria-hidden': 'true'}, h('span', {title: 'Πρώτα ο γηπεδούχος'}, 'Ομάδες'), h('span', {title: 'Νίκες-ήττες'}, 'Ν-Η'), h('span', null, 'Πρόβλεψη')),
       h('div', {class: 'board-row' + (homeFav ? ' fav' : '')}, tlink(p.home), h('span', {class: 'elo', title: 'Γηπεδούχος · ρεκόρ'}, record(p.home)), h('span', {class: 'pts'}, p.phs)),
       h('div', {class: 'board-row' + (homeFav ? '' : ' fav')}, tlink(p.away), h('span', {class: 'elo'}, record(p.away)), h('span', {class: 'pts'}, p.pas))),
     bar,
-    h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', {class: 'muted'}, `Elo ${p.home_elo} – ${p.away_elo} · ±${p.band}`), h('span', null, ap + '%')),
+    h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', {class: 'muted', title: `Elo ${p.home_elo} – ${p.away_elo}`}, `πιθανότητα νίκης · ±${p.band} π.`), h('span', null, ap + '%')),
     (p.notes || []).map(n => h('div', {class: 'card-note'}, n))));
 }
 
@@ -199,12 +200,26 @@ function resultsTable(games, opts = {}) {
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
 }
 
+/** One played game in the ticker: the teams, then the result and the model's call side by side. */
 function tickerItem(g) {
-  const hw = g.hs > g.as, o = outcome(g);
-  return h('a', {class: 'tick' + (o?.hit ? ' hit' : ''), href: teamHref(isFocus(g.away) ? g.away : g.home), title: `${g.home} ${g.hs}–${g.as} ${g.away}`},
+  const hw = g.hs > g.as, o = outcome(g), pk = g.pick;
+  const pickWinnerProb = pk ? (pk.w === g.home ? pk.p : 1 - pk.p) : null;
+  return h('a', {class: 'tick' + (o?.hit ? ' hit' : ''), href: teamHref(isFocus(g.away) ? g.away : g.home), draggable: 'false',
+    title: `${g.home} ${g.hs}–${g.as} ${g.away}` + (pk ? ` · πρόβλεψη ${pk.phs}–${pk.pas}` : '')},
     h('span', {class: 't-date'}, h('span', null, dayLabel(g.d)), o ? (o.hit ? hitBadge(o.prob) : verdict(o.ok)) : h('span')),
-    h('span', {class: 't-team' + (hw ? '' : ' lost')}, crest(g.home, 18), h('span', null, g.home)), h('span', {class: 't-pts' + (hw ? '' : ' lost')}, g.hs),
-    h('span', {class: 't-team' + (hw ? ' lost' : '')}, crest(g.away, 18), h('span', null, g.away)), h('span', {class: 't-pts' + (hw ? ' lost' : '')}, g.as));
+    h('span', {class: 't-team' + (hw ? '' : ' lost')}, crest(g.home, 18), h('span', null, g.home)),
+    h('span', {class: 't-team' + (hw ? ' lost' : '')}, crest(g.away, 18), h('span', null, g.away)),
+    h('span', {class: 't-boxes'},
+      h('span', {class: 't-box t-result'}, h('small', null, 'Αποτέλεσμα'), h('b', null, `${g.hs}–${g.as}`)),
+      h('span', {class: 't-box t-pred' + (o ? (o.ok ? ' ok' : ' bad') : '')}, h('small', null, 'Πρόβλεψη'),
+        pk ? h('b', null, `${pk.phs}–${pk.pas}`) : h('b', {class: 'muted'}, '–'),
+        pk ? h('em', null, `${pk.w} ${pctProb(pickWinnerProb)}`) : null)));
+}
+
+/** Latest results strip: scrolls by itself, drags with the mouse, swipes on touch. */
+function resultsTicker(games) {
+  const strip = h('div', {class: 'ticker', role: 'region', 'aria-label': 'Τελευταία αποτελέσματα και προβλέψεις', tabindex: '0'}, games.map(tickerItem));
+  return h('div', {class: 'ticker-wrap'}, autoScroll(strip));
 }
 
 /** Gold "hall of fame" card for a confident, correct call. */

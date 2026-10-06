@@ -115,6 +115,78 @@ function revealIn(root) {
   root.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 }
 
+/**
+ * Endless, self-scrolling strip that can also be dragged with the mouse.
+ * The items are cloned once so the loop is seamless. Scrolling pauses while
+ * the pointer is over it, while dragging or touching, while it has keyboard
+ * focus, when it's off-screen and when the tab is hidden. Reduced motion:
+ * no auto-scroll and no clones (it's then a plain scrollable strip).
+ */
+function autoScroll(strip, speed = 32 /* px per second */) {
+  const originals = [...strip.children];
+  if (REDUCED_MOTION || originals.length < 2) return strip;
+  originals.forEach(n => {
+    const c = n.cloneNode(true);
+    c.setAttribute('aria-hidden', 'true');
+    c.tabIndex = -1;
+    strip.append(c);
+  });
+  // Width of one full set = where the first clone starts.
+  const loopWidth = () => strip.children[originals.length].offsetLeft - strip.children[0].offsetLeft;
+  const wrap = x => { const w = loopWidth(); return w > 0 ? ((x % w) + w) % w : x; };
+
+  let pos = 0, last = 0, hovering = false, focused = false, visible = true, holdUntil = 0, drag = null;
+  const hold = ms => { holdUntil = performance.now() + ms; };
+
+  // Mouse drag; touch and pens scroll natively.
+  strip.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    drag = {x: e.clientX, start: strip.scrollLeft, moved: false};
+  });
+  const onMove = e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) > 4) { drag.moved = true; strip.classList.add('dragging'); }
+    if (drag.moved) { pos = wrap(drag.start - dx); strip.scrollLeft = pos; }
+  };
+  const onUp = () => {
+    if (!drag) return;
+    // A drag is not a click: swallow the click that ends it.
+    if (drag.moved) strip.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); }, {capture: true, once: true});
+    strip.classList.remove('dragging');
+    drag = null;
+    hold(1500);
+  };
+  addEventListener('pointermove', onMove);
+  addEventListener('pointerup', onUp);
+  strip.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') hovering = true; });
+  strip.addEventListener('pointerleave', () => { hovering = false; });
+  strip.addEventListener('touchstart', () => hold(4000), {passive: true});
+  strip.addEventListener('wheel', () => hold(2500), {passive: true});
+  strip.addEventListener('focusin', () => { focused = true; });
+  strip.addEventListener('focusout', () => { focused = false; });
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(strip);
+
+  const step = now => {
+    if (last && !strip.isConnected) {  // the page changed: clean up and stop
+      removeEventListener('pointermove', onMove);
+      removeEventListener('pointerup', onUp);
+      return;
+    }
+    const dt = last ? Math.min(now - last, 64) : 0;
+    last = now;
+    // Scrolled by hand (touch, wheel, keyboard): carry on from there, inside the loop.
+    if (!drag && Math.abs(strip.scrollLeft - pos) > 2) { pos = wrap(strip.scrollLeft); strip.scrollLeft = pos; }
+    if (!drag && !hovering && !focused && visible && !document.hidden && now > holdUntil) {
+      pos = wrap(pos + speed * dt / 1000);
+      strip.scrollLeft = pos;
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  return strip;
+}
+
 /** Animate probability bars / meters from 0 to their target width. */
 function growBars(root) {
   const targets = root.querySelectorAll('[data-w]');
