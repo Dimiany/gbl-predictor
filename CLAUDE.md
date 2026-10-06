@@ -70,7 +70,7 @@ TipOff.bat                   .github/workflows/site.yml           Hosting: the b
 | Tests (must pass) | `python -m pytest tests/` |
 | Lint + format (match CI) | `ruff check .` and `ruff format .` |
 | Full update + build the page | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open`, `--auto` = cloud "only if due") |
-| Desktop app (what the user double-clicks) | desktop shortcut "TipOff" -> `TipOff.bat` -> `python scripts/serve.py` |
+| Desktop app (what the user double-clicks) | desktop shortcut "TipOff" (icon `src/web/assets/tipoff.ico`) -> `TipOff.bat` -> `python scripts/serve.py` |
 | Retrain + evaluate only | `python scripts/train.py` |
 | Refresh official crests | `python scripts/fetch_crests.py [TEAM ...]` (sources: `data/crest_sources.csv`) |
 | Re-predict a missed round | `python scripts/backfill_predictions.py dd/mm/yyyy dd/mm/yyyy` (adds retroactive rows only) |
