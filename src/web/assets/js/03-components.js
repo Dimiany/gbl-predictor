@@ -121,7 +121,7 @@ function table(cols, rows, opts = {}) {
       shown += opts.pageSize; draw(); afterRender(wrap);
       wrap.querySelectorAll('tbody tr')[shown - opts.pageSize]?.querySelector('a, button')?.focus({preventScroll: true});
     }}, `Δείξε περισσότερους (${rest} ακόμα)`) : null;
-    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)), more);
+    wrap.replaceChildren(...[h('table', null, h('thead', null, head), h('tbody', null, body)), more].filter(Boolean));
     requestAnimationFrame(edge);
   }
   draw();
