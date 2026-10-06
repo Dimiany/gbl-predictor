@@ -3,8 +3,10 @@ and the scheduled GitHub Actions run (.github/workflows/site.yml)."""
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from collections.abc import Iterable
+from pathlib import Path
 
 import pandas as pd
 
@@ -14,7 +16,7 @@ from src.predict import load_fixtures_from_csv
 from src.prediction_log import append_predictions, load_log
 from src.sync import sync_for_notebook
 from src.web.data import build_dashboard
-from src.web.render import render_html
+from src.web.render import ASSETS_DIR, render_html
 
 
 def update_site(sync: bool = True, log: bool = True, pull: bool = False) -> str:
@@ -41,8 +43,32 @@ def update_site(sync: bool = True, log: bool = True, pull: bool = False) -> str:
         append_predictions(preds)
     cfg.DASHBOARD_FILE.parent.mkdir(parents=True, exist_ok=True)
     cfg.DASHBOARD_FILE.write_text(render_html(data), encoding="utf-8")
+    write_site_files(cfg.DASHBOARD_FILE.parent)
     lines.append(f"Dashboard written ({len(preds)} next-round prediction(s)).")
     return "\n".join(lines)
+
+
+def write_site_files(out_dir: Path, mode: str | None = None) -> None:
+    """Files the hosting serves next to index.html: share card, robots, sitemap.
+
+    The live site invites search engines (robots.txt + sitemap.xml pointing at
+    SITE_URL); preview builds forbid crawling, on top of their noindex header.
+    """
+    mode = mode or cfg.SITE_MODE
+    shutil.copyfile(ASSETS_DIR / cfg.SHARE_CARD_FILE, out_dir / cfg.SHARE_CARD_FILE)
+    if mode == "live":
+        robots = f"User-agent: *\nAllow: /\nSitemap: {cfg.SITE_URL}/sitemap.xml\n"
+    else:
+        robots = "User-agent: *\nDisallow: /\n"
+    (out_dir / "robots.txt").write_text(robots, encoding="utf-8")
+    today = pd.Timestamp.now().strftime("%Y-%m-%d")
+    (out_dir / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url><loc>{cfg.SITE_URL}/</loc><lastmod>{today}</lastmod>"
+        "<changefreq>daily</changefreq></url>\n</urlset>\n",
+        encoding="utf-8",
+    )
 
 
 def local_refresh_kwargs() -> dict[str, bool]:

@@ -148,6 +148,8 @@ SITE_NAME: str = "TipOff"
 SITE_TAGLINE: str = "Greek Basketball Predictor"
 SITE_SLOGAN: str = "Οι αριθμοί, πριν το τζάμπολ."
 SITE_URL: str = "https://tipoff.gr"
+# Share card (Open Graph image) shipped next to index.html; 1200x630.
+SHARE_CARD_FILE: str = "og-card.jpg"
 
 # Where this build of the site will be shown:
 #   local   — the desktop app (scripts/serve.py): Refresh + CSV contact form

@@ -209,6 +209,10 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - `tests/test_web.py` runs `node --check` on the bundle, checks the CSP hash,
   site modes and rules/form consistency.
 - Check visual changes with a headless Edge screenshot before calling them done.
+- Share card: `assets/og-card.jpg` (1200x630, static) is copied next to index.html
+  with robots.txt + sitemap.xml by `build.write_site_files`; Open Graph tags in
+  `render.share_meta` point at `SITE_URL`. Canonical = https://tipoff.gr/ (live only).
+  Search Console uses a DNS TXT record at papaki (Domain property).
 - Crests: official league images (esake.gr) in `assets/crests`, fitted inside
   the round frame (`.crest` has `border-radius:50%` and a white disc in dark
   mode). `crop=sponsor` strips a sponsor logo below the crest; `crop=none`
@@ -232,7 +236,9 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - Public site live since 06/10/2026: https://gbl-predictor.web.app (Firebase
   project `gbl-predictor`, Spark plan). Test site: https://gbl-predictor-test.web.app.
   Contact messages: Firebase console → Firestore → `contact_messages`. The
-  original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain: not yet.
+  original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain **tipoff.gr**
+  (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor; www → apex
+  redirect in Firebase) live since 06/10/2026.
 
 ## Ideas backlog (agreed with the user, not started)
 
