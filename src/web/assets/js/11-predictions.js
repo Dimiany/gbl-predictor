@@ -19,16 +19,16 @@ function historyTab() {
         ? `${ok}/${graded.length} σωστοί νικητές (${pct(ok / graded.length)}) · μέση απόκλιση διαφοράς ${mae} πόντοι · ${rows.length - graded.length} σε αναμονή`
         : `${rows.length} προβλέψεις σε αναμονή`),
       table([
-        {label: 'Ημέρα', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: 'Αγώνας', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:8px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
-        {label: 'Πρόβλεψη', num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
-        {label: 'Νικητής (πιθ.)', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
-        {label: 'Αποτέλεσμα', num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
-        {label: 'Απόκλιση', num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
-        {label: '', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center'}, verdict(r.ok), r.retro ? retroBadge() : null, isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
+        {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
+        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:8px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: 'Πρόβλεψη', area: 'pred', cap: true, num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
+        {label: 'Νικητής (πιθ.)', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
+        {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
+        {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
+        {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), r.retro ? retroBadge() : null, isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
-        {label: 'Μοντέλο', render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
-      ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.',
+        {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
+      ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log',
         rowClass: r => [isFocus(r.home, r.away) ? 'is-focus' : '', isHit(r) ? 'hit' : ''].join(' ').trim() || null}));
   };
   const filters = h('div', {class: 'filters'},

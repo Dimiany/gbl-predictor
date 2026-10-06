@@ -209,6 +209,16 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   every address. A new page or tab needs a slug and a `site_pages()` entry.
 - The pages link the shared files by absolute path, so they need a server:
   Firebase, or `scripts/serve.py` locally (no file:// opening).
+- SEO in each page's HTML (render.py): the main menu as plain links
+  (`NAV_PAGES`, also used by the JS), schema.org JSON-LD (WebSite + Organization
+  on home, BreadcrumbList elsewhere, from `TAB_LABELS`), and an invisible `.ssr`
+  heading + description in `<main>` for crawlers without JS (the JS replaces it).
+- Phones (≤ 720 px): the top menu row is replaced by a bottom tab bar (Αρχική,
+  Προβλέψεις, Βαθμολογία, Ομάδες, Μενού → sheet with every page), 90-app.js.
+  Tables: column options `sticky` (stays put when scrolling sideways), `hideSm`,
+  and `area`/`cap` + `opts.cards` ('results' | 'log') turn rows into cards
+  (≤ 640 px), see `table()` in 03-components.js. Check phone changes at 390 and
+  360 px with CDP mobile emulation; nothing may overflow sideways.
 - DOM via `h()` / `s()` (text nodes only, never innerHTML with data). The CSP
   allows scripts only from our own files (`script-src 'self'`): no inline
   scripts or handlers, no eval, no external scripts. Images: our own files

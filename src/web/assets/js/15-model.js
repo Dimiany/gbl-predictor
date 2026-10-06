@@ -20,7 +20,7 @@ function performanceTab() {
           {label: 'Αγώνες', num: true, render: b => b.n},
           {label: 'Μέση πρόβλεψη', num: true, render: b => pct(b.sp / b.n)},
           {label: 'Νίκες φαβορί', num: true, render: b => h('b', null, pct(b.won / b.n))},
-          {label: '', render: b => h('div', {class: 'meter', style: 'width:120px'}, h('i', {'data-w': pct(b.won / b.n)}))},
+          {label: '', hideSm: true, render: b => h('div', {class: 'meter', style: 'width:120px'}, h('i', {'data-w': pct(b.won / b.n)}))},
         ], bins, {rowClass: b => b.a >= HIT_THRESHOLD ? 'hit' : null}),
         h('p', {class: 'foot-note'}, 'Walk-forward προβλέψεις: κάθε αγώνας προβλέφθηκε μόνο με όσα είχαν παιχτεί πριν.'))),
   ];

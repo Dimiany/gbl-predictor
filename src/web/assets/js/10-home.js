@@ -2,8 +2,8 @@
 
 function standingsTable(compact) {
   const cols = [
-    {label: '#', num: true, sort: r => r.pos, render: r => h('span', {class: 'pos' + (r.pos <= 8 ? ' top' : '')}, r.pos)},
-    {label: 'Ομάδα', sort: r => r.team, render: r => tlink(r.team)},
+    {label: '#', num: true, sticky: 1, sort: r => r.pos, render: r => h('span', {class: 'pos' + (r.pos <= 8 ? ' top' : '')}, r.pos)},
+    {label: 'Ομάδα', sticky: 2, sort: r => r.team, render: r => tlink(r.team)},
     {label: 'Αγ', num: true, title: 'Αγώνες', sort: r => r.gp, render: r => r.gp},
     {label: 'Ν', num: true, title: 'Νίκες', sort: r => r.w, render: r => r.w},
     {label: 'Η', num: true, title: 'Ήττες', sort: r => r.l, render: r => r.l},

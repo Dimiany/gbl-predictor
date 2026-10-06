@@ -19,7 +19,7 @@ function eloTable() {
     return vals.length ? {team, start: vals[0], hi: Math.max(...vals), lo: Math.min(...vals), now: vals[vals.length - 1]} : null;
   }).filter(Boolean);
   return h('details', null, h('summary', null, 'Πίνακας Elo σεζόν'), table([
-    {label: 'Ομάδα', sort: r => r.team, render: r => tlink(r.team)},
+    {label: 'Ομάδα', sticky: 1, sort: r => r.team, render: r => tlink(r.team)},
     {label: 'Αρχή', num: true, sort: r => r.start, render: r => Math.round(r.start)},
     {label: 'Υψηλό', num: true, sort: r => r.hi, render: r => Math.round(r.hi)},
     {label: 'Χαμηλό', num: true, sort: r => r.lo, render: r => Math.round(r.lo)},
