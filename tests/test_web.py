@@ -245,3 +245,10 @@ def test_every_crest_source_has_a_crop_rule():
     sources = pd.read_csv(cfg.CREST_SOURCES_CSV)
     assert set(sources["crop"]) <= {"sponsor", "none"}
     assert sources["team"].is_unique
+
+
+def test_page_has_inline_favicon_and_touch_icon():
+    page = render_html({"season": "2026/27", "games": []})
+    assert '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,' in page
+    assert '<link rel="apple-touch-icon" href="data:image/png;base64,' in page
+    assert "img-src 'self' data:" in page  # the CSP lets data-URI icons load

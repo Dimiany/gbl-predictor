@@ -41,6 +41,20 @@ def json_payload(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, allow_nan=False).replace("</", "<\\/")
 
 
+def icon_links() -> str:
+    """Favicon (SVG, every modern browser) + touch icon (PNG, phone home screens),
+    both inlined as data URIs so the page stays one self-contained file."""
+    svg = base64.b64encode((ASSETS_DIR / "favicon.svg").read_bytes()).decode("ascii")
+    png = base64.b64encode((ASSETS_DIR / "apple-touch-icon.png").read_bytes()).decode("ascii")
+    return "\n".join(
+        [
+            f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{svg}">',
+            f'<link rel="apple-touch-icon" href="data:image/png;base64,{png}">',
+            '<meta name="theme-color" content="#0b1647">',
+        ]
+    )
+
+
 def content_security_policy(script: str) -> str:
     """CSP for the page: only our own inline script (by hash) may run.
 
@@ -81,6 +95,7 @@ def render_html(data: dict) -> str:
 <meta http-equiv="Content-Security-Policy" content="{content_security_policy(script)}">{robots}
 <meta name="description" content="Προβλέψεις, βαθμολογία και στατιστικά για την Stoiximan Basket League {data["season"]}">
 <title>GBL Predictor · {data["season"]}</title>
+{icon_links()}
 <style>{bundle_css()}</style>
 </head>
 <body>
