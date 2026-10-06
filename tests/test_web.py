@@ -185,3 +185,13 @@ def test_pull_latest_reports_git_failure_without_raising(monkeypatch):
 
     monkeypatch.setattr(build.subprocess, "run", fake_run)
     assert build.pull_latest() == "Pull: skipped — fatal: Not possible to fast-forward"
+
+
+def test_overlays_inherit_the_theme():
+    # Tooltip, toast and to-top read colour tokens defined on .viz-root; outside
+    # it they render with a transparent background (text over the page).
+    page = render_html({"season": "2026/27", "games": []})
+    root_end = page.index('<script id="data"')
+    for overlay in ('id="tip"', 'id="toast"', 'id="to-top"'):
+        assert page.index('<div class="viz-root">') < page.index(overlay) < root_end
+        assert page.rindex("</div>", 0, root_end) > page.index(overlay)
