@@ -183,12 +183,45 @@ def test_local_refresh_pulls_instead_of_syncing_in_cloud_mode(monkeypatch):
     assert build.local_refresh_kwargs() == {"sync": True, "log": True, "pull": False}
 
 
-def test_pull_latest_reports_git_failure_without_raising(monkeypatch):
-    def fake_run(*args, **kwargs):
-        return subprocess.CompletedProcess(args, 1, "", "fatal: Not possible to fast-forward")
+def _fake_git(monkeypatch, branch="main", fail=()):
+    """Stub git: ``fail`` lists sub-commands that fail (each entry fails once)."""
+    calls, fail = [], list(fail)
+
+    def fake_run(cmd, **kwargs):
+        sub = cmd[1]
+        calls.append(sub)
+        if sub == "rev-parse":
+            return subprocess.CompletedProcess(cmd, 0, branch + "\n", "")
+        if sub in fail:
+            fail.remove(sub)
+            return subprocess.CompletedProcess(cmd, 1, "", f"fatal: {sub} failed")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
 
     monkeypatch.setattr(build.subprocess, "run", fake_run)
-    assert build.pull_latest() == "Pull: skipped — fatal: Not possible to fast-forward"
+    return calls
+
+
+def test_pull_latest_fetches_then_fast_forwards(monkeypatch):
+    calls = _fake_git(monkeypatch)
+    assert build.pull_latest() == "Pull: up to date with GitHub."
+    assert calls == ["rev-parse", "fetch", "merge"]  # never a bare `git pull`
+
+
+def test_pull_latest_retries_a_transient_failure(monkeypatch):
+    calls = _fake_git(monkeypatch, fail=["fetch"])
+    assert build.pull_latest() == "Pull: up to date with GitHub."
+    assert calls == ["rev-parse", "fetch", "fetch", "merge"]
+
+
+def test_pull_latest_reports_git_failure_without_raising(monkeypatch):
+    _fake_git(monkeypatch, fail=["merge", "merge"])
+    assert build.pull_latest() == "Pull: skipped — fatal: merge failed"
+
+
+def test_pull_latest_leaves_feature_branches_alone(monkeypatch):
+    calls = _fake_git(monkeypatch, branch="new-feature")
+    assert "not 'main'" in build.pull_latest()
+    assert calls == ["rev-parse"]
 
 
 def test_overlays_inherit_the_theme():
