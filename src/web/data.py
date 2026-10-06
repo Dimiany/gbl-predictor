@@ -260,10 +260,15 @@ def _team_logos() -> dict[str, str]:
     """Canonical team name -> inlined crest, for every team with a known logo URL."""
     if not cfg.TEAM_LOGOS_CSV.exists():
         return {}
-    logos = pd.read_csv(cfg.TEAM_LOGOS_CSV)
+    logos = pd.read_csv(cfg.TEAM_LOGOS_CSV, dtype=str, keep_default_na=False)
+    if "crest_url" not in logos.columns:
+        logos["crest_url"] = ""
     out = {}
-    for team, url in zip(logos["team"], logos["logo_url"], strict=True):
-        uri = _image_data_uri(url)
+    for team, small, large in zip(
+        logos["team"], logos["logo_url"], logos["crest_url"], strict=True
+    ):
+        # Prefer the 100x100 crest; the 30x30 list image is only a fallback.
+        uri = _image_data_uri(large) or _image_data_uri(small)
         if uri:
             out[team] = uri
     return out

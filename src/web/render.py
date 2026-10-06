@@ -98,10 +98,11 @@ def render_html(data: dict) -> str:
   </header>
   <main id="app" tabindex="-1"></main>
   <footer class="site-foot" id="foot"></footer>
+  <!-- Overlays stay inside .viz-root: the theme tokens (colours, fonts) live there. -->
+  <button class="to-top" id="to-top" type="button" aria-label="Πάνω">↑</button>
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </div>
-<button class="to-top" id="to-top" type="button" aria-label="Πάνω">↑</button>
-<div id="tip" class="tip" role="tooltip" hidden></div>
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <script id="data" type="application/json">{json_payload(data)}</script>
 <script>{script}</script>
 </body>
