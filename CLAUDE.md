@@ -1,5 +1,5 @@
 <!-- Onboarding notes FOR Claude, loaded at the start of every session in this
-     project. Keep it under ~260 lines; content past that gets truncated.
+     project. Keep it under ~300 lines; content past that gets truncated.
      Plain prose = instructions to follow. HTML comments = the "why", for humans. -->
 
 # GBL Basketball Predictor
@@ -225,13 +225,38 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   Grading tolerates games rescheduled by up to 3 days.
 - `rosters.csv` has only stubs for the 2025/26 teams (no players, no stubs yet
   for the two new teams). `absences.csv` and `adjustments.csv` are empty.
-- Public site: code ready (site.yml, preview.yml, firebase.json,
-  firestore.rules). Waiting for the user's Firebase project. Not deployed yet,
-  and `GBL_CLOUD_SYNC` is not set locally. Domain: later, connected via
-  Firebase Hosting "Add custom domain". Avoid "GBL"/"Stoiximan" in the name
-  (trademarks).
-- Pending idea list (AI previews/news, Monte Carlo season, prediction game, …)
-  is in Claude's memory, not here.
+- Public site live since 06/10/2026: https://gbl-predictor.web.app (Firebase
+  project `gbl-predictor`, Spark plan). Test site: https://gbl-predictor-test.web.app.
+  Contact messages: Firebase console → Firestore → `contact_messages`. The
+  original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain: not yet.
+
+## Ideas backlog (agreed with the user, not started)
+
+Offer these when the user asks "what next". Ask before starting any of them.
+- AI (Claude API, key as a GitHub secret): match previews in Greek, per-team
+  news summary, injury hints from news (user approves before they count),
+  weekly report. A live "ask the model" chat needs a server (Blaze plan: ask).
+- Model: lower starting Elo for promoted teams; Monte Carlo season simulation
+  (title / playoff / relegation odds); real rosters + absences (names from the
+  user only).
+- Site: user-vs-model prediction game (Firestore + Auth), side-by-side team
+  comparison, Open Graph share card, custom domain (avoid "GBL"/"Stoiximan"
+  in the name: trademarks), App Check on the contact form.
+
+## Setting up a new machine
+
+When the user says "στήσε το περιβάλλον" on another computer:
+1. Check git, Python >= 3.10, node, gh (tell them in Greek what to install if
+   one is missing). Then `pip install -r requirements.txt ruff`.
+2. Create `.env` with `GBL_CLOUD_SYNC=1`, `FLASHSCORE_TOURNAMENT_TEMPLATE_ID=xn32I3T4`
+   and `FLASHSCORE_SEASON_ID=190`. No secret is needed for normal work: sync and
+   deploys run in GitHub Actions. Add `RAPIDAPI_KEY` only if they want direct API
+   calls; they get it from rapidapi.com, never copied over chat or email.
+3. `gh auth login` (browser flow), then `python -m pytest tests/` and `ruff check .`.
+4. Optional: desktop shortcut to `GBL Predictor.bat`.
+5. Claude's memory (preferences, history) is per machine. Everything the next
+   session needs must live in this file.
+Never work on two machines at once without `git pull` first.
 
 ## Known limits
 
