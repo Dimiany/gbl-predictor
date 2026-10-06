@@ -14,7 +14,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import math
+import re
 from collections import defaultdict
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -256,8 +258,18 @@ def site_settings(mode: str | None = None) -> dict:
     return {"mode": mode, "cloud_sync": cfg.CLOUD_SYNC, "firestore": firestore}
 
 
+def crest_file(team: str) -> Path:
+    """Where scripts/fetch_crests.py stores a team's official crest."""
+    slug = re.sub(r"[^a-z0-9]+", "-", team.lower()).strip("-")
+    return cfg.CRESTS_DIR / f"{slug}.webp"
+
+
 def _team_logos() -> dict[str, str]:
-    """Canonical team name -> inlined crest, for every team with a known logo URL."""
+    """Canonical team name -> inlined crest.
+
+    Preference: the official crest in assets/crests (192 px), then FlashScore's
+    100x100 crest, then its 30x30 list image.
+    """
     if not cfg.TEAM_LOGOS_CSV.exists():
         return {}
     logos = pd.read_csv(cfg.TEAM_LOGOS_CSV, dtype=str, keep_default_na=False)
@@ -267,7 +279,10 @@ def _team_logos() -> dict[str, str]:
     for team, small, large in zip(
         logos["team"], logos["logo_url"], logos["crest_url"], strict=True
     ):
-        # Prefer the 100x100 crest; the 30x30 list image is only a fallback.
+        official = crest_file(team)
+        if official.exists():
+            out[team] = "data:image/webp;base64," + base64.b64encode(official.read_bytes()).decode()
+            continue
         uri = _image_data_uri(large) or _image_data_uri(small)
         if uri:
             out[team] = uri
