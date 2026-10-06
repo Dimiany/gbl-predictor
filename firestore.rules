@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// The site's only database use: the public contact form (src/web/assets/js/17-contact.js).
+// Visitors may create one validated message and nothing else; nobody can read,
+// edit or delete from the browser. Read messages in the Firebase console.
+// Deployed by .github/workflows/site.yml on every push to main.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function validMessage(m) {
+      return m.keys().hasOnly(['name', 'email', 'topic', 'message', 'created'])
+        && m.keys().hasAll(['name', 'topic', 'message', 'created'])
+        && m.name is string && m.name.size() > 0 && m.name.size() <= 80
+        && (!('email' in m) || (m.email is string && m.email.size() <= 120))
+        && m.topic in ['Πρόταση', 'Πρόβλημα', 'Ερώτηση', 'Άλλο']
+        && m.message is string && m.message.size() > 0 && m.message.size() <= 4000
+        && m.created == request.time;
+    }
+
+    // contact_messages = the live site; test_contact_messages = preview links.
+    match /{collection}/{id} {
+      allow create: if collection in ['contact_messages', 'test_contact_messages']
+        && validMessage(request.resource.data);
+    }
+  }
+}

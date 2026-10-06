@@ -237,6 +237,25 @@ def _image_data_uri(url: str) -> str | None:
     return "data:image/png;base64," + base64.b64encode(cache.read_bytes()).decode("ascii")
 
 
+def site_settings(mode: str | None = None) -> dict:
+    """Which build this is (cfg.SITE_MODE) and how its contact form sends.
+
+    Public builds post the form straight to Firestore (REST, no SDK); the
+    collection is per mode, so preview links never mix with real messages.
+    """
+    mode = mode or cfg.SITE_MODE
+    if mode not in cfg.SITE_MODES:
+        raise ValueError(f"GBL_SITE_MODE must be one of {cfg.SITE_MODES}, got {mode!r}")
+    firestore = None
+    if mode != "local" and cfg.FIREBASE_PROJECT_ID and cfg.FIREBASE_API_KEY:
+        firestore = {
+            "project": cfg.FIREBASE_PROJECT_ID,
+            "key": cfg.FIREBASE_API_KEY,
+            "collection": cfg.CONTACT_COLLECTIONS[mode],
+        }
+    return {"mode": mode, "cloud_sync": cfg.CLOUD_SYNC, "firestore": firestore}
+
+
 def _team_logos() -> dict[str, str]:
     """Canonical team name -> inlined crest, for every team with a known logo URL."""
     if not cfg.TEAM_LOGOS_CSV.exists():
@@ -321,6 +340,7 @@ def build_dashboard(
             for f, d in zip(fixtures, dates, strict=True)
         ],
         "contact_email": cfg.CONTACT_EMAIL,
+        "site": site_settings(),
         "logos": _team_logos(),
         "league_logo": _image_data_uri(cfg.LEAGUE_LOGO_URL),
         "elo_history": _elo_history(history.drop(columns=["_season"])),

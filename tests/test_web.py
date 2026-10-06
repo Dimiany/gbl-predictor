@@ -1,17 +1,27 @@
-"""Tests for the website package (src/web): bundling, payload safety, contact storage."""
+"""Tests for the website package (src/web): bundling, payload safety, contact storage,
+site modes (local / live / preview) and the scheduled cloud run."""
 
 from __future__ import annotations
 
+import base64
 import csv
+import hashlib
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from src import config as cfg
+from src.web import build
 from src.web.contact import ContactError, save_contact_message
-from src.web.render import bundle_js, js_modules, json_payload, render_html
+from src.web.data import site_settings
+from src.web.render import JS_DIR, bundle_js, js_modules, json_payload, render_html
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_js_modules_load_core_first_and_app_last():
@@ -80,3 +90,98 @@ def test_save_contact_message_truncates_long_fields(tmp_path: Path):
     row = save_contact_message({"name": "n" * 500, "message": "m" * 10_000}, tmp_path / "m.csv")
     assert len(row["name"]) == 80
     assert len(row["message"]) == 4000
+
+
+# ---------------------------------------------------------------- site modes
+
+
+def test_csp_allows_exactly_the_bundled_script():
+    page = render_html({"season": "2026/27", "games": []})
+    script = re.search(r"<script>(.*)</script>", page, re.S).group(1)
+    digest = base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode()
+    assert f"script-src 'sha256-{digest}'" in page
+    assert "default-src 'none'" in page
+
+
+def test_only_preview_builds_are_noindex():
+    def page(mode):
+        return render_html({"season": "2026/27", "games": [], "site": {"mode": mode}})
+
+    assert 'name="robots"' in page("preview")
+    assert 'name="robots"' not in page("live")
+    assert 'name="robots"' not in page("local")
+
+
+def test_site_settings_local_never_exposes_firestore(monkeypatch):
+    monkeypatch.setattr(cfg, "FIREBASE_PROJECT_ID", "p")
+    monkeypatch.setattr(cfg, "FIREBASE_API_KEY", "k")
+    assert site_settings("local")["firestore"] is None
+
+
+def test_site_settings_preview_and_live_use_separate_collections(monkeypatch):
+    monkeypatch.setattr(cfg, "FIREBASE_PROJECT_ID", "p")
+    monkeypatch.setattr(cfg, "FIREBASE_API_KEY", "k")
+    live, preview = site_settings("live")["firestore"], site_settings("preview")["firestore"]
+    assert live == {"project": "p", "key": "k", "collection": "contact_messages"}
+    assert preview["collection"] == "test_contact_messages"
+
+
+def test_site_settings_rejects_unknown_mode():
+    with pytest.raises(ValueError):
+        site_settings("staging")
+
+
+def test_firestore_rules_match_the_form():
+    # The rules whitelist both collections and exactly the form's topics.
+    rules = (ROOT / "firestore.rules").read_text(encoding="utf-8")
+    for collection in cfg.CONTACT_COLLECTIONS.values():
+        assert f"'{collection}'" in rules
+    js = (JS_DIR / "17-contact.js").read_text(encoding="utf-8")
+    js_topics = re.search(r"const TOPICS = \[(.*?)\];", js).group(1)
+    rules_topics = re.search(r"m\.topic in \[(.*?)\]", rules).group(1)
+    assert js_topics.replace(" ", "") == rules_topics.replace(" ", "")
+
+
+def test_firebase_hosting_serves_the_built_dashboard():
+    conf = json.loads((ROOT / "firebase.json").read_text(encoding="utf-8"))
+    assert conf["hosting"]["public"] == cfg.DASHBOARD_FILE.parent.name
+    assert conf["firestore"]["rules"] == "firestore.rules"
+
+
+# ---------------------------------------------------------------- cloud run
+
+
+D = pd.Timestamp
+
+
+def test_sync_due_weekly_check_on_monday():
+    assert build.sync_due(D("2026-10-12"), [], []) == "weekly check"  # a Monday
+
+
+def test_sync_due_when_recent_results_are_expected():
+    assert build.sync_due(D("2026-10-14"), [D("2026-10-11")], []) == "results due"
+    # A game postponed long ago doesn't make every night sync.
+    assert build.sync_due(D("2026-10-14"), [D("2026-10-01")], []) is None
+
+
+def test_sync_due_before_an_unlogged_game_only():
+    wed = D("2026-10-14")
+    fri = D("2026-10-16")
+    assert build.sync_due(wed, [fri], [fri]) == "upcoming game not logged yet"
+    assert build.sync_due(wed, [fri], []) is None  # already logged
+    assert build.sync_due(wed, [D("2026-10-20")], [D("2026-10-20")]) is None  # too far ahead
+
+
+def test_local_refresh_pulls_instead_of_syncing_in_cloud_mode(monkeypatch):
+    monkeypatch.setattr(cfg, "CLOUD_SYNC", True)
+    assert build.local_refresh_kwargs() == {"sync": False, "log": False, "pull": True}
+    monkeypatch.setattr(cfg, "CLOUD_SYNC", False)
+    assert build.local_refresh_kwargs() == {"sync": True, "log": True, "pull": False}
+
+
+def test_pull_latest_reports_git_failure_without_raising(monkeypatch):
+    def fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 1, "", "fatal: Not possible to fast-forward")
+
+    monkeypatch.setattr(build.subprocess, "run", fake_run)
+    assert build.pull_latest() == "Pull: skipped — fatal: Not possible to fast-forward"

@@ -186,5 +186,9 @@ function showToast(msg, kind, ms) {
   if (ms) toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);
 }
 
-/** True when the page is served by scripts/serve.py (Refresh / Contact work). */
-const SERVED = location.protocol.startsWith('http');
+// ---------------------------------------------------------------- site mode
+/** Which build this is: 'local' (desktop app), 'live' (public site) or 'preview' (test link). */
+const SITE = D.site || {mode: 'local', cloud_sync: false, firestore: null};
+const PUBLIC = SITE.mode !== 'local';
+/** True when the page is served by scripts/serve.py (Refresh / local contact form work). */
+const SERVED = !PUBLIC && location.protocol.startsWith('http');

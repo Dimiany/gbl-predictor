@@ -3,7 +3,7 @@
 # Three jobs, in order of runtime cost (cheapest first — fail fast):
 #   1. ruff check     — style/lint issues
 #   2. ruff format    — enforces a consistent format
-#   3. pytest         — the 65-test suite
+#   3. pytest         — the whole test suite (incl. node --check on the site's JS)
 #
 # All run on a fresh Ubuntu runner against Python 3.13. We use Linux
 # (not Windows) because it's faster on GitHub's infrastructure — our

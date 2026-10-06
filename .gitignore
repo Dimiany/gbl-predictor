@@ -41,3 +41,8 @@ data/.last_sync
 
 # Contact-form messages (personal data, stays on this machine)
 data/contact_messages.csv
+
+# Firebase CLI state and service-account keys (the key lives only in GitHub Secrets)
+.firebase/
+*firebase-adminsdk*.json
+firebase-sa*.json

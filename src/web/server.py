@@ -6,6 +6,7 @@ a CORS preflight this server never approves (so other sites can't trigger
 refreshes or post messages through the user's browser).
 
     POST /api/refresh   sync + retrain + predict + log + rebuild
+                        (with GBL_CLOUD_SYNC=1: git pull the cloud's data + rebuild)
     POST /api/contact   store a contact-form message
 """
 
@@ -18,7 +19,7 @@ import threading
 import webbrowser
 
 from src import config as cfg
-from src.web.build import hours_since_last_sync, update_site
+from src.web.build import hours_since_last_sync, local_refresh_kwargs, update_site
 from src.web.contact import ContactError, save_contact_message
 
 URL = f"http://127.0.0.1:{cfg.SERVE_PORT}/"
@@ -53,7 +54,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         try:
             print("Ανανέωση από τη σελίδα...")
-            message = update_site(sync=True, log=True)
+            message = update_site(**local_refresh_kwargs())
             print(message)
             self._json(200, {"ok": "skipped" not in message, "message": message})
         except Exception as exc:  # noqa: BLE001 - report anything to the page
@@ -100,8 +101,9 @@ def run(open_browser: bool = True) -> None:
 
     stale = hours_since_last_sync() > cfg.AUTO_SYNC_AFTER_HOURS
     print("Φέρνω νέα αποτελέσματα και ενημερώνω..." if stale else "Ετοιμάζω τη σελίδα...")
+    kwargs = local_refresh_kwargs() if stale else {"sync": False, "log": False}
     try:
-        print(update_site(sync=stale, log=stale))
+        print(update_site(**kwargs))
     except Exception as exc:  # noqa: BLE001 - still serve the last good page
         print(f"Η ενημέρωση απέτυχε ({exc}). Δείχνω την τελευταία έκδοση.")
 

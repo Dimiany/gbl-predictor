@@ -1,257 +1,224 @@
-<!-- ============================================================
-     This file is automatically loaded into context at the start of every
-     Claude Code session in this project. It is NOT human documentation —
-     it's onboarding notes FOR Claude. Keep it under ~200 lines; entries
-     past that get truncated.
-
-     Conventions used in this file:
-       * Plain prose = instructions Claude must follow.
-       * <!-- HTML comments --> = explanations for the human reader.
-         They render as invisible in preview but are visible in raw source
-         and to Claude. Use them to explain WHY a rule exists.
-     ============================================================ -->
+<!-- Onboarding notes FOR Claude, loaded at the start of every session in this
+     project. Keep it under ~230 lines; content past that gets truncated.
+     Plain prose = instructions to follow. HTML comments = the "why", for humans. -->
 
 # GBL Basketball Predictor
 
-Greek Basketball League (GBL, A1 division) score and win-probability predictor.
-Combines an ML model (gradient-boosted trees) with an Elo rating system and a
-human override layer for injuries / manual adjustments. Data-light: ~150 games
-over a 13-team league.
+Score and win-probability predictor for the Greek Basket League (Stoiximan GBL,
+A1). A 3-feature linear margin model on top of Elo, with an optional human
+override layer (absences / adjustments). About 180 games, 14 teams. The output
+is a website: a desktop app on the user's PC plus a public copy on Firebase.
+
+## The user
+
+- Greek-speaking PAOK fan and the GBL domain expert. Reply in Greek; defer to
+  them on players, tiers and team names.
+- **They never use the terminal.** Everything they do must be a button on the
+  site, a double-click, or clicks in a web console. When a change needs a manual
+  step (new API key, team mapping, secret), do it for them and explain in plain
+  Greek what changed. Keep the site's Οδηγίες page (`18-help.js`) current.
+
+## Where it runs
+
+```
+Desktop app (local)          GitHub Actions (cloud brain)         Firebase (public site)
+GBL Predictor.bat            .github/workflows/site.yml           Hosting: the built page
+ -> scripts/serve.py          nightly: sync if due -> retrain      Firestore: contact form
+ -> 127.0.0.1:8765            -> predict -> log -> commit data      (REST, create-only rules)
+ ⟳ Ανανέωση button             -> deploy to Firebase Hosting
+                              preview.yml: PR -> preview link
+```
+
+- `GBL_SITE_MODE` picks the build: `local` (Refresh button, CSV contact form),
+  `live` (no Refresh; form -> Firestore `contact_messages`), `preview` (yellow
+  "ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ" strip, noindex, form -> `test_contact_messages`).
+- Once the cloud is live, **GitHub Actions owns sync and prediction logging.**
+  The desktop `.env` then has `GBL_CLOUD_SYNC=1`, so Refresh runs
+  `git pull --ff-only` + retrain + rebuild and never calls the API or logs.
+  <!-- One writer per fact: two loggers would record different predictions for
+       the same game and race for the 500-request monthly quota. -->
+- Bot commits ("data: automatic update") land on `main`. Run `git pull` before
+  any work; never hand-edit data files the bot writes.
+- Work on a branch and open a PR: CI runs, preview.yml comments a preview link,
+  and the user approves. Merging to `main` deploys live (site.yml on push).
+- Both workflows skip until the repo variable `FIREBASE_PROJECT_ID` exists.
+  Secrets: `RAPIDAPI_KEY`, `FIREBASE_SERVICE_ACCOUNT` (JSON). Variables:
+  `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, `FLASHSCORE_TOURNAMENT_TEMPLATE_ID`,
+  `FLASHSCORE_SEASON_ID`. Set them with `gh secret set` / `gh variable set`.
+- Free tiers only: Firebase Spark (no card), Actions minutes. Cloud Functions
+  need the Blaze plan; ask the user before anything that requires it.
 
 ## Tech stack
 
-- Python 3.14 on Windows. Primary shell is bash (Unix conventions).
-- pandas, scikit-learn, joblib, requests, python-dotenv.
-- FlashScore API via RapidAPI for result / fixture ingestion
-  (see `src/api_client.py`). No scraping.
-- pytest for tests; plain CSVs for all persistent data.
+- Windows 11. Local Python 3.14, CI Python 3.13, code targets >= 3.10.
+  PowerShell is the primary shell; Git Bash is available.
+- pandas, scikit-learn, joblib, requests, python-dotenv. Node is only used for
+  `node --check` in tests and `npx firebase-tools@15` in the workflows.
+- FlashScore via RapidAPI (`src/api_client.py`). No scraping.
+- pytest + ruff. Plain CSVs for all persistent data.
 
 ## Key commands
 
-<!-- Use these when the user says "train", "run the tests", "record a result", etc.
-     Don't invent alternative invocations — these are the canonical ones. -->
-
 | Task | Command |
 |---|---|
-| Train + evaluate + save model | `python scripts/train.py` |
-| Run all tests | `python -m pytest tests/` |
-| Lint (matches CI) | `ruff check .` |
-| Format (matches CI) | `ruff format .` |
-| Record completed match results (interactive) | `python scripts/record_results.py` |
-| Sync + retrain + predict (the normal path) | Run cells 2 then 3 of `predictor.ipynb` (cell 2 auto-syncs from FlashScore before training) |
-| Predict upcoming fixtures (next round only) | Run cell 3 of `predictor.ipynb` |
-| **What the user actually does** (no terminal): double-click the desktop shortcut "GBL Predictor" → `GBL Predictor.bat` → `scripts/serve.py`; the page's ⟳ Ανανέωση button runs the full update | — |
-| Sync + retrain + predict + build HTML dashboard | `python scripts/build_dashboard.py` (`--no-sync` to skip API+retrain, `--no-log` to skip logging, `--open` to open it) |
-| View prediction history & model accuracy | Run `models_accuracy.ipynb` |
-| Sync results + upcoming fixtures from API (dry-run, escape hatch) | `python scripts/sync.py` |
-| Sync results + upcoming fixtures from API (commit, escape hatch) | `python scripts/sync.py --commit` |
+| Tests (must pass) | `python -m pytest tests/` |
+| Lint + format (match CI) | `ruff check .` and `ruff format .` |
+| Full update + build the page | `python scripts/build_dashboard.py` (`--no-sync`, `--no-log`, `--open`, `--auto` = cloud "only if due") |
+| Desktop app (what the user double-clicks) | `GBL Predictor.bat` -> `python scripts/serve.py` |
+| Retrain + evaluate only | `python scripts/train.py` |
+| Sync only (escape hatch) | `python scripts/sync.py` (dry run), `--commit` to write |
+| Cloud update now | GitHub -> Actions -> "Site" -> Run workflow, or `gh workflow run site.yml` |
+| Notebooks (legacy UI) | `predictor.ipynb` (cell 2 sync+train, cell 3 predict), `models_accuracy.ipynb` |
+
+`scripts/record_results.py` (manual result entry) predates API sync. Don't use
+it while cloud sync is on: it writes `all_fixtures.csv` by hand.
 
 ## Project layout
 
 ```
-data/raw/
-  all_fixtures.csv         # completed games (the history) — API-sourced, kept chronological
-  upcoming_fixtures.csv    # games to predict — overwritten wholesale by sync
-  rosters.csv              # players + tier (star/starter/rotation/bench)
-  absences.csv             # current injuries/suspensions (time-windowed)
-  adjustments.csv          # non-player margin overrides (coach, etc.)
-  team_name_mapping.csv    # API team names -> our canonical names
-data/team_logos.csv        # canonical team -> crest URL (FlashScore CDN), refreshed by sync
-data/
-  prediction_history.csv   # one row per fixture predicted, upserted on each
-                           # 'Generate Predictions' click. Drives the accuracy view.
-src/
-  config.py                # ALL paths, hyperparams, tier->points mapping, env vars
-  features.py              # Elo + rolling stats + H2H + rest days
-                           # + season W-L record + standings rank (win% with margin tiebreak)
-  model.py                 # linear margin + total models, P = Phi(margin/sigma), rolling walk-forward
-  predict.py               # fixture predictions + adjustment overlays
-                           # (returns [] for empty fixture lists — callers safe)
-  visualize.py             # HTML renderers: fixtures table, prediction cards, accuracy table
-  ui.py                    # ipywidgets glue for predictor.ipynb (button, slot, dark zone)
-  web/                     # the website (single-file SPA, built from Python)
-    data.py                #   every number the pages show -> one JSON dict (build_dashboard)
-    render.py              #   HTML shell; inlines assets/app.css + assets/js/*.js as one IIFE
-    build.py               #   update_site(): sync -> retrain -> predict -> log -> write page
-    server.py              #   127.0.0.1:8765 server: POST /api/refresh, POST /api/contact
-    contact.py             #   contact-form storage (data/contact_messages.csv, gitignored)
-    assets/app.css         #   design tokens (GBL navy/cyan, gold "hits"), dark default
-    assets/js/NN-*.js      #   modules, loaded in file-name order: 01-core, 02-metrics,
-                           #   03-components, 04-charts, 1x-<page>.js, 90-app (router/boot)
-  api_client.py            # thin wrapper around FlashScore (RapidAPI)
-  team_name_mapping.py     # API name -> canonical name translator
-  sync.py                  # reusable sync engine — run_sync() + sync_for_notebook()
-  prediction_log.py        # upsert + accuracy-view join (predictions ⨝ all_fixtures)
-  backtest.py              # predicted-vs-actual table from walk-forward test (legacy,
-                           # no longer wired into the notebook but still importable)
-scripts/
-  train.py                 # retrain + evaluate + save model
-  record_results.py        # interactive manual result entry
-  sync.py                  # thin CLI wrapper around src/sync.run_sync (escape hatch)
-  build_dashboard.py       # sync + retrain + log next round + write dashboard/index.html
-  serve.py                 # thin wrapper around src.web.server.run (launcher target)
-GBL Predictor.bat          # double-click launcher (desktop shortcut points here)
-dashboard/                 # generated index.html + assets/ crest cache (gitignored)
-tests/                     # pytest suite — must stay green
-models/                    # saved joblib model (gitignored)
-.env                       # API key + league ID (GITIGNORED, never commit)
-.env.example               # template showing which env vars are needed
-predictor.ipynb            # thin driver on top of src/ (install → sync+train → predict)
-models_accuracy.ipynb      # aggregated table of every prediction vs its actual result
+data/raw/all_fixtures.csv      completed games, API-sourced, chronological (bot-written)
+data/raw/upcoming_fixtures.csv games to predict, replaced on every sync (bot-written)
+data/raw/team_name_mapping.csv API name -> canonical name
+data/raw/rosters.csv, absences.csv, adjustments.csv   optional override layer (user-curated)
+data/team_logos.csv            team -> FlashScore crest URL (bot-written)
+data/prediction_history.csv    one row per predicted fixture (bot-written)
+src/config.py                  ALL paths, hyperparameters, env vars, site modes
+src/features.py                Elo, rolling L5 stats, H2H, rest, W-L, standings, seasons
+src/model.py                   margin + total models, P = Phi(margin/sigma), walk-forward
+src/predict.py                 fixture predictions, overrides, next_round()
+src/prediction_log.py          upsert log + accuracy view (log ⨝ all_fixtures)
+src/sync.py                    run_sync() / sync_for_notebook(): API -> CSVs
+src/api_client.py              FlashScore wrapper; team_name_mapping.py translator
+src/ui.py, visualize.py        notebook widgets/HTML; backtest.py = legacy, unused by the site
+src/web/data.py                every number on the site -> one JSON dict; site_settings()
+src/web/render.py              HTML shell, hash-based CSP, inlines CSS + JS as one IIFE
+src/web/build.py               update_site(), pull_latest(), sync_due() for the cloud run
+src/web/server.py              local server: POST /api/refresh, POST /api/contact
+src/web/contact.py             local contact storage (data/contact_messages.csv, gitignored)
+src/web/assets/                app.css + js/NN-*.js (01-core ... 1x-pages ... 90-app)
+scripts/                       build_dashboard.py, serve.py, sync.py, train.py, record_results.py
+firebase.json, firestore.rules Hosting config (serves dashboard/) + database rules
+.github/workflows/             ci.yml (lint+tests), site.yml (live), preview.yml (PR links)
+dashboard/, models/            generated, gitignored
+.env                           secrets + IDs, gitignored; .env.example lists every variable
 ```
 
-## Data conventions — IMPORTANT
+## Data conventions
 
-<!-- These rules bite hard when forgotten. Each one is enforced by at
-     least one test in tests/. If you find yourself wanting to break one,
-     stop and ask the user first. -->
-
-- **All dates use dd/mm/yyyy.** When parsing with pandas, always pass
-  `dayfirst=True`. ISO strings will fail with a cryptic `%Y-%d-%m` error.
-- **Team names are exact and case-sensitive.** Compare to whatever is in
-  `all_fixtures.csv`. `predict.py` has a validator with fuzzy
-  suggestions for typos.
-- **Player importance uses tier strings, not raw points.** Valid tiers:
-  `star` / `starter` / `rotation` / `bench`. The points mapping lives at
-  `src/config.py::PLAYER_TIER_POINTS` — one place to tune.
-- **Walk-forward evaluation is the ONLY honest metric here.** Never use
-  a random train/test split on this time-series data — it leaks future
-  games into training.
-- **Missing CSVs are OK.** `rosters.csv`, `absences.csv`,
-  `adjustments.csv` are all optional. Loaders return empty DataFrames,
-  not errors.
+- CSV dates are dd/mm/yyyy: always `pd.to_datetime(..., dayfirst=True)`. API dates
+  are ISO: parse those with `pd.Timestamp(...)`, never `dayfirst` (it swaps day
+  and month).
+- Team names are exact and case-sensitive across all files. Fuzzy suggestions
+  exist only in fixture validation (`predict.py`).
+- Player importance is a tier (`star`/`starter`/`rotation`/`bench`), mapped to
+  points in `config.PLAYER_TIER_POINTS`.
+- Missing optional CSVs are fine: loaders return empty frames.
 
 ## Rules for Claude
 
-<!-- Hard-won from prior conversations with this user. Breaking any of
-     these is a regression — the user will notice. -->
+1. Never invent GBL player names. Ask the user.
+2. Ask before modifying user-curated `data/raw/` files (mapping, rosters,
+   absences, adjustments). API-sourced files change only via sync.
+3. Time-based evaluation only (walk-forward). Never a random split.
+4. Keep it simple for ~180 rows: gradient boosting lost to the linear margin
+   model on log-loss (05/10/2026). Prefer editing files over adding modules.
+5. `ruff check`, `ruff format --check` and `pytest` must all pass (CI).
+6. API keys and the Firebase service-account JSON live only in `.env` / GitHub
+   Secrets. Never print, hardcode or commit them. Delete a downloaded key file
+   once it's stored as a secret. Mock HTTP in tests (see `test_api_client.py`).
+   The Firebase web `apiKey` and project ID are public by design; Firestore
+   rules are the protection.
+7. `sync_for_notebook()` and `pull_latest()` never raise and return a status
+   line. Keep that: an API or git hiccup must never block a build.
+8. `prediction_history.csv` holds predictions only. Actuals are joined at display
+   time. One source of truth per fact.
+9. Bump `cfg.MODEL_VERSION` whenever the prediction method changes; it's logged
+   with every prediction.
+10. After editing `src/`, remind the user to restart a running Jupyter kernel
+    (only matters for the notebooks).
+11. Contact form topics live in two places: `TOPICS` in `17-contact.js` and
+    `firestore.rules`. `test_web.py` checks that they match.
 
-1. **Never hallucinate GBL player names.** Training-data GBL coverage is
-   thin and inconsistent. If asked to seed rosters, ASK the user for names
-   rather than inventing them.
-2. **Never modify `data/raw/` files without asking.** They are the user's
-   curated source of truth. Exception: scripts the user explicitly runs
-   (e.g. `record_results.py`) may write to them.
-3. **Never use random train/test splits.** Time-based / walk-forward only.
-4. **Always pass `dayfirst=True`** when reading CSV dates with pandas.
-5. **Don't over-engineer for ~180 rows.** A rolling walk-forward comparison
-   (05/10/2026) found gradient boosting the worst-calibrated option; a 3-feature
-   linear margin model matched the ML+Elo blend and replaced it. Simple wins.
-6. **Retraining is a few-second operation.** Offer to retrain after any
-   change to `all_fixtures.csv`.
-7. **Prefer editing existing files over adding new ones.** Abstractions
-   should earn their keep — this is a small project.
-8. **Tests must stay green, AND ruff must pass.** CI (`.github/workflows/ci.yml`)
-   runs `ruff check`, `ruff format --check`, and `pytest`. All three must pass.
-   If a change breaks any, fix it before moving on.
-9. **API keys live in `.env` only.** Never hardcode a key, never commit `.env`,
-   never print a key. If asked to test the API, mock the HTTP session
-   (see tests/test_api_client.py for the pattern).
-10. **`all_fixtures.csv` is fully API-sourced and kept chronological.** Do not
-    append rows by hand. The train cell of `predictor.ipynb` auto-syncs via
-    `src.sync.sync_for_notebook()` before retraining; `python scripts/sync.py
-    --commit` is the manual escape hatch. Sync is idempotent. Writes are sorted
-    oldest→newest so the bottom of the file is always the latest game.
-11. **When editing files in `src/`, remind the user to restart the Jupyter
-    kernel** before re-running notebook cells. Python caches imports, and
-    stale kernel state produces confusing line-number mismatches.
-12. **Auto-sync must never block the notebook.** `sync_for_notebook()` swallows
-    every exception and returns a one-line status string. If you change it,
-    keep that contract — a transient API blip can't be allowed to crash the
-    train cell.
-13. **`data/prediction_history.csv` is predictions-only.** Actuals are joined
-    in at display time from `all_fixtures.csv` (in `prediction_log.build_accuracy_view`).
-    Don't denormalize the actuals into the log unless the user explicitly asks —
-    one source of truth per fact.
+## FlashScore API (quirks handled in src/sync.py, keep them there)
 
-## FlashScore API quirks (handled in src/sync.py — keep it that way)
-
-- `/tournaments/results` gives the **regulation-time** score, so overtime games
-  look tied. Sync resolves every tie via `/matches/details` (`home_total` /
-  `away_total`), one request per tie, and never writes a tie to history.
-- The API sometimes lists the same game twice; sync dedupes results, fixtures,
-  and the written history on (date, home, away).
-- Season IDs are NOT sequential: 2025/26 = `187`, 2026/27 = `190`
-  (`FLASHSCORE_TOURNAMENT_TEMPLATE_ID=xn32I3T4`). There is no seasons-list
-  endpoint; probe `/tournaments/results` with candidate IDs.
-- Free plan: 500 requests/month. A normal sync costs ~5-10.
+- `/tournaments/results` gives regulation-time scores, so overtime games look
+  tied. Sync resolves each tie with `/matches/details` (`home_total`/`away_total`)
+  and never writes a tie.
+- The API sometimes lists a game twice: sync dedupes on (date, home, away).
+- Season IDs aren't sequential: 2025/26 = `187`, 2026/27 = `190`, template
+  `xn32I3T4`. No seasons endpoint; probe `/tournaments/results` with candidates.
+- Free plan: 500 requests a month, about 5-10 per sync. The nightly cloud run
+  syncs only when `sync_due()` says so: results due in the last 3 days, an
+  unlogged game within 2 days, or the Monday weekly check.
 
 ## Seasons
 
-`all_fixtures.csv` holds multiple seasons. `features.season_of()` derives the
-season from the date (Aug+ = new season). At each team's first game of a new
-season, `TeamState.start_season()` resets W-L, games played, L5 form and rest
-days, and regresses Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings
-rank only teams in the same season.
+`features.season_of()`: August onward = new season. At a team's first game of
+a season, `TeamState.start_season()` resets W-L, L5 form and rest, and regresses
+Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 
-## Current state
+## Model `margin-v2`
 
-<!-- Snapshot of what's true right now. Update when it changes. -->
-
-- 181 games in history as of 05/10/2026: 174 from 2025/26 (regular season +
-  playoffs; champion Olympiacos) and 7 from 2026/27 round 1. 14 teams in
-  2026/27: Panionios relegated; new teams "Doxa Lefkadas" (API: Lefkadas) and
-  "Vikos Falcons Ioanninon" (API: Vikos), names chosen by the user.
-- 175 upcoming 2026/27 fixtures (through April 2027). The UI and dashboard
-  only predict the next round (`predict.next_round`, 4-day window).
-- `data/prediction_history.csv`: 2025/26 predictions (model `ensemble-v1`,
-  blank `model_version`) graded 12/14; round 2 of 2026/27 (10-11/10) logged
-  with `margin-v2`, pending. Grading tolerates games rescheduled by ≤3 days.
-- Model `margin-v2` (cfg.MODEL_VERSION; bump it whenever the method changes):
-  - margin = LinearRegression(elo_diff_adj, form_diff, win_pct_diff)
-  - P(home win) = Phi(margin / sigma), sigma = residual std (~12.4)
-  - total = Ridge(alpha=50) on the four L5 scored/conceded columns
-  - scoreline from (margin, total), rounded so it never ties and always
-    agrees with the probability. Old setup (HGB classifier + regressors
-    blended with Elo) could disagree — e.g. Aris–AEK 10/10/2026.
-- Rolling walk-forward (60-game warm-up, refit every game day; 121 games):
-  - Win accuracy 73% (Elo alone 76%; always-home 63%; ±4 noise).
-  - Log loss 0.506 (Elo 0.552), Brier 0.171 (Elo 0.183).
-  - Margin MAE 10.1 pts, R² 0.30. Total MAE 15.4 pts.
-- `rosters.csv` has only the 13 team stubs (no real player data); stubs
-  are silently skipped by the loader.
-- `absences.csv` and `adjustments.csv` are empty.
-
-## Known limits
-
-<!-- For future sessions asking "why doesn't this work better?" -->
-
-- Margin R² ~0.30, but accuracy differences between models are within
-  noise on ~120 evaluated games; compare log loss / Brier, not accuracy.
-- Promoted teams start at Elo 1500, which overrates them early on.
-- No box-score features (pace, eFG%, ORtg/DRtg). FlashScore doesn't
-  expose those either; would need a different feed.
-- No live injury feed; absences are user-entered via rosters.csv +
-  absences.csv (tier-based margin adjustments).
-- Team-name string match is exact across files — no fuzzy matching at
-  lookup time, only at fixture-validation time.
-
-## The user does not use the terminal
-
-They said so explicitly. Anything they need to do must be a button on the
-site or a double-click. When a change needs a manual step (new API key, new
-team mapping), do it for them and tell them in plain Greek what changed.
-Keep the in-site Οδηγίες page (`src/web/assets/js/18-help.js`) current.
+- margin = LinearRegression(elo_diff_adj, form_diff, win_pct_diff)
+- P(home win) = Phi(margin / sigma), sigma = residual std (about 12.4)
+- total = Ridge(alpha=50) on the four L5 scored/conceded columns
+- scoreline from (margin, total), rounded so it never ties and always agrees
+  with the probability
+- Rolling walk-forward (60-game warm-up, refit every game day, 121 games):
+  accuracy 73% (Elo alone 76%, always-home 63%, ±4 noise), log-loss 0.506 (Elo
+  0.552), Brier 0.171, margin MAE 10.1, R² 0.30, total MAE 15.4.
+- Compare models on log-loss / Brier, not accuracy: differences of 3-4 points
+  on ~120 games are noise.
 
 ## Website conventions
 
-- No framework, no CDN, no npm: plain ES2020 in `src/web/assets/js`, one concern
-  per file, concatenated in file-name order into one strict-mode IIFE (shared
-  scope). New page = new `1x-<name>.js` registering `pages.<name>`.
-- DOM is built with `h()` / `s()` (text nodes only — never innerHTML with data).
+- No framework, no CDN, no npm in the page: plain ES2020 in `assets/js`, one
+  concern per file, concatenated in file-name order into one strict-mode IIFE.
+  A new page = a new `1x-<name>.js` registering `pages.<name>`.
+- DOM via `h()` / `s()` (text nodes only, never innerHTML with data). The CSP
+  allows only the bundled script by hash: no inline handlers, eval or external
+  scripts. Images must be data URIs. Network: same origin + Firestore only.
+- Site-mode flags in `01-core.js`: `SITE`, `PUBLIC`, `SERVED`. Anything that needs
+  the local server must check `SERVED`; public-only text checks `PUBLIC`.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
-- Chart colours (--accent/--neg per theme in app.css) are validated with the
-  dataviz palette checker; re-validate if you change them or the surfaces.
-- "Hit" = favourite probability ≥ 0.8 and correct (gold). "Sharp" = correct and
-  margin within 3 points (🎯). Constants in `01-core.js`.
-- `tests/test_web.py` runs `node --check` on the bundle — keep it green.
+- Chart colours (`--accent`/`--neg` per theme in app.css) were validated with
+  the dataviz palette checker. Re-validate if you change them or the surfaces.
+- "Hit" = favourite probability >= 0.8 and correct (gold). "Sharp" = correct
+  and margin within 3 points (🎯). Constants live in `01-core.js`.
+- `tests/test_web.py` runs `node --check` on the bundle, checks the CSP hash,
+  site modes and rules/form consistency.
+- Check visual changes with a headless Edge screenshot before calling them done.
+
+## Current state (06/10/2026)
+
+- 181 games in history: 174 from 2025/26 (champion Olympiacos) and 7 from
+  2026/27 round 1. 175 upcoming fixtures (to April 2027). The site predicts
+  only the next round (`predict.next_round`, 4-day window).
+- 14 teams in 2026/27. Panionios was relegated. New teams are "Doxa Lefkadas"
+  (API: Lefkadas) and "Vikos Falcons Ioanninon" (API: Vikos), names chosen by
+  the user.
+- `prediction_history.csv`: 2025/26 rows (blank `model_version` = `ensemble-v1`)
+  graded 12/14. Round 2 of 2026/27 (10-11/10) is logged with `margin-v2`.
+  Grading tolerates games rescheduled by up to 3 days.
+- `rosters.csv` has only stubs for the 2025/26 teams (no players, no stubs yet
+  for the two new teams). `absences.csv` and `adjustments.csv` are empty.
+- Public site: code ready (site.yml, preview.yml, firebase.json,
+  firestore.rules). Waiting for the user's Firebase project. Not deployed yet,
+  and `GBL_CLOUD_SYNC` is not set locally. Domain: later, connected via
+  Firebase Hosting "Add custom domain". Avoid "GBL"/"Stoiximan" in the name
+  (trademarks).
+- Pending idea list (AI previews/news, Monte Carlo season, prediction game, …)
+  is in Claude's memory, not here.
+
+## Known limits
+
+- Promoted teams start at Elo 1500, which overrates them early.
+- No box-score features (pace, eFG%, ratings): FlashScore doesn't expose them.
+- No live injury feed: absences are user-entered.
+- The contact form has a honeypot but no App Check / rate limit yet.
 
 ## When in doubt
 
-<!-- Default behaviour when the user's intent isn't 100% clear. -->
-
-- Ask before editing `data/raw/` files.
-- Ask before adding new features / new modules / new files.
-- Do NOT ask before running tests or retraining.
-- Assume the user is the domain expert on GBL — defer to them on player
-  ratings, tier choices, and which players matter.
+- Ask before editing user-curated data, adding features or new modules, or
+  anything that costs money or publishes something.
+- Don't ask before running tests, ruff, retraining or a local `--no-sync --no-log` build.

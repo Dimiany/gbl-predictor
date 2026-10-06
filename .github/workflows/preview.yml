@@ -1,0 +1,67 @@
+# Preview links: every pull request gets its own temporary copy of the site on
+# Firebase Hosting (a "preview channel"), linked in a PR comment, so a change
+# can be checked on a phone before it goes live.
+#
+# The preview never calls the API and never logs predictions (it builds from
+# the data in the branch), shows a yellow "ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ" strip, is
+# noindex, and its contact form writes to test_contact_messages.
+
+name: Preview
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    if: vars.FIREBASE_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GBL_SITE_MODE: preview
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Tests
+        run: python -m pytest tests/ -q
+
+      - name: Build the page (no API, no logging)
+        run: python scripts/build_dashboard.py --no-sync --no-log
+
+      - name: Publish the preview link
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          printf '%s' "$SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx --yes firebase-tools@15 hosting:channel:deploy "pr-$PR" --expires 7d \
+            --project "$FIREBASE_PROJECT_ID" --non-interactive --json > deploy.json
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+          url=$(python -c "import json; r=json.load(open('deploy.json'))['result']; print(next(iter(r.values()))['url'])")
+          body="🔎 **Δοκιμαστικό link:** $url
+
+          Ισχύει 7 μέρες και ενημερώνεται σε κάθε νέα αλλαγή αυτού του αιτήματος."
+          echo "$body" >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "$PR" --edit-last --body "$body" || gh pr comment "$PR" --body "$body"

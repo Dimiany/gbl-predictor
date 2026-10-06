@@ -69,7 +69,9 @@ document.getElementById('theme').addEventListener('click', () => {
 });
 
 // Refresh: sync + retrain + predict + rebuild through scripts/serve.py.
+// The public site updates itself (GitHub Actions), so it has no Refresh button.
 const refreshBtn = document.getElementById('refresh');
+refreshBtn.hidden = PUBLIC;
 const resetRefresh = () => { refreshBtn.disabled = false; refreshBtn.classList.remove('busy'); };
 refreshBtn.addEventListener('click', async () => {
   if (!SERVED) {
@@ -77,7 +79,9 @@ refreshBtn.addEventListener('click', async () => {
     return;
   }
   refreshBtn.disabled = true; refreshBtn.classList.add('busy');
-  showToast('Φέρνω νέα αποτελέσματα, εκπαιδεύω το μοντέλο και βγάζω προβλέψεις… (~20 δευτερόλεπτα)');
+  showToast(SITE.cloud_sync
+    ? 'Φέρνω τα νέα δεδομένα από το GitHub και εκπαιδεύω το μοντέλο… (~20 δευτερόλεπτα)'
+    : 'Φέρνω νέα αποτελέσματα, εκπαιδεύω το μοντέλο και βγάζω προβλέψεις… (~20 δευτερόλεπτα)');
   try {
     const res = await fetch('/api/refresh', {method: 'POST', headers: {'X-GBL-Refresh': '1'}});
     const body = await res.json();
@@ -88,6 +92,12 @@ refreshBtn.addEventListener('click', async () => {
     resetRefresh();
   }
 });
+
+// Preview links say so on every page, so a test build is never mistaken for the real site.
+if (SITE.mode === 'preview') {
+  document.querySelector('.viz-root').prepend(h('div', {class: 'preview-strip', role: 'note'},
+    h('b', null, 'ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ'), ' · αλλαγές προς έγκριση, όχι το κανονικό site · τα μηνύματα της φόρμας πάνε σε δοκιμαστική συλλογή'));
+}
 
 // ---------------------------------------------------------------- footer
 (function buildFooter() {
@@ -101,7 +111,7 @@ refreshBtn.addEventListener('click', async () => {
       col('Μοντέλο', [['#/model', 'Απόδοση'], ['#/model/metrics', 'Οδηγός δεικτών'], ['#/model/how', 'Πώς δουλεύει'], ['#/predictions/hits', '🔥 Hall of Fame']]),
       col('Βοήθεια', [['#/help', 'Οδηγίες'], ['#/about', 'Σχετικά'], ['#/contact', 'Επικοινωνία']])),
     h('div', {class: 'foot-bottom'},
-      h('span', null, `Δεδομένα & σήματα: FlashScore (RapidAPI) · μοντέλο ${M.version} · ενημέρωση ${D.updated}`),
+      h('span', null, `Δεδομένα & σήματα: FlashScore (RapidAPI) · μοντέλο ${M.version} · ενημέρωση ${D.updated}${PUBLIC ? ' · ενημερώνεται αυτόματα' : ''}`),
       h('span', null, 'Ανεπίσημη εφαρμογή · δεν είναι συμβουλή στοιχηματισμού')));
 })();
 

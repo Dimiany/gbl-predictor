@@ -8,6 +8,8 @@ strict-mode IIFE. No build tool, no CDN: the output is one self-contained
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 from pathlib import Path
 
@@ -39,14 +41,44 @@ def json_payload(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, allow_nan=False).replace("</", "<\\/")
 
 
+def content_security_policy(script: str) -> str:
+    """CSP for the page: only our own inline script (by hash) may run.
+
+    The payload's ``<script type="application/json">`` is data, never executed,
+    so it needs no hash. Inline style attributes are used by the DOM builders,
+    hence ``'unsafe-inline'`` for styles only. Network access is limited to this
+    origin (the local Refresh/contact API) and Firestore (the public form).
+    """
+    digest = base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode("ascii")
+    return "; ".join(
+        [
+            "default-src 'none'",
+            f"script-src 'sha256-{digest}'",
+            "style-src 'unsafe-inline'",
+            "img-src 'self' data:",
+            "connect-src 'self' https://firestore.googleapis.com",
+            "base-uri 'none'",
+            "form-action 'none'",
+        ]
+    )
+
+
 def render_html(data: dict) -> str:
     """Return the full single-file site."""
+    script = bundle_js()
+    # Preview links are for checking a change, not for search engines.
+    robots = (
+        '\n<meta name="robots" content="noindex, nofollow">'
+        if data.get("site", {}).get("mode") == "preview"
+        else ""
+    )
     return f"""<!doctype html>
 <html lang="el" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
+<meta http-equiv="Content-Security-Policy" content="{content_security_policy(script)}">{robots}
 <meta name="description" content="Προβλέψεις, βαθμολογία και στατιστικά για την Stoiximan Basket League {data["season"]}">
 <title>GBL Predictor · {data["season"]}</title>
 <style>{bundle_css()}</style>
@@ -71,6 +103,6 @@ def render_html(data: dict) -> str:
 <div id="tip" class="tip" role="tooltip" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <script id="data" type="application/json">{json_payload(data)}</script>
-<script>{bundle_js()}</script>
+<script>{script}</script>
 </body>
 </html>"""

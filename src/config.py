@@ -122,7 +122,7 @@ MODEL_FILE: Path = MODELS_DIR / "gbl_model.joblib"
 # it's regenerated from the data on every build).
 DASHBOARD_FILE: Path = PROJECT_ROOT / "dashboard" / "index.html"
 # When the site's data was last synced from the API (written by
-# dashboard.update_site). The desktop launcher only re-syncs if this is stale.
+# src.web.update_site). The desktop launcher only re-syncs if this is stale.
 LAST_SYNC_FILE: Path = DATA_DIR / ".last_sync"
 # Contact-form messages (written by src/web/server.py; gitignored).
 CONTACT_MESSAGES_CSV: Path = DATA_DIR / "contact_messages.csv"
@@ -133,6 +133,33 @@ CONTACT_EMAIL: str = os.getenv("GBL_CONTACT_EMAIL", "")
 SERVE_PORT: int = 8765
 # The launcher re-syncs on start-up if the last sync is older than this.
 AUTO_SYNC_AFTER_HOURS: float = 6.0
+
+# Where this build of the site will be shown:
+#   local   — the desktop app (scripts/serve.py): Refresh + CSV contact form
+#   live    — the public site on Firebase Hosting (built by GitHub Actions)
+#   preview — a pull request's temporary Firebase preview link (noindex, test data)
+SITE_MODE: str = os.getenv("GBL_SITE_MODE", "local")
+SITE_MODES: tuple[str, ...] = ("local", "live", "preview")
+# Firebase web config. Public by design (it ships in every page); access is
+# governed by firestore.rules, not by keeping these secret.
+FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
+FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "")
+# Firestore collection the public contact form writes to, per site mode.
+CONTACT_COLLECTIONS: dict[str, str] = {
+    "live": "contact_messages",
+    "preview": "test_contact_messages",
+}
+# "1" once GitHub Actions owns sync + prediction logging: the desktop app's
+# Refresh then pulls the cloud's data with git instead of calling the API, so
+# the two never log different predictions or race for the monthly quota.
+CLOUD_SYNC: bool = os.getenv("GBL_CLOUD_SYNC", "") == "1"
+# The scheduled cloud run calls the API only when there's a reason to
+# (src/web/build.sync_due): results due from the last few days, an unlogged
+# game coming up, or the weekly check that catches reschedules.
+SITE_TIMEZONE: str = "Europe/Athens"
+SYNC_RESULTS_LOOKBACK_DAYS: int = 3
+SYNC_LOG_LOOKAHEAD_DAYS: int = 2
+SYNC_WEEKLY_WEEKDAY: int = 0  # Monday
 
 # ---------------------------------------------------------------------------
 # Column names (single source of truth — avoids typos across files)
