@@ -239,7 +239,8 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain **tipoff.gr**
   (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor, CNAME www →
   gbl-predictor.web.app.; Firebase redirects www → apex) live since 06/10/2026.
-  Search Console: pending (Domain property, DNS TXT at papaki).
+  Search Console: verified (Domain property, TXT google-site-verification at
+  papaki); sitemap submitted as the full URL https://tipoff.gr/sitemap.xml.
 
 ## Ideas backlog (agreed with the user, not started)
 
