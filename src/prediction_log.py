@@ -13,6 +13,10 @@ time, so the log file stays simple (predictions only, no actuals duplicated).
 This is the "live model accuracy" feed — distinct from the walk-forward
 backtest, which is internal evaluation. The numbers here reflect what the
 deployed model actually said about real upcoming fixtures.
+
+A row whose ``prediction_made_at`` is after its fixture date is retroactive
+(``predict_retroactively``: a missed round re-predicted from pre-round data).
+The site labels those and keeps them out of the pre-game record.
 """
 
 from __future__ import annotations
@@ -22,7 +26,9 @@ from pathlib import Path
 import pandas as pd
 
 from src import config as cfg
-from src.predict import Prediction
+from src.features import build_features
+from src.model import _fit_bundle
+from src.predict import Fixture, Prediction, predict_fixtures
 
 PREDICTION_LOG_CSV: Path = cfg.DATA_DIR / "prediction_history.csv"
 
@@ -60,12 +66,18 @@ def load_log(path: Path = PREDICTION_LOG_CSV) -> pd.DataFrame:
 def append_predictions(
     preds: list[Prediction],
     path: Path = PREDICTION_LOG_CSV,
+    overwrite: bool = True,
 ) -> None:
     """Upsert predictions into the log keyed on (fixture_date, home, away).
 
     Latest write wins — re-clicking the button after retraining replaces the
     older prediction for the same fixture rather than appending a duplicate.
+    ``overwrite=False`` only adds fixtures not logged yet (used for
+    retroactive rows, which must never replace a real pre-game prediction).
     """
+    if not overwrite:
+        logged = set(load_log(path)[_KEY_COLS].astype(str).itertuples(index=False, name=None))
+        preds = [p for p in preds if (p.date, p.home, p.away) not in logged]
     if not preds:
         return
 
@@ -93,6 +105,40 @@ def append_predictions(
     merged = merged.drop_duplicates(subset=_KEY_COLS, keep="last").reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(path, index=False)
+
+
+def predict_retroactively(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    history: pd.DataFrame | None = None,
+) -> list[Prediction]:
+    """Predict already-played games as the model would have before they began.
+
+    The model is fit only on games strictly before ``start``, and every game in
+    [start, end] is predicted from that same pre-round state, so no result from
+    inside the window (or after it) leaks into any prediction.
+    """
+    if history is None:
+        history = pd.read_csv(cfg.RAW_GAMES_CSV)
+    dates = pd.to_datetime(history[cfg.COL_DATE], dayfirst=True)
+    before = history[dates < start].reset_index(drop=True)
+    window = history[(dates >= start) & (dates <= end)]
+    if window.empty or before.empty:
+        return []
+    bundle = _fit_bundle(build_features(before))
+    fixtures = [
+        Fixture(date=d.strftime("%d/%m/%Y"), matchday="", home=h, away=a)
+        for d, h, a in zip(
+            dates[window.index], window[cfg.COL_HOME], window[cfg.COL_AWAY], strict=True
+        )
+    ]
+    # Teams with no games before the window were promoted into it: real teams,
+    # not typos (window names come from history, which only sync writes).
+    promoted = {f.home for f in fixtures} | {f.away for f in fixtures}
+    promoted -= set(before[cfg.COL_HOME]) | set(before[cfg.COL_AWAY])
+    return predict_fixtures(
+        fixtures, list(dates[window.index]), history=before, bundle=bundle, promoted=promoted
+    )
 
 
 def _match_rescheduled(log: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:

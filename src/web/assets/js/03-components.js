@@ -168,8 +168,16 @@ function predCell(pk, home) {
   if (!pk) return h('span', {class: 'muted'}, '–');
   const pw = pk.w === home ? pk.p : 1 - pk.p;
   return h('span', {class: 'pred'}, h('b', null, `${pk.phs}–${pk.pas}`), ` · ${pk.w} ${pctProb(pw)}`,
-    h('span', {class: 'badge', title: pk.src === 'log' ? `Καταγράφηκε πριν από τον αγώνα · μοντέλο ${pk.v}` : 'Walk-forward: μοντέλο εκπαιδευμένο μόνο σε προηγούμενους αγώνες'},
-      pk.src === 'log' ? 'πριν τον αγώνα' : 'walk-forward'));
+    h('span', {class: 'badge', title: PICK_SOURCES[pk.src].title(pk)}, PICK_SOURCES[pk.src].label));
+}
+/** Where a played game's pick came from: logged before tip-off, re-predicted later, or walk-forward. */
+const PICK_SOURCES = {
+  log: {label: 'πριν τον αγώνα', title: pk => `Καταγράφηκε πριν από τον αγώνα · μοντέλο ${pk.v}`},
+  retro: {label: 'αναδρομική', title: pk => `Αναδρομική: μοντέλο ${pk.v} εκπαιδευμένο μόνο με αγώνες πριν από την αγωνιστική, χωρίς να ξέρει το σκορ`},
+  wf: {label: 'walk-forward', title: () => 'Walk-forward: μοντέλο εκπαιδευμένο μόνο σε προηγούμενους αγώνες'},
+};
+function retroBadge() {
+  return h('span', {class: 'badge', style: 'margin:0', title: 'Βγήκε μετά τον αγώνα, από μοντέλο που είδε μόνο τους προηγούμενους αγώνες. Δεν μετράει στο ρεκόρ.'}, 'αναδρομική');
 }
 function outcomeCell(g) {
   const o = outcome(g);

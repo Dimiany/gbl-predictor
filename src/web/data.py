@@ -148,6 +148,7 @@ def _log_rows(log_view: pd.DataFrame) -> list[dict]:
     for _, r in log_view.iterrows():
         d = pd.to_datetime(r["fixture_date"], dayfirst=True)
         played = pd.notna(r.get("actual_home_score"))
+        made_at = pd.Timestamp(r["prediction_made_at"])
         rows.append(
             {
                 "d": d.strftime("%Y-%m-%d"),
@@ -160,6 +161,9 @@ def _log_rows(log_view: pd.DataFrame) -> list[dict]:
                 "w": r["predicted_winner"],
                 "v": r["model_version"],
                 "at": str(r["prediction_made_at"]),
+                # Made after the game day: re-predicted from pre-round data
+                # (prediction_log.predict_retroactively), not a pre-game record.
+                "retro": bool(made_at.normalize() > d),
                 "ahs": _int(r["actual_home_score"]) if played else None,
                 "aas": _int(r["actual_away_score"]) if played else None,
                 "ok": bool(r["winner_correct"]) if played else None,
@@ -201,7 +205,8 @@ def _games(history: pd.DataFrame, log_rows: list[dict], walk_forward: pd.DataFra
             gap = abs((pd.Timestamp(r["d"]) - date).days)
             if gap < best_gap:
                 best_gap = gap
-                pick = {k: r[k] for k in ("phs", "pas", "p", "w", "v")} | {"src": "log"}
+                src = "retro" if r["retro"] else "log"
+                pick = {k: r[k] for k in ("phs", "pas", "p", "w", "v")} | {"src": src}
         if pick is None:
             pick = wf.get((iso, home, away))
         out.append(
