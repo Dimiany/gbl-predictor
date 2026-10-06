@@ -237,8 +237,9 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   project `gbl-predictor`, Spark plan). Test site: https://gbl-predictor-test.web.app.
   Contact messages: Firebase console → Firestore → `contact_messages`. The
   original desktop machine has `GBL_CLOUD_SYNC=1`. Custom domain **tipoff.gr**
-  (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor; www → apex
-  redirect in Firebase) live since 06/10/2026.
+  (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor, CNAME www →
+  gbl-predictor.web.app.; Firebase redirects www → apex) live since 06/10/2026.
+  Search Console: pending (Domain property, DNS TXT at papaki).
 
 ## Ideas backlog (agreed with the user, not started)
 
