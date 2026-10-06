@@ -252,3 +252,10 @@ def test_page_has_inline_favicon_and_touch_icon():
     assert '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,' in page
     assert '<link rel="apple-touch-icon" href="data:image/png;base64,' in page
     assert "img-src 'self' data:" in page  # the CSP lets data-URI icons load
+
+
+def test_site_uses_the_brand_name_everywhere():
+    page = render_html({"season": "2026/27", "games": []})
+    assert f"<title>{cfg.SITE_NAME} · {cfg.SITE_TAGLINE}</title>" in page
+    assert f"<b>{cfg.SITE_NAME}</b>" in page  # header
+    assert "GBL Predictor" not in page  # the old name, gone from page text and scripts

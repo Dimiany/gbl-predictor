@@ -368,6 +368,12 @@ def build_dashboard(
         "site": site_settings(),
         "logos": _team_logos(),
         "league_logo": _image_data_uri(cfg.LEAGUE_LOGO_URL),
+        "brand": {
+            "name": cfg.SITE_NAME,
+            "tagline": cfg.SITE_TAGLINE,
+            "slogan": cfg.SITE_SLOGAN,
+            "url": cfg.SITE_URL,
+        },
         "elo_history": _elo_history(history.drop(columns=["_season"])),
         "season_starts": sorted(
             history.groupby("_season")[cfg.COL_DATE].min().dt.strftime("%Y-%m-%d").tolist()

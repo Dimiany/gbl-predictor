@@ -13,6 +13,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from src import config as cfg
+
 ASSETS_DIR = Path(__file__).with_name("assets")
 JS_DIR = ASSETS_DIR / "js"
 
@@ -41,14 +43,18 @@ def json_payload(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, allow_nan=False).replace("</", "<\\/")
 
 
+def favicon_data_uri() -> str:
+    svg = base64.b64encode((ASSETS_DIR / "favicon.svg").read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{svg}"
+
+
 def icon_links() -> str:
     """Favicon (SVG, every modern browser) + touch icon (PNG, phone home screens),
     both inlined as data URIs so the page stays one self-contained file."""
-    svg = base64.b64encode((ASSETS_DIR / "favicon.svg").read_bytes()).decode("ascii")
     png = base64.b64encode((ASSETS_DIR / "apple-touch-icon.png").read_bytes()).decode("ascii")
     return "\n".join(
         [
-            f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,{svg}">',
+            f'<link rel="icon" type="image/svg+xml" href="{favicon_data_uri()}">',
             f'<link rel="apple-touch-icon" href="data:image/png;base64,{png}">',
             '<meta name="theme-color" content="#0b1647">',
         ]
@@ -86,6 +92,7 @@ def render_html(data: dict) -> str:
         if data.get("site", {}).get("mode") == "preview"
         else ""
     )
+    name, tagline, slogan = cfg.SITE_NAME, cfg.SITE_TAGLINE, cfg.SITE_SLOGAN
     return f"""<!doctype html>
 <html lang="el" data-theme="dark">
 <head>
@@ -93,15 +100,15 @@ def render_html(data: dict) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta http-equiv="Content-Security-Policy" content="{content_security_policy(script)}">{robots}
-<meta name="description" content="Προβλέψεις, βαθμολογία και στατιστικά για την Stoiximan Basket League {data["season"]}">
-<title>GBL Predictor · {data["season"]}</title>
+<meta name="description" content="{name}: προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League {data["season"]}. {slogan}">
+<title>{name} · {tagline}</title>
 {icon_links()}
 <style>{bundle_css()}</style>
 </head>
 <body>
 <div class="viz-root">
   <header class="site-head">
-    <a class="brand" href="#/" aria-label="GBL Predictor, αρχική"><span class="brand-badge" id="brand-badge" aria-hidden="true"></span><span class="brand-text"><b>GBL Predictor</b><small id="brand-season"></small></span></a>
+    <a class="brand" href="#/" aria-label="{name}, αρχική"><span class="brand-badge" aria-hidden="true"><img src="{favicon_data_uri()}" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
     <nav id="nav" aria-label="Κύρια πλοήγηση"></nav>
     <div class="head-tools">
       <button id="refresh" class="btn btn-primary" type="button" title="Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"><span class="spin" aria-hidden="true">⟳</span> Ανανέωση</button>

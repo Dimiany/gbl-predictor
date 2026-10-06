@@ -1,4 +1,4 @@
-/* GBL Predictor — site styles. Inlined into dashboard/index.html by src/dashboard.py.
+/* TipOff — site styles. Inlined into dashboard/index.html by src/web/render.py.
    Dark is the default theme; [data-theme="light"] on <html> switches to light.
    Chart colours (--accent / --neg) are validated with the dataviz palette checker
    against --surface-1 in each theme; don't change them without re-validating. */
@@ -46,10 +46,11 @@ a.tlink:hover .tname{background-size:100% 1px}
 .scroll-progress{position:absolute;left:0;bottom:-1px;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);
   background:linear-gradient(90deg,var(--brand-cyan),var(--brand-blue))}
 .brand{display:flex;align-items:center;gap:11px;white-space:nowrap}
-.brand-badge{width:40px;height:40px;border-radius:11px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;
+.brand-badge{width:40px;height:40px;border-radius:11px;background:transparent;display:grid;place-items:center;overflow:hidden;flex:none;
   box-shadow:0 0 0 0 var(--glow);transition:box-shadow .3s}
 .brand:hover .brand-badge{box-shadow:0 0 0 6px var(--glow)}
-.brand-badge img{width:36px;height:36px;object-fit:contain}
+.brand-badge img{width:40px;height:40px;object-fit:contain}
+.brand-text small{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--brand-cyan)}
 .brand-text{display:flex;flex-direction:column;line-height:1.15}
 .brand-text b{font-size:15.5px;font-weight:780}
 .brand-text small{font-size:11px;color:var(--brand-cyan);font-weight:700;letter-spacing:.08em}
@@ -81,9 +82,10 @@ select{color:var(--text-primary);background:var(--surface-1);border:1px solid va
 .btn-outline{background:transparent;color:#fff;border-color:rgba(255,255,255,.4)}
 .btn-outline:disabled{color:var(--brand-cyan);border-color:var(--brand-cyan)}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (max-width:1480px){.focus-pick span{display:none}.site-head{gap:16px}}
-@media (max-width:1280px){.brand-text small{display:none}nav a{padding:0 8px;font-size:13px}}
-@media (max-width:860px){.site-head{flex-wrap:wrap;height:auto;padding-top:8px;gap:8px}.focus-pick span{display:none}nav{order:3;flex-basis:100%;height:44px}}
+@media (max-width:1480px){.focus-pick span{display:none}.site-head{gap:14px}nav a{padding:0 10px}}
+@media (max-width:1400px){.brand-text small{display:none}nav a{padding:0 8px;font-size:13px}}
+@media (max-width:1280px){#focus{max-width:132px}}
+@media (max-width:1180px){.site-head{flex-wrap:wrap;height:auto;padding-top:8px;gap:8px}.focus-pick span{display:none}nav{order:3;flex-basis:100%;height:44px}.head-tools{margin-left:auto}}
 
 /* ---------------------------------------------------------------- layout */
 main{width:100%;max-width:1240px;margin:0 auto;padding:28px clamp(16px,4vw,40px) 56px;display:flex;flex-direction:column;gap:30px;outline:none;flex:1}
@@ -428,3 +430,4 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
 .preview-strip b{letter-spacing:.06em}
 .form-note{margin:14px 0 0;font-size:12.5px;color:var(--text-secondary);line-height:1.55}
 .hp-field{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+@media (max-width:520px){.head-tools{gap:6px}#focus{max-width:108px}.icon-btn{width:34px;height:34px}#refresh{padding:0 10px}}

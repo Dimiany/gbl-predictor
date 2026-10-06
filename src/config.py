@@ -143,6 +143,12 @@ SERVE_PORT: int = 8765
 # The launcher re-syncs on start-up if the last sync is older than this.
 AUTO_SYNC_AFTER_HOURS: float = 6.0
 
+# The site's name everywhere (header, title, footer, about, share text).
+SITE_NAME: str = "TipOff"
+SITE_TAGLINE: str = "Greek Basketball Predictor"
+SITE_SLOGAN: str = "Οι αριθμοί, πριν το τζάμπολ."
+SITE_URL: str = "https://tipoff.gr"
+
 # Where this build of the site will be shown:
 #   local   — the desktop app (scripts/serve.py): Refresh + CSV contact form
 #   live    — the public site on Firebase Hosting (built by GitHub Actions)

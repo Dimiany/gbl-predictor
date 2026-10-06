@@ -45,7 +45,7 @@ function route(scrollTop) {
     a.classList.toggle('active', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
-  document.title = `${r.page === 'team' ? r.name : TITLES[active] || 'Αρχική'} · GBL Predictor`;
+  document.title = `${r.page === 'team' ? r.name : TITLES[active] || 'Αρχική'} · ${BRAND.name}`;
   afterRender(app);
   if (scrollTop) window.scrollTo({top: 0});
 }
@@ -53,8 +53,6 @@ function route(scrollTop) {
 // ---------------------------------------------------------------- header
 const nav = document.getElementById('nav');
 nav.replaceChildren(...NAV.map(([k, label]) => h('a', {href: '#/' + k, 'data-k': k}, label)));
-document.getElementById('brand-season').textContent = `STOIXIMAN GBL · ${season}`;
-if (D.league_logo) document.getElementById('brand-badge').append(h('img', {src: D.league_logo, alt: ''}));
 
 const focusSel = document.getElementById('focus');
 focusSel.replaceChildren(...TEAMS.slice().sort().map(t => h('option', {value: t, selected: t === state.focus}, t)));
@@ -75,7 +73,7 @@ refreshBtn.hidden = PUBLIC;
 const resetRefresh = () => { refreshBtn.disabled = false; refreshBtn.classList.remove('busy'); };
 refreshBtn.addEventListener('click', async () => {
   if (!SERVED) {
-    showToast('Για να δουλέψει η Ανανέωση, άνοιξε τη σελίδα από το εικονίδιο «GBL Predictor» στην επιφάνεια εργασίας.', 'bad', 9000);
+    showToast(`Για να δουλέψει η Ανανέωση, άνοιξε τη σελίδα από το εικονίδιο «${BRAND.name}» στην επιφάνεια εργασίας.`, 'bad', 9000);
     return;
   }
   refreshBtn.disabled = true; refreshBtn.classList.add('busy');
@@ -88,7 +86,7 @@ refreshBtn.addEventListener('click', async () => {
     if (body.ok) { showToast('Έτοιμο!\n' + body.message, 'good'); setTimeout(() => location.reload(), 1500); }
     else { showToast('Κάτι δεν πήγε καλά:\n' + body.message + '\n\nΔες τις «Οδηγίες».', 'bad'); resetRefresh(); }
   } catch {
-    showToast('Δεν βρέθηκε το πρόγραμμα. Μήπως έκλεισε το μαύρο παράθυρο; Άνοιξε ξανά το «GBL Predictor».', 'bad');
+    showToast(`Δεν βρέθηκε το πρόγραμμα. Μήπως έκλεισε το μαύρο παράθυρο; Άνοιξε ξανά το «${BRAND.name}».`, 'bad');
     resetRefresh();
   }
 });
@@ -105,8 +103,9 @@ if (SITE.mode === 'preview') {
   document.getElementById('foot').replaceChildren(
     h('div', {class: 'foot-inner'},
       h('div', {class: 'foot-col'},
-        h('div', {class: 'foot-brand'}, D.league_logo ? h('img', {src: D.league_logo, alt: ''}) : null, 'GBL Predictor'),
-        h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για την Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από το τζάμπολ.')),
+        h('div', {class: 'foot-brand'}, h('img', {src: document.querySelector('.brand-badge img')?.src || '', alt: ''}), BRAND.name),
+        h('p', {style: 'margin:0 0 6px;max-width:340px'}, h('b', null, BRAND.tagline), ' · ', BRAND.slogan),
+        h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και βαθμολογείται δημόσια.')),
       col('Σελίδες', [['#/', 'Αρχική'], ['#/predictions', 'Προβλέψεις'], ['#/standings', 'Βαθμολογία'], ['#/teams', 'Ομάδες'], ['#/schedule', 'Πρόγραμμα']]),
       col('Μοντέλο', [['#/model', 'Απόδοση'], ['#/model/metrics', 'Οδηγός δεικτών'], ['#/model/how', 'Πώς δουλεύει'], ['#/predictions/hits', '🔥 Hall of Fame']]),
       col('Βοήθεια', [['#/help', 'Οδηγίες'], ['#/about', 'Σχετικά'], ['#/contact', 'Επικοινωνία']])),
