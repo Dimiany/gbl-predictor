@@ -97,6 +97,9 @@ h3{margin:0 0 6px;font-size:15px;font-weight:700}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .section-head h2::before{content:"";display:inline-block;width:4px;height:17px;border-radius:2px;background:linear-gradient(var(--brand-cyan),var(--brand-blue));margin-right:10px;vertical-align:-3px}
 .section-head .h-sub{font-weight:400;color:var(--text-secondary);font-size:13px;margin-left:8px}
+/* A heading with a crest (home: your team): crest, name and subtitle centred on one line. */
+.section-head:has(h2 .crest){align-items:center}
+.section-head h2:has(.crest){display:flex;align-items:center;flex-wrap:wrap}
 .section-head a{color:var(--accent-strong);font-size:13px;font-weight:650}
 .panel{background:var(--surface-1);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
 .grid-2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:30px;align-items:start}
@@ -205,10 +208,11 @@ main.enter{animation:pagein .35s ease-out both}
 .card-when .muted{font-weight:500}
 .board,.card>.prob,.card>.prob-labels,.card>.card-note{margin-left:16px;margin-right:16px}
 .board{display:flex;flex-direction:column;gap:7px}
-.board-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px}
+.board-row{display:grid;grid-template-columns:minmax(0,1fr) 40px 64px;align-items:center;gap:8px}
+.board-row>:nth-child(2){text-align:center}
 .board-row .tlink{font-weight:500;font-size:14.5px}
 .board-head{font-size:9.5px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:-3px}
-.board-head span:last-child{min-width:36px;text-align:right}
+.board-head span:last-child{text-align:right}
 .board-row .pts{font-size:23px;font-weight:550;font-variant-numeric:tabular-nums;color:var(--muted);min-width:36px;text-align:right}
 .board-row.fav .tlink{font-weight:750}
 .board-row.fav .pts{font-weight:800;color:var(--text-primary)}
@@ -288,6 +292,11 @@ td{padding:9px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
 tbody tr{transition:background .15s}
 tbody tr:hover td{background:var(--surface-2)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+/* opts.center (standings): every column centred except the team name; the sort arrow
+   hangs to the right so it doesn't push the label off centre. */
+.t-center th,.t-center td{text-align:center}
+.t-center th:nth-child(2),.t-center td:nth-child(2){text-align:left}
+.t-center th .arrow{margin-right:-10px}
 tr.is-focus td{background:var(--accent-wash)} tr.is-focus .tlink{font-weight:750}
 tr.is-focus td:first-child{box-shadow:inset 3px 0 0 var(--brand-cyan)}
 .form{display:inline-flex;gap:3px;vertical-align:middle}

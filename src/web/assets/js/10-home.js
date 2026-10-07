@@ -19,13 +19,13 @@ function standingsTable(compact) {
     {label: 'Φόρμα', info: compact ? null : 'form', render: r => formChips(r.form)});
   if (!compact) cols.push({label: 'Σερί', num: true, render: r => streakGr(r.streak)});
   cols.push({label: 'Elo', num: true, info: 'elo', sort: r => r.elo, render: r => r.elo});
-  return table(cols, D.standings, {sortIdx: 0, dir: 1, rowClass: r => r.team === state.focus ? 'is-focus' : null});
+  return table(cols, D.standings, {sortIdx: 0, dir: 1, center: true, rowClass: r => r.team === state.focus ? 'is-focus' : null});
 }
 
 function nextRoundSection(link = true) {
   const nr = D.next;
   return h('section', null,
-    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
+    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · Προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
       link ? h('a', {href: url('predictions')}, 'Όλες οι προβλέψεις →') : infoDot('prob')),
     nr.length ? h('div', {class: 'cards'}, nr.map(predCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχουν προγραμματισμένοι αγώνες.'));
 }
