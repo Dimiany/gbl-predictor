@@ -9,8 +9,8 @@ refreshes or post messages through the user's browser).
                         (with GBL_CLOUD_SYNC=1: git pull the cloud's data + rebuild)
     POST /api/contact   store a contact-form message
 
-GET serves the built site like Firebase Hosting does (cleanUrls): /vathmologia
--> vathmologia.html, and 404.html for an unknown address.
+GET serves the built site like Firebase Hosting does (cleanUrls): /standings
+-> standings.html, and 404.html for an unknown address.
 """
 
 from __future__ import annotations

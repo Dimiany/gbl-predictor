@@ -193,18 +193,22 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - No framework, no CDN, no npm in the page: plain ES2020 in `assets/js`, one
   concern per file, concatenated in file-name order into one strict-mode IIFE.
   A new page = a new `1x-<name>.js` registering `pages.<name>`.
-- Real addresses (since 06/10/2026), greeklish: `/provlepseis`, `/vathmologia`,
-  `/omades`, `/omades/<slug>`, `/programma`, `/montelo`, `/schetika`,
-  `/epikoinonia`, `/odigies`; tabs below them (`/provlepseis/istoriko`,
-  `/montelo/odigos-deikton`, `/omades/paok/apotelesmata`); a page's first tab lives
-  at the page's own address. Slugs live only in `render.PAGE_SLUGS` /
+- Real addresses in English terms (user's call, 07/10/2026): `/predictions`,
+  `/standings`, `/teams`, `/teams/<slug>`, `/schedule`, `/model`, `/about`,
+  `/contact`, `/help`; tabs below them (`/predictions/history`,
+  `/predictions/hall-of-fame`, `/predictions/games`, `/model/metrics`,
+  `/model/how-it-works`, `/teams/paok/results`, `/teams/paok/schedule`); a page's
+  first tab lives at the page's own address. The first public addresses
+  (06/10/2026) were greeklish (`/vathmologia`, `/omades/...`): `firebase.json`
+  301-redirects them (both sites; `test_web.py` checks every destination exists).
+  Planned: an English edition of the site under `/en/` with the same addresses. Slugs live only in `render.PAGE_SLUGS` /
   `TAB_SLUGS` and reach the JS through `data.js` (`D.routes`). JS builds links
   with `url(page, tab)` / `teamHref(team, tab)` and navigates with `go(path)`;
   never hardcode an address. Old `#/...` links are redirected on load.
 - `render.site_pages()` gives every address its own Greek `<title>` and
   description (the SEO text lives there). `render_site()` writes a ~4 KB HTML file
-  per address (`vathmologia.html`, `omades/paok.html`; Firebase `cleanUrls` +
-  `trailingSlash: false` serves them at `/vathmologia`), plus `404.html`
+  per address (`standings.html`, `teams/paok.html`; Firebase `cleanUrls` +
+  `trailingSlash: false` serves them at `/standings`), plus `404.html`
   (noindex) and the shared `app.css`, `app.js`, `data.js`. The sitemap lists
   every address. A new page or tab needs a slug and a `site_pages()` entry.
 - The pages link the shared files by absolute path, so they need a server:

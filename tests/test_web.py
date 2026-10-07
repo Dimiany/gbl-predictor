@@ -79,11 +79,11 @@ def test_render_site_has_shared_files_and_one_page_per_address():
     assert files["data.js"].startswith("window.TIPOFF_DATA = {")
     for name in (
         "index.html",
-        "vathmologia.html",
-        "provlepseis/istoriko.html",
-        "montelo/odigos-deikton.html",
-        "omades/paok.html",
-        "omades/aek/apotelesmata.html",
+        "standings.html",
+        "predictions/history.html",
+        "model/metrics.html",
+        "teams/paok.html",
+        "teams/aek/results.html",
         "404.html",
     ):
         assert name in files, name
@@ -98,26 +98,26 @@ def test_every_address_is_unique_and_has_its_own_title():
     assert len({p.title for p in pages}) == len(pages)
     assert all(p.description for p in pages)
     files = render_site({**SITE_DATA, "site": {"mode": "live"}})
-    page = files["omades/paok/programma.html"]
+    page = files["teams/paok/schedule.html"]
     assert "<title>PAOK: πρόγραμμα αγώνων 2026/27 · TipOff</title>" in page
-    assert f'<link rel="canonical" href="{cfg.SITE_URL}/omades/paok/programma">' in page
+    assert f'<link rel="canonical" href="{cfg.SITE_URL}/teams/paok/schedule">' in page
 
 
 def test_routes_reach_the_js():
     js = render_site(SITE_DATA)["data.js"]
     data = json.loads(js.removeprefix("window.TIPOFF_DATA = ").rstrip().rstrip(";"))
     meta = data["routes"]["meta"]
-    assert meta["/vathmologia"][0].startswith("Βαθμολογία")
-    assert data["routes"]["pages"]["teams"] == "omades"
+    assert meta["/standings"][0].startswith("Βαθμολογία")
+    assert data["routes"]["pages"]["teams"] == "teams"
 
 
 def test_every_page_has_crawlable_menu_heading_and_structured_data():
     files = render_site({**SITE_DATA, "site": {"mode": "live"}})
-    home, team = files["index.html"], files["omades/paok/apotelesmata.html"]
+    home, team = files["index.html"], files["teams/paok/results.html"]
     for page in (home, team):
-        assert '<a href="/vathmologia" data-k="standings">Βαθμολογία</a>' in page
+        assert '<a href="/standings" data-k="standings">Βαθμολογία</a>' in page
         assert page.count("<h1>") == 1
-    assert '<a href="/omades" data-k="teams" class="active" aria-current="page">' in team
+    assert '<a href="/teams" data-k="teams" class="active" aria-current="page">' in team
     assert "<h1>PAOK: αποτελέσματα 2026/27</h1>" in team
 
     def ld(page):
@@ -129,17 +129,17 @@ def test_every_page_has_crawlable_menu_heading_and_structured_data():
     assert {g["@type"] for g in ld(home)["@graph"]} == {"WebSite", "Organization"}
     trail = ld(team)["itemListElement"]
     assert [i["name"] for i in trail] == ["Αρχική", "Ομάδες", "PAOK", "Αποτελέσματα"]
-    assert trail[-1]["item"] == f"{cfg.SITE_URL}/omades/paok/apotelesmata"
+    assert trail[-1]["item"] == f"{cfg.SITE_URL}/teams/paok/results"
     assert "application/ld+json" not in files["404.html"]
 
 
 def test_page_path_and_slug():
     assert page_path("home") == "/"
-    assert page_path("predictions", "next") == "/provlepseis"  # first tab = page address
-    assert page_path("model", "how") == "/montelo/pos-doulevei"
+    assert page_path("predictions", "next") == "/predictions"  # first tab = page address
+    assert page_path("model", "how") == "/model/how-it-works"
     assert (
         page_path("team", "results", "AS Karditsas Iaponiki")
-        == "/omades/as-karditsas-iaponiki/apotelesmata"
+        == "/teams/as-karditsas-iaponiki/results"
     )
     assert slug("Vikos Falcons Ioanninon") == "vikos-falcons-ioanninon"
 
@@ -161,12 +161,12 @@ def test_not_found_page_is_never_indexed():
 
 
 def test_write_pages_drops_pages_from_an_earlier_build(tmp_path):
-    (tmp_path / "omades").mkdir()
-    (tmp_path / "omades" / "panionios.html").write_text("old", encoding="utf-8")
+    (tmp_path / "teams").mkdir()
+    (tmp_path / "teams" / "panionios.html").write_text("old", encoding="utf-8")
     (tmp_path / "og-card.jpg").write_bytes(b"keep")
-    assert build.write_pages(tmp_path, {"index.html": "x", "omades/paok.html": "y"}) == 2
-    assert not (tmp_path / "omades" / "panionios.html").exists()
-    assert (tmp_path / "omades" / "paok.html").read_text(encoding="utf-8") == "y"
+    assert build.write_pages(tmp_path, {"index.html": "x", "teams/paok.html": "y"}) == 2
+    assert not (tmp_path / "teams" / "panionios.html").exists()
+    assert (tmp_path / "teams" / "paok.html").read_text(encoding="utf-8") == "y"
     assert (tmp_path / "og-card.jpg").exists()
 
 
@@ -179,8 +179,8 @@ def test_local_server_serves_clean_addresses_like_firebase(tmp_path, monkeypatch
     from src.web.server import Handler
 
     (tmp_path / "index.html").write_text("home", encoding="utf-8")
-    (tmp_path / "omades").mkdir()
-    (tmp_path / "omades" / "paok.html").write_text("paok", encoding="utf-8")
+    (tmp_path / "teams").mkdir()
+    (tmp_path / "teams" / "paok.html").write_text("paok", encoding="utf-8")
     (tmp_path / "404.html").write_text("lost", encoding="utf-8")
     monkeypatch.setattr(cfg, "DASHBOARD_FILE", tmp_path / "index.html")
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -188,9 +188,9 @@ def test_local_server_serves_clean_addresses_like_firebase(tmp_path, monkeypatch
     base = f"http://127.0.0.1:{server.server_address[1]}"
     try:
         assert urllib.request.urlopen(base + "/").read() == b"home"
-        assert urllib.request.urlopen(base + "/omades/paok").read() == b"paok"
+        assert urllib.request.urlopen(base + "/teams/paok").read() == b"paok"
         with pytest.raises(urllib.error.HTTPError) as err:
-            urllib.request.urlopen(base + "/omades/nobody")
+            urllib.request.urlopen(base + "/teams/nobody")
         assert err.value.code == 404 and err.value.read() == b"lost"
     finally:
         server.shutdown()
@@ -442,7 +442,20 @@ def test_site_files_invite_crawlers_only_on_live(tmp_path):
     assert f"Sitemap: {cfg.SITE_URL}/sitemap.xml" in (tmp_path / "robots.txt").read_text()
     assert f"<loc>{cfg.SITE_URL}/</loc>" in (tmp_path / "sitemap.xml").read_text()
     assert (tmp_path / "crests" / "paok.webp").exists()  # crests are files, not inlined
-    build.write_site_files(tmp_path, mode="live", paths=["/", "/vathmologia"])
-    assert f"<loc>{cfg.SITE_URL}/vathmologia</loc>" in (tmp_path / "sitemap.xml").read_text()
+    build.write_site_files(tmp_path, mode="live", paths=["/", "/standings"])
+    assert f"<loc>{cfg.SITE_URL}/standings</loc>" in (tmp_path / "sitemap.xml").read_text()
     build.write_site_files(tmp_path, mode="preview")
     assert "Disallow: /" in (tmp_path / "robots.txt").read_text()
+
+
+def test_old_addresses_redirect_to_real_pages():
+    # The first public addresses (06/10/2026) were greeklish; links to them must keep working.
+    sites = json.loads((ROOT / "firebase.json").read_text(encoding="utf-8"))["hosting"]
+    paths = {p.path for p in site_pages(SITE_DATA)}
+    for site in sites:
+        redirects = site["redirects"]
+        assert {r["type"] for r in redirects} == {301}
+        for r in redirects:
+            assert r["destination"].replace(":team", "paok") in paths, r
+            assert r["source"].replace(":team", "paok") not in paths, r
+    assert sites[0]["redirects"] == sites[1]["redirects"]  # test site behaves like live

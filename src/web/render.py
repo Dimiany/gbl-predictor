@@ -1,7 +1,7 @@
 """HTML rendering: one page per address, plus the shared CSS, JavaScript and data.
 
-Every page, tab and team has its own address (``/vathmologia``,
-``/omades/paok/apotelesmata``) and its own small HTML file with its own title,
+Every page, tab and team has its own address (``/standings``,
+``/teams/paok/results``) and its own small HTML file with its own title,
 description and canonical link, so search engines index each one. The pages
 share ``app.css``, ``app.js`` and ``data.js``, which the browser caches.
 
@@ -95,23 +95,24 @@ def content_security_policy() -> str:
 
 # ---------------------------------------------------------------- page addresses
 
-#: Page key (``pages.<key>`` in the JS) -> address. Greeklish, as Greek visitors type it.
+#: Page key (``pages.<key>`` in the JS) -> address. English terms; an English edition
+#: of the site will live under /en/ with the same addresses.
 PAGE_SLUGS: dict[str, str] = {
     "home": "",
-    "predictions": "provlepseis",
-    "standings": "vathmologia",
-    "teams": "omades",
-    "schedule": "programma",
-    "model": "montelo",
-    "about": "schetika",
-    "contact": "epikoinonia",
-    "help": "odigies",
+    "predictions": "predictions",
+    "standings": "standings",
+    "teams": "teams",
+    "schedule": "schedule",
+    "model": "model",
+    "about": "about",
+    "contact": "contact",
+    "help": "help",
 }
 #: Tab key -> address per tab group. The first tab lives at the page's own address.
 TAB_SLUGS: dict[str, dict[str, str]] = {
-    "predictions": {"next": "", "history": "istoriko", "hits": "epitychies", "all": "agones"},
-    "model": {"performance": "", "metrics": "odigos-deikton", "how": "pos-doulevei"},
-    "team": {"overview": "", "results": "apotelesmata", "schedule": "programma"},
+    "predictions": {"next": "", "history": "history", "hits": "hall-of-fame", "all": "games"},
+    "model": {"performance": "", "metrics": "metrics", "how": "how-it-works"},
+    "team": {"overview": "", "results": "results", "schedule": "schedule"},
 }
 NOT_FOUND_FILE = "404.html"  # Firebase Hosting serves it for any unknown address
 NOT_FOUND_PATH = "/404"
@@ -146,7 +147,7 @@ def slug(name: str) -> str:
 
 
 def page_path(page: str, tab: str | None = None, team: str | None = None) -> str:
-    """Address of a page: page_path("standings") -> "/vathmologia"."""
+    """Address of a page: page_path("standings") -> "/standings"."""
     parts = [PAGE_SLUGS["teams"], slug(team)] if team else [PAGE_SLUGS[page]]
     if tab:
         parts.append(TAB_SLUGS["team" if team else page][tab])
@@ -159,7 +160,7 @@ def page_file(path: str) -> str:
 
 
 def address_labels(teams: list[str]) -> dict[str, str]:
-    """Address -> short name ("/omades/paok" -> "PAOK"), for breadcrumbs."""
+    """Address -> short name ("/teams/paok" -> "PAOK"), for breadcrumbs."""
     labels = {page_path(k): v for k, v in PAGE_LABELS.items()}
     for group in ("predictions", "model"):
         labels |= {page_path(group, t): v for t, v in TAB_LABELS[group].items()}
@@ -317,7 +318,7 @@ def route_table(pages: list[Page]) -> dict:
 
 
 def page_key(path: str) -> str:
-    """Which menu entry an address belongs to: "/omades/paok" -> "teams"."""
+    """Which menu entry an address belongs to: "/teams/paok" -> "teams"."""
     first = path.strip("/").split("/")[0]
     return next((k for k, v in PAGE_SLUGS.items() if v == first), "home")
 

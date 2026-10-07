@@ -26,10 +26,10 @@ function afterRender(container) {
   }
 }
 
-/** Every team the data mentions (this season's and older ones), for /omades/<slug>. */
+/** Every team the data mentions (this season's and older ones), for /teams/<slug>. */
 const KNOWN_TEAMS = [...new Set([...TEAMS, ...played.flatMap(g => [g.home, g.away])])];
 
-/** /page[/tab]  or  /omades/<team>[/tab]  ->  {page, tab, name} */
+/** /page[/tab]  or  /teams/<team>[/tab]  ->  {page, tab, name} */
 function parseRoute() {
   const parts = location.pathname.split('/').filter(Boolean).map(p => decodeURIComponent(p));
   if (!parts.length || (parts.length === 1 && parts[0] === 'index.html')) return {page: 'home'};
