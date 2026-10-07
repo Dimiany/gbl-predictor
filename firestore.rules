@@ -9,9 +9,9 @@ service cloud.firestore {
 
     function validMessage(m) {
       return m.keys().hasOnly(['name', 'email', 'topic', 'message', 'created'])
-        && m.keys().hasAll(['name', 'topic', 'message', 'created'])
+        && m.keys().hasAll(['name', 'email', 'topic', 'message', 'created'])
         && m.name is string && m.name.size() > 0 && m.name.size() <= 80
-        && (!('email' in m) || (m.email is string && m.email.size() <= 120))
+        && m.email is string && m.email.size() <= 120 && m.email.matches('[^@ ]+@[^@ ]+[.][^@ ]+')
         && m.topic in ['Πρόταση', 'Πρόβλημα', 'Ερώτηση', 'Άλλο']
         && m.message is string && m.message.size() > 0 && m.message.size() <= 4000
         && m.created == request.time;

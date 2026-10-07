@@ -12,8 +12,14 @@ const FAQ = [
   ['Λαμβάνονται υπόψη οι τραυματισμοί;', 'Όχι αυτόματα. Υπάρχει μηχανισμός για απουσίες παικτών με βάση τη σημασία τους, που χρειάζεται τα ρόστερ. Είναι στις ιδέες για το μέλλον.'],
   ['Τι σημαίνει το χρυσό 🔥;', `Πρόβλεψη με πιθανότητα ≥ ${HIT_THRESHOLD * 100}% που βγήκε σωστή. Το 🎯 σημαίνει ότι και η διαφορά πόντων έπεσε μέσα σε ±${SHARP_POINTS}.`],
   ['Μπορώ να το χρησιμοποιήσω για στοίχημα;', 'Δεν το προτείνουμε. Οι προβλέψεις είναι στατιστικές εκτιμήσεις, όχι συμβουλή στοιχηματισμού. Ακόμα και οι «μεγαλύτερες» πιθανότητες μπορεί να πέσουν έξω.'],
-  ['Τι γίνεται με τα στοιχεία μου;', 'Κρατάμε μόνο όσα γράφεις στη φόρμα, για να διαβάσουμε το μήνυμα και, αν δώσεις email, να απαντήσουμε.'],
+  ['Τι γίνεται με τα στοιχεία μου;', 'Κρατάμε μόνο όσα γράφεις στη φόρμα, για να διαβάσουμε το μήνυμα και να σου απαντήσουμε στο email σου.'],
 ];
+
+/** Anti-spam, all in the page (no outside scripts): a hidden honeypot field, a minimum time
+ *  on the form, one message a minute per browser and at most MAX_LINKS links. The Firestore
+ *  rules check the fields again (email required) for anything that skips the page. */
+const MIN_FORM_MS = 3000, COOLDOWN_MS = 60_000, MAX_LINKS = 2, SENT_KEY = 'tipoff-last-message';
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /** Store the message: local server, Firestore, or nothing (opened as a plain file). */
 async function sendMessage(msg) {
@@ -44,7 +50,7 @@ pages.contact = () => {
   const canSend = SERVED || Boolean(SITE.firestore);
   const field = (label, input) => h('label', {class: 'field' + (input.dataset.full ? ' full' : '')}, label, input);
   const name = h('input', {name: 'name', required: true, maxlength: 80, autocomplete: 'name', placeholder: 'π.χ. Δημήτρης'});
-  const email = h('input', {name: 'email', type: 'email', maxlength: 120, autocomplete: 'email', placeholder: 'προαιρετικό'});
+  const email = h('input', {name: 'email', type: 'email', required: true, maxlength: 120, autocomplete: 'email', placeholder: 'π.χ. onoma@gmail.com'});
   const topic = h('select', {name: 'topic'}, TOPICS.map(t => h('option', {value: t}, t)));
   const message = h('textarea', {name: 'message', required: true, maxlength: 4000, placeholder: 'Γράψε μας…', 'data-full': '1'});
   // Honeypot: invisible to people, filled in by spam bots. A filled one "succeeds" silently.
@@ -57,8 +63,15 @@ pages.contact = () => {
 
   const form = h('form', {novalidate: true, onsubmit: async e => {
     e.preventDefault();
-    if (!name.value.trim() || !message.value.trim()) { showToast('Συμπλήρωσε όνομα και μήνυμα.', 'bad', 4000); return; }
-    if (trap.value) { thanks(); return; }
+    if (!name.value.trim() || !email.value.trim() || !message.value.trim()) { showToast('Συμπλήρωσε όνομα, email και μήνυμα.', 'bad', 4000); return; }
+    if (!EMAIL_RE.test(email.value.trim())) { showToast('Το email δεν φαίνεται σωστό.', 'bad', 4000); email.focus(); return; }
+    // Bots fill the hidden field or post within a moment of loading: pretend it worked.
+    if (trap.value || Date.now() - shownAt < MIN_FORM_MS) { thanks(); return; }
+    if ((message.value.match(/https?:\/\/|www\./gi) || []).length > MAX_LINKS) {
+      showToast(`Το μήνυμα έχει πολλούς συνδέσμους (μέχρι ${MAX_LINKS}).`, 'bad', 5000); return;
+    }
+    const last = +(localStorage.getItem(SENT_KEY) || 0);
+    if (Date.now() - last < COOLDOWN_MS) { showToast('Μόλις έστειλες μήνυμα. Δοκίμασε ξανά σε ένα λεπτό.', 'bad', 5000); return; }
     if (!canSend) {
       if (D.contact_email) {
         location.href = `mailto:${D.contact_email}?subject=${encodeURIComponent(`[${BRAND.name}] ` + topic.value)}&body=${encodeURIComponent(message.value + '\n\n— ' + name.value)}`;
@@ -70,6 +83,7 @@ pages.contact = () => {
     submit.disabled = true; submit.textContent = 'Αποστολή…';
     try {
       await sendMessage({name: name.value.trim(), email: email.value.trim(), topic: topic.value, message: message.value.trim()});
+      try { localStorage.setItem(SENT_KEY, String(Date.now())); } catch { /* private mode */ }
       thanks();
     } catch (err) {
       showToast('Δεν στάλθηκε: ' + err.message, 'bad', 6000);
@@ -81,6 +95,7 @@ pages.contact = () => {
   h('div', {style: 'margin-top:16px;display:flex;justify-content:flex-end'}, submit),
   PUBLIC ? null : h('p', {class: 'form-note'}, 'Το μήνυμα αποθηκεύεται μόνο σε αυτόν τον υπολογιστή.'));
   formBox.append(form);
+  const shownAt = Date.now();
 
   return [
     pageBanner('Επικοινωνία', 'Ιδέες, προβλήματα, απορίες; Γράψε μας. Κάθε πρόταση διαβάζεται.'),
