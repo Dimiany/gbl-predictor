@@ -281,6 +281,10 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 ## Ideas backlog (agreed with the user, not started)
 
 Offer these when the user asks "what next". Ask before starting any of them.
+- User's notes (07/10/2026): «Απόκλιση» (= |predicted − actual margin|) confuses,
+  because it ignores each team's points. Rename it (e.g. «Λάθος διαφοράς») or keep only 🎯.
+  Also show the total-points error («Σύνολο: 169 αντί 194»): the total isn't graded anywhere.
+  The pick labels (πριν τον αγώνα / αναδρομική / walk-forward) need clearer wording.
 - AI (Claude API, key as a GitHub secret): match previews in Greek, per-team
   news summary, injury hints from news (user approves before they count),
   weekly report. A live "ask the model" chat needs a server (Blaze plan: ask).
