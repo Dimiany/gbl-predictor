@@ -217,6 +217,11 @@ function predCard(p) {
 /** The model's call for a played game: exact score, chosen winner + probability.
  *  (Where the pick came from, pk.src, still decides what counts in the record and the
  *  model stats; the user asked not to label it on the page, 07/10/2026.) */
+/** "88/121" whose first number counts up (countUp). */
+function fraction(n, of) {
+  return h('span', {class: 'frac', 'data-count': n, 'data-of': of}, `${n}/${of}`);
+}
+
 function predCell(pk, home) {
   if (!pk) return h('span', {class: 'muted'}, '–');
   const pw = pk.w === home ? pk.p : 1 - pk.p;
@@ -287,9 +292,10 @@ function hero(p) {
       : `Ενημέρωση ${D.updated}`),
     h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: url('predictions')}, 'Όλες οι προβλέψεις →'), h('a', {class: 'btn btn-ghost', href: url('model')}, 'Πώς δουλεύει')),
     h('div', {class: 'hero-stats'},
-      h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια')),
+      h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια'),
+        M.n_test ? h('small', null, fraction(Math.round(M.acc * M.n_test), M.n_test), ' εύστοχες προβλέψεις συνολικά') : null),
       // The average margin error (±10) is left to the Model page, where it can be explained.
-      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, `${hits}/${conf.length}`), h('span', null, '🔥 σίγουρες προβλέψεις βγήκαν'),
+      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, fraction(hits, conf.length)), h('span', null, '🔥 σίγουρες προβλέψεις βγήκαν'),
         h('small', null, `αγώνες όπου το μοντέλο έδινε ${HIT_THRESHOLD * 100}% και πάνω`)) : null));
   const inner = h('div', {class: 'banner-inner'}, copy);
   if (p) {
