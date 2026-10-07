@@ -128,6 +128,11 @@ main.enter{animation:pagein .35s ease-out both}
   animation:aurora 14s ease-in-out infinite alternate}
 @keyframes aurora{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(-4%,3%) rotate(4deg)}100%{transform:translate(3%,-2%) rotate(-3deg)}}
 .banner-inner{max-width:1240px;margin:0 auto;padding:36px clamp(16px,4vw,40px) 38px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;position:relative}
+.round-box{display:flex;flex-direction:column;gap:3px;padding:14px 20px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);color:#fff;transition:background .2s,transform .2s}
+.round-box:hover{background:rgba(255,255,255,.13);transform:translateY(-2px)}
+.round-box small{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-cyan)}
+.round-box b{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.round-box span{font-size:13px;color:rgba(255,255,255,.8)}
 .eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--brand-cyan);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--brand-cyan);box-shadow:0 0 0 0 rgba(62,190,223,.7);animation:pulse 1.8s infinite}
 @keyframes pulse{70%{box-shadow:0 0 0 10px rgba(62,190,223,0)}100%{box-shadow:0 0 0 0 rgba(62,190,223,0)}}
@@ -443,7 +448,22 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
 
 /* ---------------------------------------------------------------- phones: tables, cards, KPIs */
 /* Wide tables scroll sideways on phones; a fade on the right edge says there is more. */
-.more-rows{display:flex;margin:14px auto 2px;padding:9px 18px;border-radius:999px;font-size:13px}
+/* Results tables fit their panel on wide screens: the prediction wraps instead of scrolling. */
+.cards-results td.c-pred{white-space:normal;min-width:190px}
+.cards-results td.c-pred .badge{white-space:nowrap}
+@media (max-width:1140px){.cards-results td{padding-left:6px;padding-right:6px}.cards-results td.c-home,.cards-results td.c-away{white-space:normal}.cards-results .tlink .tname{white-space:normal}.cards-results td.c-pred{min-width:150px}}
+/* Pager under long tables: page size · pages · "21–40 από 181" */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--grid);font-size:13px;color:var(--text-secondary)}
+.pg-size{display:flex;align-items:center;gap:8px}
+.pg-size .seg-ctrl button{padding:5px 11px}
+.pg-pages{display:flex;align-items:center;gap:4px}
+.pg{min-width:34px;height:34px;padding:0 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);font:inherit;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}
+.pg:hover:not(:disabled){border-color:var(--accent)}
+.pg.on{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-strong)}
+.pg:disabled{opacity:.35;cursor:default}
+.pg-gap{padding:0 2px;color:var(--muted)}
+.pg-count{font-variant-numeric:tabular-nums}
+@media (max-width:640px){.pager{justify-content:center}.pg-count{width:100%;text-align:center;order:3}}
 .table-wrap.more-right{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}
 @media (max-width:760px){
   /* # and team stay put while the rest of the row scrolls. sticky-2 starts after the 40px # column. */
@@ -455,9 +475,9 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
   tr.hit td.sticky-1,tr.hit td.sticky-2{background:linear-gradient(var(--gold-wash),var(--gold-wash)),var(--surface-1)}
   tbody tr:hover td.sticky-1,tbody tr:hover td.sticky-2{background:var(--surface-2)}
 }
-@media (max-width:640px){
+@media (max-width:900px){
   .table-wrap .hide-sm{display:none!important}
-  /* Result and prediction tables become one card per game: no sideways scrolling. */
+  /* Result and prediction tables become one card per game (phones, tablets): no sideways scrolling. */
   .cards-sm thead{display:none}
   .cards-sm table,.cards-sm tbody{display:block}
   .cards-sm tr{display:grid;grid-template-columns:1fr auto 1fr;gap:7px 10px;align-items:center;padding:12px 10px;border-bottom:1px solid var(--grid)}
@@ -521,3 +541,5 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
   .sheet a span{color:var(--muted);font-size:20px;line-height:1}
 }
 @media (min-width:721px){.sheet,.sheet-backdrop{display:none!important}}
+/* Tablets: the game cards sit two per row. */
+@media (min-width:641px) and (max-width:900px){.cards-sm tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px}}

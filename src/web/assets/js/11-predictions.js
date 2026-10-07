@@ -28,7 +28,7 @@ function historyTab() {
         {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), r.retro ? retroBadge() : null, isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
-      ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', pageSize: 40,
+      ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', paged: true,
         rowClass: r => [isFocus(r.home, r.away) ? 'is-focus' : '', isHit(r) ? 'hit' : ''].join(' ').trim() || null}));
   };
   const filters = h('div', {class: 'filters'},
@@ -56,8 +56,17 @@ function hitsTab() {
   ];
 }
 
+/** Banner box: which round is predicted next, and when. */
+function nextRoundBox() {
+  if (!D.next.length) return null;
+  return h('a', {class: 'round-box', href: url('predictions')},
+    h('small', null, 'Προβλέψεις επόμενης αγωνιστικής'),
+    h('b', null, `${roundNo}η αγωνιστική`),
+    h('span', null, `${nextRoundDates()} · ${D.next.length} αγώνες`));
+}
+
 pages.predictions = ({tab}) => [
-  pageBanner('Προβλέψεις', 'Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα, με το ακριβές σκορ, και βαθμολογείται μόλις βγει το αποτέλεσμα.'),
+  pageBanner('Προβλέψεις', 'Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα, με το ακριβές σκορ, και βαθμολογείται μόλις βγει το αποτέλεσμα.', nextRoundBox()),
   tabs('predictions', [
     {key: 'next', label: 'Επόμενη αγωνιστική', count: D.next.length, render: () => [nextRoundSection(false)]},
     {key: 'history', label: 'Ιστορικό', count: D.log.length, render: historyTab},

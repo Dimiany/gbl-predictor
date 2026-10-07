@@ -26,7 +26,22 @@ const played = D.games;
 const seasonGames = played.filter(g => g.s === season);
 /** Predictions logged before tip-off: the strict record. Retroactive rows are shown but not counted. */
 const preGameLog = D.log.filter(r => !r.retro);
-const roundNo = Math.max(0, ...D.standings.map(r => r.gp)) + 1;
+/** Number of the next round: the games each team in it has played, plus one (the most common
+ *  value, so a postponed game doesn't throw it off). Midweek in a weekend round, the teams
+ *  still to play haven't moved yet, so this stays right. Without fixtures: games played + 1. */
+const roundNo = (() => {
+  const gp = t => STANDING[t]?.gp ?? 0;
+  const votes = {};
+  D.next.forEach(p => [p.home, p.away].forEach(t => { votes[gp(t) + 1] = (votes[gp(t) + 1] || 0) + 1; }));
+  const best = Object.entries(votes).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  return best ? +best[0] : Math.max(0, ...D.standings.map(r => r.gp)) + 1;
+})();
+/** "Σαβ 10/10 – Κυρ 11/10" for the next round (one day: just that day). */
+const nextRoundDates = () => {
+  if (!D.next.length) return '';
+  const a = D.next[0].d, b = D.next[D.next.length - 1].d;
+  return a === b ? dayLabel(a) : `${dayLabel(a)} – ${dayLabel(b)}`;
+};
 
 /** Page registry: pages[name] = ({tab, name}) => Node[]. Filled by the 1x-*.js files. */
 const pages = {};
