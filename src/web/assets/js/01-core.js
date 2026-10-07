@@ -32,13 +32,13 @@ const roundNo = Math.max(0, ...D.standings.map(r => r.gp)) + 1;
 const pages = {};
 
 // ---------------------------------------------------------------- addresses
-// Every page, tab and team has its own address (/vathmologia, /omades/paok/apotelesmata).
+// Every page, tab and team has its own address (/standings, /teams/paok/results).
 // The slugs and each address's title come from src/web/render.py (PAGE_SLUGS, TAB_SLUGS).
 const ROUTES = D.routes || {pages: {}, tabs: {}, meta: {}};
 /** Same rule as render.slug(): "AS Karditsas Iaponiki" -> "as-karditsas-iaponiki". */
 const slugOf = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const joinPath = (...parts) => '/' + parts.filter(Boolean).join('/');
-/** Address of a page and, optionally, one of its tabs: url('model', 'how') -> '/montelo/pos-doulevei'. */
+/** Address of a page and, optionally, one of its tabs: url('model', 'how') -> '/model/how-it-works'. */
 const url = (page, tab) => joinPath(ROUTES.pages[page || 'home'], tab && ROUTES.tabs[page]?.[tab]);
 /** Address of a team page (and tab). */
 const teamHref = (t, tab) => joinPath(ROUTES.pages.teams, slugOf(t), tab && ROUTES.tabs.team?.[tab]);

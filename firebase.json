@@ -3,18 +3,118 @@
     {
       "site": "gbl-predictor",
       "public": "dashboard",
-      "ignore": ["assets/**", "**/.*"],
+      "ignore": [
+        "assets/**",
+        "**/.*"
+      ],
       "cleanUrls": true,
       "trailingSlash": false,
+      "redirects": [
+        {
+          "source": "/provlepseis/istoriko",
+          "destination": "/predictions/history",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis/epitychies",
+          "destination": "/predictions/hall-of-fame",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis/agones",
+          "destination": "/predictions/games",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis",
+          "destination": "/predictions",
+          "type": 301
+        },
+        {
+          "source": "/vathmologia",
+          "destination": "/standings",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team/apotelesmata",
+          "destination": "/teams/:team/results",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team/programma",
+          "destination": "/teams/:team/schedule",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team",
+          "destination": "/teams/:team",
+          "type": 301
+        },
+        {
+          "source": "/omades",
+          "destination": "/teams",
+          "type": 301
+        },
+        {
+          "source": "/programma",
+          "destination": "/schedule",
+          "type": 301
+        },
+        {
+          "source": "/montelo/odigos-deikton",
+          "destination": "/model/metrics",
+          "type": 301
+        },
+        {
+          "source": "/montelo/pos-doulevei",
+          "destination": "/model/how-it-works",
+          "type": 301
+        },
+        {
+          "source": "/montelo",
+          "destination": "/model",
+          "type": 301
+        },
+        {
+          "source": "/schetika",
+          "destination": "/about",
+          "type": 301
+        },
+        {
+          "source": "/epikoinonia",
+          "destination": "/contact",
+          "type": 301
+        },
+        {
+          "source": "/odigies",
+          "destination": "/help",
+          "type": 301
+        }
+      ],
       "headers": [
         {
           "source": "**",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache" },
-            { "key": "X-Content-Type-Options", "value": "nosniff" },
-            { "key": "X-Frame-Options", "value": "DENY" },
-            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-            { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=()"
+            }
           ]
         }
       ]
@@ -22,19 +122,122 @@
     {
       "site": "gbl-predictor-test",
       "public": "dashboard",
-      "ignore": ["assets/**", "**/.*"],
+      "ignore": [
+        "assets/**",
+        "**/.*"
+      ],
       "cleanUrls": true,
       "trailingSlash": false,
+      "redirects": [
+        {
+          "source": "/provlepseis/istoriko",
+          "destination": "/predictions/history",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis/epitychies",
+          "destination": "/predictions/hall-of-fame",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis/agones",
+          "destination": "/predictions/games",
+          "type": 301
+        },
+        {
+          "source": "/provlepseis",
+          "destination": "/predictions",
+          "type": 301
+        },
+        {
+          "source": "/vathmologia",
+          "destination": "/standings",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team/apotelesmata",
+          "destination": "/teams/:team/results",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team/programma",
+          "destination": "/teams/:team/schedule",
+          "type": 301
+        },
+        {
+          "source": "/omades/:team",
+          "destination": "/teams/:team",
+          "type": 301
+        },
+        {
+          "source": "/omades",
+          "destination": "/teams",
+          "type": 301
+        },
+        {
+          "source": "/programma",
+          "destination": "/schedule",
+          "type": 301
+        },
+        {
+          "source": "/montelo/odigos-deikton",
+          "destination": "/model/metrics",
+          "type": 301
+        },
+        {
+          "source": "/montelo/pos-doulevei",
+          "destination": "/model/how-it-works",
+          "type": 301
+        },
+        {
+          "source": "/montelo",
+          "destination": "/model",
+          "type": 301
+        },
+        {
+          "source": "/schetika",
+          "destination": "/about",
+          "type": 301
+        },
+        {
+          "source": "/epikoinonia",
+          "destination": "/contact",
+          "type": 301
+        },
+        {
+          "source": "/odigies",
+          "destination": "/help",
+          "type": 301
+        }
+      ],
       "headers": [
         {
           "source": "**",
           "headers": [
-            { "key": "Cache-Control", "value": "no-cache" },
-            { "key": "X-Content-Type-Options", "value": "nosniff" },
-            { "key": "X-Frame-Options", "value": "DENY" },
-            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-            { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-            { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=()"
+            },
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
           ]
         }
       ]
