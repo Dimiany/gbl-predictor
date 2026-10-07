@@ -2,6 +2,7 @@
 
 // ---------------------------------------------------------------- headings & banners
 function sectionHead(title, sub, link) {
+  if (typeof sub === 'string') sub = sub.charAt(0).toUpperCase() + sub.slice(1);  // subtitles start with a capital
   return h('div', {class: 'section-head'},
     h('h2', null, title, sub ? h('span', {class: 'h-sub'}, sub) : null), link || null);
 }
@@ -27,7 +28,7 @@ function infoDot(key) {
 /** KPI tile. opts: {info, count:{to, dec, fmt}, gold} */
 function kpi(label, value, sub, opts = {}) {
   const val = h('div', {class: 'kpi-value'}, value);
-  if (opts.count) Object.assign(val.dataset, {count: opts.count.to, dec: opts.count.dec || 0, fmt: opts.count.fmt || 'plain'});
+  if (opts.count) Object.assign(val.dataset, {count: opts.count.to, dec: opts.count.dec || 0, fmt: opts.count.fmt || 'plain'}, opts.count.of ? {of: opts.count.of} : {});
   return h('div', {class: 'kpi' + (opts.gold ? ' gold' : '')},
     h('div', {class: 'kpi-label'}, label, opts.info ? infoDot(opts.info) : null), val, h('div', {class: 'kpi-sub'}, sub));
 }
@@ -92,7 +93,7 @@ function table(cols, rows, opts = {}) {
   let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1, page = 0;
   let size = PAGE_SIZES.includes(+localStorage.getItem('gbl-page-size')) ? +localStorage.getItem('gbl-page-size') : PAGE_SIZES[0];
   const paged = opts.paged && rows.length > PAGE_SIZES[0];
-  const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '')});
+  const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '') + (opts.center ? ' t-center' : '')});
   const pager = h('div', {class: 'pager', role: 'navigation', 'aria-label': 'Σελίδες πίνακα'});
   const cellClass = (c, base) => [base, c.sticky ? `sticky-${c.sticky}` : '', c.hideSm ? 'hide-sm' : '', c.area ? `c-${c.area}` : ''].filter(Boolean).join(' ') || null;
   // A fade on the right edge says "there is more, swipe" while the table can still scroll.

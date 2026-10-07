@@ -19,13 +19,13 @@ function standingsTable(compact) {
     {label: 'Φόρμα', info: compact ? null : 'form', render: r => formChips(r.form)});
   if (!compact) cols.push({label: 'Σερί', num: true, render: r => streakGr(r.streak)});
   cols.push({label: 'Elo', num: true, info: 'elo', sort: r => r.elo, render: r => r.elo});
-  return table(cols, D.standings, {sortIdx: 0, dir: 1, rowClass: r => r.team === state.focus ? 'is-focus' : null});
+  return table(cols, D.standings, {sortIdx: 0, dir: 1, center: true, rowClass: r => r.team === state.focus ? 'is-focus' : null});
 }
 
 function nextRoundSection(link = true) {
   const nr = D.next;
   return h('section', null,
-    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
+    sectionHead('Επόμενη αγωνιστική', nr.length ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · Προβλεπόμενο σκορ και πιθανότητα νίκης` : '',
       link ? h('a', {href: url('predictions')}, 'Όλες οι προβλέψεις →') : infoDot('prob')),
     nr.length ? h('div', {class: 'cards'}, nr.map(predCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχουν προγραμματισμένοι αγώνες.'));
 }
@@ -36,8 +36,7 @@ function hitsSorted() {
 }
 
 pages.home = () => {
-  const graded = preGameLog.filter(r => r.ok !== null), pending = preGameLog.length - graded.length;
-  const correct = graded.filter(r => r.ok).length;
+  const seasonOk = seasonLog.filter(r => r.ok).length;
   const conf = confidentPicks(), confOk = conf.filter(g => outcome(g).ok).length;
   const hits = hitsSorted();
   const fs = STANDING[state.focus];
@@ -47,13 +46,13 @@ pages.home = () => {
   return [
     hero(feat),
     played.length ? h('section', null,
-      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'Πραγματικά αποτελέσματα vs Πρόβλεψη', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
+      sectionHead('Αποτελέσματα vs Πρόβλεψη', null, h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
       resultsTicker(played.slice(0, 14))) : null,
-    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: url('model')}, 'Λεπτομέρειες →')),
+    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', null, h('a', {href: url('model')}, 'Λεπτομέρειες →')),
       h('div', {class: 'kpis'},
       kpi('Ακρίβεια μοντέλου', pct(M.acc), `σε ${M.n_test} αγώνες εκτός δείγματος · Elo μόνο ${pct(M.elo_acc)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
       kpi('🔥 Σίγουρες προβλέψεις', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές όταν το μοντέλο λέει ≥ ${HIT_THRESHOLD * 100}%` : 'καμία ακόμα', {info: 'hit', gold: true}),
-      kpi('Ρεκόρ προβλέψεων', graded.length ? `${correct}/${graded.length}` : '–', graded.length ? `${pct(correct / graded.length)} σωστοί · ${pending} σε αναμονή` : `${pending} σε αναμονή`, {info: 'record'}),
+      kpi(`Τρέχουσα σεζόν ${seasonFull}`, seasonLog.length ? `${seasonOk}/${seasonLog.length}` : '–', seasonLog.length ? 'Σωστές προβλέψεις' : 'η σεζόν μόλις ξεκίνησε', {info: 'season', count: seasonLog.length ? {to: seasonOk, of: seasonLog.length} : null}),
       kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι κατά μέσο όρο · σύνολο ±${M.total_mae}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}}))),
     nextRoundSection(),
     hits.length ? h('section', null,

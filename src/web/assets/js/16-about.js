@@ -26,7 +26,5 @@ pages.about = () => {
       h('section', {class: 'panel howto'}, sectionHead('Αποποίηση'),
         h('p', null, 'Ανεπίσημη, ερασιτεχνική εφαρμογή. Δεν έχει σχέση με την ΕΣΑΚΕ, τη Stoiximan ή τις ομάδες. Τα σήματα και τα ονόματα ανήκουν στους κατόχους τους.'),
         h('p', null, h('b', null, 'Δεν είναι συμβουλή στοιχηματισμού.'), ' Οι πιθανότητες είναι εκτιμήσεις με αβεβαιότητα: ένα «80%» σημαίνει ότι περίπου 1 στις 5 φορές θα χάσει το φαβορί.'))),
-    h('section', {class: 'panel'}, sectionHead('Τεχνολογία'),
-      h('div', {class: 'pill-list'}, ['Python 3.14', 'pandas', 'scikit-learn', 'FlashScore API', 'Vanilla JS', 'SVG charts', 'Χωρίς frameworks / CDN', 'Λειτουργεί offline'].map(t => h('span', {class: 'pill'}, t)))),
   ];
 };

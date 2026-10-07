@@ -200,24 +200,36 @@ def test_local_server_serves_clean_addresses_like_firebase(tmp_path, monkeypatch
 def test_save_contact_message_appends_rows_with_header(tmp_path: Path):
     path = tmp_path / "msgs.csv"
     save_contact_message(
-        {"name": "Δημήτρης", "topic": "Πρόταση", "message": "γεια, σας\nνέα γραμμή"}, path
+        {
+            "name": "Δημήτρης",
+            "email": "d@example.com",
+            "topic": "Πρόταση",
+            "message": "γεια, σας\nνέα γραμμή",
+        },
+        path,
     )
-    save_contact_message({"name": "Άλλος", "message": "δεύτερο"}, path)
+    save_contact_message({"name": "Άλλος", "email": "a@example.gr", "message": "δεύτερο"}, path)
     with path.open(encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
     assert [r["name"] for r in rows] == ["Δημήτρης", "Άλλος"]
     assert rows[0]["message"] == "γεια, σας\nνέα γραμμή"  # commas/newlines survive
 
 
-def test_save_contact_message_requires_name_and_message(tmp_path: Path):
-    with pytest.raises(ContactError):
-        save_contact_message({"name": "  ", "message": "x"}, tmp_path / "m.csv")
-    with pytest.raises(ContactError):
-        save_contact_message({"name": "x", "message": ""}, tmp_path / "m.csv")
+def test_save_contact_message_requires_name_email_and_message(tmp_path: Path):
+    for payload in (
+        {"name": "  ", "email": "a@b.gr", "message": "x"},
+        {"name": "x", "email": "a@b.gr", "message": ""},
+        {"name": "x", "message": "x"},
+        {"name": "x", "email": "not-an-email", "message": "x"},
+    ):
+        with pytest.raises(ContactError):
+            save_contact_message(payload, tmp_path / "m.csv")
 
 
 def test_save_contact_message_truncates_long_fields(tmp_path: Path):
-    row = save_contact_message({"name": "n" * 500, "message": "m" * 10_000}, tmp_path / "m.csv")
+    row = save_contact_message(
+        {"name": "n" * 500, "email": "a@b.gr", "message": "m" * 10_000}, tmp_path / "m.csv"
+    )
     assert len(row["name"]) == 80
     assert len(row["message"]) == 4000
 
