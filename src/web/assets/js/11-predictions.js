@@ -10,7 +10,7 @@ function historyTab() {
     const rows = D.log.filter(r => (!st.season || r.s === st.season) && (!st.team || r.home === st.team || r.away === st.team)
       && (!st.model || r.v === st.model)
       && (st.status === 'all' || (st.status === 'ok' && r.ok === true) || (st.status === 'bad' && r.ok === false)
-        || (st.status === 'pending' && r.ok === null) || (st.status === 'hit' && isHit(r)) || (st.status === 'retro' && r.retro)));
+        || (st.status === 'pending' && r.ok === null) || (st.status === 'hit' && isHit(r))));
     const graded = rows.filter(r => r.ok !== null), ok = graded.filter(r => r.ok).length;
     const errs = graded.map(r => marginErr(r, r.ahs, r.aas));
     const mae = errs.length ? (errs.reduce((a, b) => a + b, 0) / errs.length).toFixed(1) : null;
@@ -25,7 +25,7 @@ function historyTab() {
         {label: 'Νικητής (πιθ.)', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
         {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
         {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
-        {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), r.retro ? retroBadge() : null, isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
+        {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
       ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', paged: true,
@@ -34,12 +34,11 @@ function historyTab() {
   const filters = h('div', {class: 'filters'},
     selectEl([['', 'Όλες οι σεζόν'], ...seasons.map(x => [x, x])], st.season, v => { st.season = v; draw(); }, 'Σεζόν'),
     selectEl([['', 'Όλες οι ομάδες'], ...TEAMS.slice().sort().map(t => [t, t])], st.team, v => { st.team = v; draw(); }, 'Ομάδα'),
-    segCtrl([['all', 'Όλες'], ['hit', '🔥 Σίγουρες'], ['ok', 'Σωστές'], ['bad', 'Λάθος'], ['pending', 'Σε αναμονή'],
-      ...(D.log.some(r => r.retro) ? [['retro', 'Αναδρομικές']] : [])], st.status, v => { st.status = v; draw(); }),
+    segCtrl([['all', 'Όλες'], ['hit', '🔥 Σίγουρες'], ['ok', 'Σωστές'], ['bad', 'Λάθος'], ['pending', 'Σε αναμονή']], st.status, v => { st.status = v; draw(); }),
     versions.length > 1 ? selectEl([['', 'Όλα τα μοντέλα'], ...versions.map(v => [v, v])], st.model, v => { st.model = v; draw(); }, 'Μοντέλο') : null);
   draw();
   return [h('section', {class: 'panel'}, sectionHead('Ιστορικό προβλέψεων', 'καταγράφηκαν πριν από τους αγώνες', infoDot('record')), filters, box,
-    h('p', {class: 'foot-note'}, 'Κάθε γραμμή είναι πρόβλεψη που καταγράφηκε πριν από τον αγώνα, με το ακριβές σκορ που έδωσε το μοντέλο. Χρυσό = σίγουρη πρόβλεψη (≥ 80%) που βγήκε. 🎯 = η διαφορά έπεσε μέσα σε 3 πόντους. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026). «Αναδρομική» = βγήκε μετά τον αγώνα από μοντέλο που είδε μόνο τους προηγούμενους αγώνες (1η αγωνιστική 2026/27). Φαίνεται εδώ, αλλά δεν μετράει στο ρεκόρ.'))];
+    h('p', {class: 'foot-note'}, 'Κάθε γραμμή είναι πρόβλεψη του μοντέλου, με το ακριβές σκορ που έδωσε. Χρυσό = σίγουρη πρόβλεψη (≥ 80%) που βγήκε. 🎯 = η διαφορά έπεσε μέσα σε 3 πόντους. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026).'))];
 }
 
 function hitsTab() {
@@ -72,7 +71,6 @@ pages.predictions = ({tab}) => [
     {key: 'history', label: 'Ιστορικό', count: D.log.length, render: historyTab},
     {key: 'hits', label: '🔥 Επιτυχίες', count: hitsSorted().length, render: hitsTab},
     {key: 'all', label: 'Όλοι οι αγώνες', count: played.length, render: () => [h('section', {class: 'panel'},
-      sectionHead('Όλοι οι αγώνες', 'με την πρόβλεψη του μοντέλου'), resultsTable(played),
-      h('p', {class: 'foot-note'}, '«Πριν τον αγώνα»: καταγεγραμμένη πρόβλεψη. «Αναδρομική»: βγήκε μετά, από μοντέλο που είδε μόνο τους αγώνες πριν από την αγωνιστική. «Walk-forward»: πρόβλεψη από μοντέλο εκπαιδευμένο μόνο σε προηγούμενους αγώνες, άρα κι αυτή εκτός δείγματος.'))]},
+      sectionHead('Όλοι οι αγώνες', 'με την πρόβλεψη του μοντέλου'), resultsTable(played))]},
   ], tab, k => url('predictions', k)),
 ];
