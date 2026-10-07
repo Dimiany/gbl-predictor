@@ -234,22 +234,33 @@ function growBars(root) {
   requestAnimationFrame(() => requestAnimationFrame(() => targets.forEach(el => { el.style.width = el.dataset.w; })));
 }
 
-/** Count KPI numbers up from zero. data-count = target, data-dec = decimals, data-fmt = pct|pm|plain. */
+let countObserver = null;
+
+/** Count KPI numbers up from zero once they scroll into view. data-count = target,
+ *  data-dec = decimals, data-fmt = pct|pm|plain, data-of = denominator ("88/121"). */
 function countUp(root) {
-  root.querySelectorAll('[data-count]').forEach(el => {
+  const run = el => {
     const to = +el.dataset.count, dec = +(el.dataset.dec || 0), fmt = el.dataset.fmt || 'plain';
     const show = v => {
       const n = v.toFixed(dec);
-      el.textContent = fmt === 'pct' ? `${n}%` : fmt === 'pm' ? `±${n}` : n;
+      el.textContent = fmt === 'pct' ? `${n}%` : fmt === 'pm' ? `±${n}` : el.dataset.of ? `${n}/${el.dataset.of}` : n;
     };
-    if (REDUCED_MOTION) { show(to); return; }
-    const t0 = performance.now(), dur = 900;
+    const t0 = performance.now(), dur = 1200;
     const step = now => {
-      const k = Math.min(1, (now - t0) / dur), eased = 1 - Math.pow(1 - k, 3);
+      const k = Math.min(1, Math.max(0, (now - t0) / dur)), eased = 1 - Math.pow(1 - k, 3);
       show(to * eased);
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+  };
+  // Reduced motion / old browsers: the final value is already the element's text.
+  if (REDUCED_MOTION || !('IntersectionObserver' in window)) return;
+  countObserver ??= new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { countObserver.unobserve(e.target); run(e.target); }
+  }), {rootMargin: '0px 0px -40px 0px'});
+  root.querySelectorAll('[data-count]').forEach(el => {
+    el.textContent = el.textContent.replace(/[\d.]+/, '0');  // "73%" -> "0%", "88/121" -> "0/121"
+    countObserver.observe(el);
   });
 }
 
