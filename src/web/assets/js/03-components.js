@@ -288,8 +288,9 @@ function hero(p) {
     h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: url('predictions')}, 'Όλες οι προβλέψεις →'), h('a', {class: 'btn btn-ghost', href: url('model')}, 'Πώς δουλεύει')),
     h('div', {class: 'hero-stats'},
       h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια')),
-      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, `${hits}/${conf.length}`), h('span', null, '🔥 σίγουρες')) : null,
-      h('div', {class: 'hero-stat'}, h('b', {'data-count': M.margin_mae, 'data-dec': 1, 'data-fmt': 'pm'}, `±${M.margin_mae}`), h('span', null, 'πόντοι σφάλμα'))));
+      // The average margin error (±10) is left to the Model page, where it can be explained.
+      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, `${hits}/${conf.length}`), h('span', null, '🔥 σίγουρες προβλέψεις βγήκαν'),
+        h('small', null, `αγώνες όπου το μοντέλο έδινε ${HIT_THRESHOLD * 100}% και πάνω`)) : null));
   const inner = h('div', {class: 'banner-inner'}, copy);
   if (p) {
     const homeFav = p.p >= 0.5, hp = Math.round(p.p * 100);
