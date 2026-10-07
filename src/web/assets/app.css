@@ -156,6 +156,10 @@ main.enter{animation:pagein .35s ease-out both}
 .feature-team:not(.fav) span{color:rgba(255,255,255,.72)}
 .feature-score{display:flex;gap:6px;font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .feature-score .dash{color:rgba(255,255,255,.4);font-weight:400}
+/* "Πρόβλεψη TipOff" above the score: says the number is the model's call, not a result. */
+.feature-pred{display:flex;flex-direction:column;align-items:center;gap:2px}
+.feature-pred small{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5);white-space:nowrap}
+.feature-pred .brand-word{text-transform:none;letter-spacing:.06em;color:rgba(127,224,245,.75)}
 .prob-hero{display:flex;gap:2px;height:8px;margin:16px 0 6px}
 .prob-hero .seg.accent{background:linear-gradient(90deg,#7fe0f5,var(--brand-cyan))} .prob-hero .seg.track{background:rgba(255,255,255,.18)}
 .feature .prob-labels{color:rgba(255,255,255,.85)}

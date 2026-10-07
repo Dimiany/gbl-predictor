@@ -278,7 +278,9 @@ function hero(p) {
       h('div', {class: 'feature-when'}, h('b', null, isFocus(p.home, p.away) ? '★ Η ομάδα σου' : 'Πρώτος αγώνας'), h('span', null, `${dayLabel(p.d)} · ${p.t || ''}`)),
       h('div', {class: 'feature-match'},
         h('a', {class: 'feature-team' + (homeFav ? ' fav' : ''), href: teamHref(p.home)}, crest(p.home, 56), h('span', null, p.home)),
-        h('div', {class: 'feature-score'}, h('span', null, p.phs), h('span', {class: 'dash'}, '–'), h('span', null, p.pas)),
+        h('div', {class: 'feature-pred'},
+          h('small', null, 'Πρόβλεψη ', h('span', {class: 'brand-word'}, BRAND.name)),
+          h('div', {class: 'feature-score'}, h('span', null, p.phs), h('span', {class: 'dash'}, '–'), h('span', null, p.pas))),
         h('a', {class: 'feature-team' + (homeFav ? '' : ' fav'), href: teamHref(p.away)}, crest(p.away, 56), h('span', null, p.away))),
       probBar(p, 'prob-hero'),
       h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', null, 'πιθανότητα νίκης'), h('span', null, (100 - hp) + '%'))), 4));
