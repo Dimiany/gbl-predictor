@@ -207,7 +207,18 @@ ELO_DIVISOR: float = 400.0
 # this fraction of its distance from the mean. Off-season roster turnover in
 # the GBL is heavy, so last June's rating is only partly informative in October.
 # 1.0 = full carry-over, 0.0 = everyone restarts at 1500.
-ELO_SEASON_CARRYOVER: float = 0.75
+# 0.85 since margin-v3 (07/10/2026): the GBL's top is stable year to year (walk-forward log-loss).
+ELO_SEASON_CARRYOVER: float = 0.85
+# A team with no games in the data while the league already has an earlier season
+# was promoted from A2. It starts here, below last season's bottom teams (1415-1440
+# at the end of 2025/26), not at the league average of 1500.
+ELO_PROMOTED_START: float = 1400.0
+# Ratings move faster while either team is in its first ELO_EARLY_GAMES games of a
+# season (summer roster changes, promoted teams): K = ELO_K_EARLY instead of ELO_K.
+# 40 / 8 chosen on walk-forward log-loss (07/10/2026: 0.506 -> 0.497 with the two
+# settings above); larger values gained < 0.002, so we stop here to avoid overfitting.
+ELO_K_EARLY: float = 40.0
+ELO_EARLY_GAMES: int = 8
 
 # ---------------------------------------------------------------------------
 # Seasons
@@ -285,7 +296,7 @@ TARGET_TOTAL: str = COL_TOTAL
 # prediction in data/prediction_history.csv, so old and new models' records
 # stay distinguishable. Rows without a version came from "ensemble-v1"
 # (HistGradientBoosting classifier blended with Elo, until 05/10/2026).
-MODEL_VERSION: str = "margin-v2"
+MODEL_VERSION: str = "margin-v3"
 
 # Inputs of the margin model (derived in model.model_inputs):
 #   elo_diff_adj — Elo gap incl. home court; form_diff — L5 margin difference;

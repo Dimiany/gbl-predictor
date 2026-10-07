@@ -21,7 +21,7 @@ import pandas as pd
 import requests
 
 from src import config as cfg
-from src.features import build_features, elo_update, season_of, team_state_snapshot
+from src.features import build_features, elo_update, game_k, season_of, team_state_snapshot
 from src.model import PredictorBundle
 from src.predict import Prediction, load_fixtures_from_csv, next_round, predict_fixtures
 from src.prediction_log import RESCHEDULE_TOLERANCE_DAYS, build_accuracy_view
@@ -128,7 +128,8 @@ def _elo_history(history: pd.DataFrame) -> dict[str, list[list[list]]]:
         season = season_of(date)
         iso = date.strftime("%Y-%m-%d")
         home_pre, away_pre = float(g["home_elo_pre"]), float(g["away_elo_pre"])
-        home_post, away_post = elo_update(home_pre, away_pre, int(g[cfg.COL_HOME_WIN]))
+        k = game_k(int(g["home_games_played"]), int(g["away_games_played"]))
+        home_post, away_post = elo_update(home_pre, away_pre, int(g[cfg.COL_HOME_WIN]), k=k)
         for team, pre, post in (
             (g[cfg.COL_HOME], home_pre, home_post),
             (g[cfg.COL_AWAY], away_pre, away_post),

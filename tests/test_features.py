@@ -370,3 +370,51 @@ def test_build_features_replaces_legacy_feature_columns():
     assert list(feats.columns).count("home_avg_scored_L5") == 1
     assert list(feats.columns).count("home_games_played") == 1
     assert feats["home_games_played"].iloc[0] == 0
+
+
+# ---------------------------------------------------------------------------
+# margin-v3 Elo rules: promoted teams start low, faster learning early in a season
+# ---------------------------------------------------------------------------
+
+
+def test_promoted_team_starts_below_the_league_average():
+    games = pd.DataFrame(
+        {
+            "game_date": ["01/05/2026", "04/10/2026", "04/10/2026"],
+            "home_team": ["A", "A", "C"],
+            "away_team": ["B", "N", "B"],
+            "home_score": [90, 90, 80],
+            "away_score": [80, 70, 85],
+        }
+    )
+    feats = build_features(games)
+    # The very first season has no "promoted" teams: everyone starts at the average.
+    assert feats.iloc[0]["away_elo_pre"] == cfg.ELO_INITIAL
+    # N and C appear only in the next season: they came up from A2.
+    assert feats.iloc[1]["away_elo_pre"] == cfg.ELO_PROMOTED_START
+    assert feats.iloc[2]["home_elo_pre"] == cfg.ELO_PROMOTED_START
+
+
+def test_promoted_team_before_its_first_game_uses_the_promoted_start():
+    from src.features import features_for_fixture, team_state_snapshot
+
+    history = pd.DataFrame(
+        {
+            "game_date": ["01/05/2026"],
+            "home_team": ["A"],
+            "away_team": ["B"],
+            "home_score": [90],
+            "away_score": [80],
+        }
+    )
+    states, h2h = team_state_snapshot(history)
+    row = features_for_fixture("New", "A", pd.Timestamp("2026-10-10"), states, h2h)
+    assert row["home_elo_pre"] == cfg.ELO_PROMOTED_START
+
+
+def test_ratings_move_faster_in_the_first_games_of_a_season():
+    from src.features import game_k
+
+    assert game_k(0, 20) == cfg.ELO_K_EARLY  # either team still early -> fast
+    assert game_k(cfg.ELO_EARLY_GAMES, cfg.ELO_EARLY_GAMES) == cfg.ELO_K
+    assert cfg.ELO_K_EARLY > cfg.ELO_K

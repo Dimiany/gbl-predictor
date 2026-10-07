@@ -175,16 +175,21 @@ dashboard/, models/            generated, gitignored
 a season, `TeamState.start_season()` resets W-L, L5 form and rest, and regresses
 Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 
-## Model `margin-v2`
+## Model `margin-v3` (since 07/10/2026; v2 = same model with the old Elo rules)
 
 - margin = LinearRegression(elo_diff_adj, form_diff, win_pct_diff)
 - P(home win) = Phi(margin / sigma), sigma = residual std (about 12.4)
 - total = Ridge(alpha=50) on the four L5 scored/conceded columns
 - scoreline from (margin, total), rounded so it never ties and always agrees
   with the probability
+- Elo rules (v3, chosen on walk-forward log-loss, user-approved): promoted teams
+  start at `ELO_PROMOTED_START` 1400 (a team with no games while the league has an
+  earlier season, `features.enter_season`); season carry-over 0.85; K 40 instead of 20
+  while either team is in its first 8 games of a season (`game_k`, also used by the
+  site's Elo chart). Prompted by Panathinaikos-Vikos (round 1): v2 said +6 / 68%, v3 +11 / 81%.
 - Rolling walk-forward (60-game warm-up, refit every game day, 121 games):
-  accuracy 73% (Elo alone 76%, always-home 63%, ±4 noise), log-loss 0.506 (Elo
-  0.552), Brier 0.171, margin MAE 10.1, R² 0.30, total MAE 15.4.
+  accuracy 73% (Elo alone 75%, always-home 63%, ±4 noise), log-loss 0.497 (v2
+  0.506, Elo 0.522), Brier 0.167, margin MAE 9.96, R² 0.33, total MAE 15.4.
 - Compare models on log-loss / Brier, not accuracy: differences of 3-4 points
   on ~120 games are noise.
 
@@ -288,7 +293,7 @@ Offer these when the user asks "what next". Ask before starting any of them.
 - AI (Claude API, key as a GitHub secret): match previews in Greek, per-team
   news summary, injury hints from news (user approves before they count),
   weekly report. A live "ask the model" chat needs a server (Blaze plan: ask).
-- Model: lower starting Elo for promoted teams; Monte Carlo season simulation
+- Model: Monte Carlo season simulation
   (title / playoff / relegation odds); real rosters + absences (names from the
   user only).
 - Site: user-vs-model prediction game (Firestore + Auth), side-by-side team
@@ -312,7 +317,8 @@ Never work on two machines at once without `git pull` first.
 
 ## Known limits
 
-- Promoted teams start at Elo 1500, which overrates them early.
+- Only one full season of data: the carry-over and promoted-start values rest on
+  few season-start games (round 1 2026/27); revisit after a few rounds.
 - No box-score features (pace, eFG%, ratings): FlashScore doesn't expose them.
 - No live injury feed: absences are user-entered.
 - The contact form has a honeypot but no App Check / rate limit yet.

@@ -60,6 +60,13 @@ def elo_update(
     return home_rating + delta, away_rating - delta
 
 
+def game_k(home_games: int, away_games: int) -> float:
+    """K for one game: ELO_K_EARLY while either team is in its first
+    ELO_EARLY_GAMES games of the season (counts before this game), else ELO_K."""
+    early = min(home_games, away_games) < cfg.ELO_EARLY_GAMES
+    return cfg.ELO_K_EARLY if early else cfg.ELO_K
+
+
 def season_of(date: pd.Timestamp) -> int:
     """Start year of the GBL season ``date`` falls in (2027-03-01 -> 2026)."""
     return date.year if date.month >= cfg.SEASON_START_MONTH else date.year - 1
@@ -221,6 +228,21 @@ class HeadToHead:
 # ---------------------------------------------------------------------------
 
 
+def enter_season(states: dict[str, TeamState], team: str, season: int) -> TeamState:
+    """The team's state, rolled into ``season`` (see TeamState.start_season).
+
+    A team that has never played while the league already has an earlier season
+    is a promoted team: it starts at ELO_PROMOTED_START, not the league average.
+    """
+    state = states[team]
+    if state.season is None and any(
+        o.season is not None and o.season < season for o in states.values()
+    ):
+        state.elo = cfg.ELO_PROMOTED_START
+    state.start_season(season)
+    return state
+
+
 def standings_rank(states: dict[str, TeamState], team: str, season: int | None = None) -> float:
     """Return ``team``'s 1-based position in the league table.
 
@@ -301,12 +323,10 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
         away: str = row[cfg.COL_AWAY]
         date: pd.Timestamp = row[cfg.COL_DATE]
 
-        h = states[home]
-        a = states[away]
         # First game of a new season for either team -> reset its season state.
         season = season_of(date)
-        h.start_season(season)
-        a.start_season(season)
+        h = enter_season(states, home, season)
+        a = enter_season(states, away, season)
 
         # --- snapshot features BEFORE recording the game -------------------
         # This ordering is what prevents data leakage: the features describe
@@ -361,9 +381,10 @@ def build_features(games: pd.DataFrame) -> pd.DataFrame:
         away_score = int(row[cfg.COL_AWAY_SCORE])
         home_won = int(home_score > away_score)
 
+        k = game_k(h.games_played, a.games_played)
         h.record_game(home_score, away_score, date)
         a.record_game(away_score, home_score, date)
-        new_home_elo, new_away_elo = elo_update(h.elo, a.elo, home_won)
+        new_home_elo, new_away_elo = elo_update(h.elo, a.elo, home_won, k=k)
         h.elo = new_home_elo
         a.elo = new_away_elo
         h2h.record(home, away, home_won)
@@ -406,14 +427,13 @@ def team_state_snapshot(
         away_score = int(row[cfg.COL_AWAY_SCORE])
         home_won = int(home_score > away_score)
 
-        h = states[home]
-        a = states[away]
         season = season_of(date)
-        h.start_season(season)
-        a.start_season(season)
+        h = enter_season(states, home, season)
+        a = enter_season(states, away, season)
+        k = game_k(h.games_played, a.games_played)
         h.record_game(home_score, away_score, date)
         a.record_game(away_score, home_score, date)
-        new_home_elo, new_away_elo = elo_update(h.elo, a.elo, home_won)
+        new_home_elo, new_away_elo = elo_update(h.elo, a.elo, home_won, k=k)
         h.elo = new_home_elo
         a.elo = new_away_elo
         h2h.record(home, away, home_won)
@@ -436,11 +456,9 @@ def features_for_fixture(
     If the fixture opens a new season for a team, its snapshot state is rolled
     over in place (idempotent), exactly as ``build_features`` would do.
     """
-    h = states[home]
-    a = states[away]
     season = season_of(fixture_date)
-    h.start_season(season)
-    a.start_season(season)
+    h = enter_season(states, home, season)
+    a = enter_season(states, away, season)
     home_elo = h.elo
     away_elo = a.elo
     home_rank = standings_rank(states, home, season)
