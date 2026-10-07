@@ -58,7 +58,10 @@ function tabs(id, items, initial, urlFor) {
   bar.append(...buttons, ink);
   const moveInk = () => {
     const b = bar.querySelector('[aria-selected=true]');
-    if (b) { ink.style.left = b.offsetLeft + 'px'; ink.style.width = b.offsetWidth + 'px'; }
+    if (!b) return;
+    ink.style.left = b.offsetLeft + 'px'; ink.style.width = b.offsetWidth + 'px';
+    // On phones the strip scrolls: keep the chosen tab in view.
+    if (b.offsetLeft < bar.scrollLeft || b.offsetLeft + b.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = b.offsetLeft - 16;
   };
   function select(key, user) {
     current = key; state.tabs[id] = key;
@@ -75,10 +78,23 @@ function tabs(id, items, initial, urlFor) {
 }
 
 // ---------------------------------------------------------------- tables & controls
-/** Sortable table. cols: {label, num?, title?, sort?(row), render(row)} */
+/**
+ * Sortable table. cols: {label, num?, title?, sort?(row), render(row), plus phone layout:
+ *   sticky?: 1|2   column stays put while the table scrolls sideways (#, team)
+ *   hideSm?: true  hidden on phones
+ *   area?: name    grid area when opts.cards is set (rows become cards on phones)
+ *   cap?: true|str caption above the value in a card (the label, or this text)}
+ * opts.cards = 'results' | 'log' picks the card layout in app.css.
+ * opts.pageSize = show that many rows, then a "show more" button (long lists on phones).
+ */
 function table(cols, rows, opts = {}) {
-  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1;
-  const wrap = h('div', {class: 'table-wrap'});
+  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1, shown = opts.pageSize || Infinity;
+  const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '')});
+  const cellClass = (c, base) => [base, c.sticky ? `sticky-${c.sticky}` : '', c.hideSm ? 'hide-sm' : '', c.area ? `c-${c.area}` : ''].filter(Boolean).join(' ') || null;
+  // A fade on the right edge says "there is more, swipe" while the table can still scroll.
+  const edge = () => wrap.classList.toggle('more-right', wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 2);
+  wrap.addEventListener('scroll', edge, {passive: true});
+  new ResizeObserver(edge).observe(wrap);
   function draw() {
     const data = rows.slice();
     if (sortIdx >= 0 && cols[sortIdx].sort) {
@@ -86,7 +102,7 @@ function table(cols, rows, opts = {}) {
       data.sort((a, b) => { const x = f(a), y = f(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
     }
     const head = h('tr', null, cols.map((c, i) => {
-      const th = h('th', {class: (c.num ? 'num ' : '') + (c.sort ? 'sortable' : ''), title: c.title || null, scope: 'col',
+      const th = h('th', {class: cellClass(c, (c.num ? 'num ' : '') + (c.sort ? 'sortable' : '')), title: c.title || null, scope: 'col',
         'aria-sort': i === sortIdx ? (dir > 0 ? 'ascending' : 'descending') : null, tabindex: c.sort ? 0 : null},
         c.label, c.info ? infoDot(c.info) : null, c.sort ? h('span', {class: 'arrow'}, i === sortIdx ? (dir > 0 ? '▲' : '▼') : ' ') : null);
       if (c.sort) {
@@ -97,9 +113,16 @@ function table(cols, rows, opts = {}) {
       return th;
     }));
     const body = data.length
-      ? data.map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: c.num ? 'num' : null}, c.render(r)))))
+      ? data.slice(0, shown).map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
+        'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r)))))
       : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || 'Δεν υπάρχουν δεδομένα.'))];
-    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
+    const rest = data.length - shown;
+    const more = rest > 0 ? h('button', {type: 'button', class: 'btn btn-ghost more-rows', onclick: () => {
+      shown += opts.pageSize; draw(); afterRender(wrap);
+      wrap.querySelectorAll('tbody tr')[shown - opts.pageSize]?.querySelector('a, button')?.focus({preventScroll: true});
+    }}, `Δείξε περισσότερους (${rest} ακόμα)`) : null;
+    wrap.replaceChildren(...[h('table', null, h('thead', null, head), h('tbody', null, body)), more].filter(Boolean));
+    requestAnimationFrame(edge);
   }
   draw();
   return wrap;
@@ -189,14 +212,14 @@ function outcomeCell(g) {
 /** Results with the model's exact call next to the real score; confident hits glow gold. */
 function resultsTable(games, opts = {}) {
   return table([
-    {label: 'Ημέρα', sort: g => g.d, render: g => dayLabel(g.d)},
-    {label: 'Γηπεδούχος', sort: g => g.home, render: g => h('span', {class: g.hs > g.as ? 'strong' : null}, tlink(g.home))},
-    {label: 'Σκορ', num: true, render: g => h('span', {class: 'score-cell'}, `${g.hs} – ${g.as}`)},
-    {label: 'Φιλοξενούμενος', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
-    {label: 'Πρόβλεψη μοντέλου', render: g => predCell(g.pick, g.home)},
-    {label: 'Απόκλιση', num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
-    {label: 'Αποτέλεσμα', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
-  ], games, {sortIdx: 0, dir: -1, empty: opts.empty,
+    {label: 'Ημέρα', area: 'date', sort: g => g.d, render: g => dayLabel(g.d)},
+    {label: 'Γηπεδούχος', area: 'home', sort: g => g.home, render: g => h('span', {class: g.hs > g.as ? 'strong' : null}, tlink(g.home))},
+    {label: 'Σκορ', area: 'score', num: true, render: g => h('span', {class: 'score-cell'}, h('span', null, g.hs), h('i', null, ' – '), h('span', null, g.as))},
+    {label: 'Φιλοξενούμενος', area: 'away', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
+    {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
+    {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
+    {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
+  ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', pageSize: opts.pageSize ?? 40,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
 }
 

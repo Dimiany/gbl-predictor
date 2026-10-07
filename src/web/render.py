@@ -116,6 +116,26 @@ TAB_SLUGS: dict[str, dict[str, str]] = {
 NOT_FOUND_FILE = "404.html"  # Firebase Hosting serves it for any unknown address
 NOT_FOUND_PATH = "/404"
 
+#: The main menu, in order. Rendered into every page's HTML (crawlable links) and
+#: reused by the JS (header menu, phone menu sheet).
+NAV_PAGES: list[tuple[str, str]] = [
+    ("home", "Αρχική"),
+    ("predictions", "Προβλέψεις"),
+    ("standings", "Βαθμολογία"),
+    ("teams", "Ομάδες"),
+    ("schedule", "Πρόγραμμα"),
+    ("model", "Μοντέλο"),
+    ("about", "Σχετικά"),
+    ("contact", "Επικοινωνία"),
+]
+PAGE_LABELS: dict[str, str] = {**dict(NAV_PAGES), "help": "Οδηγίες"}
+#: Short names of the tabs that have their own address (breadcrumbs).
+TAB_LABELS: dict[str, dict[str, str]] = {
+    "predictions": {"history": "Ιστορικό", "hits": "Hall of Fame", "all": "Όλοι οι αγώνες"},
+    "model": {"metrics": "Οδηγός δεικτών", "how": "Πώς δουλεύει"},
+    "team": {"results": "Αποτελέσματα", "schedule": "Πρόγραμμα"},
+}
+
 
 def slug(name: str) -> str:
     """Team name -> address part: "AS Karditsas Iaponiki" -> "as-karditsas-iaponiki".
@@ -136,6 +156,30 @@ def page_path(page: str, tab: str | None = None, team: str | None = None) -> str
 def page_file(path: str) -> str:
     """Address -> file in dashboard/ (Firebase cleanUrls serves x.html at /x)."""
     return "index.html" if path == "/" else path.strip("/") + ".html"
+
+
+def address_labels(teams: list[str]) -> dict[str, str]:
+    """Address -> short name ("/omades/paok" -> "PAOK"), for breadcrumbs."""
+    labels = {page_path(k): v for k, v in PAGE_LABELS.items()}
+    for group in ("predictions", "model"):
+        labels |= {page_path(group, t): v for t, v in TAB_LABELS[group].items()}
+    for team in teams:
+        labels[page_path("team", team=team)] = team
+        labels |= {page_path("team", t, team): v for t, v in TAB_LABELS["team"].items()}
+    return labels
+
+
+def breadcrumbs(path: str, labels: dict[str, str]) -> list[tuple[str, str]]:
+    """[(address, name), ...] from the home page down to ``path``; empty for home."""
+    if path == "/":
+        return []
+    parts = path.strip("/").split("/")
+    trail = [("/", PAGE_LABELS["home"])]
+    for i in range(1, len(parts) + 1):
+        sub = "/" + "/".join(parts[:i])
+        if sub in labels:
+            trail.append((sub, labels[sub]))
+    return trail
 
 
 @dataclass(frozen=True)
@@ -267,8 +311,71 @@ def route_table(pages: list[Page]) -> dict:
     return {
         "pages": PAGE_SLUGS,
         "tabs": TAB_SLUGS,
+        "nav": [list(item) for item in NAV_PAGES],
         "meta": {p.path: [p.title, p.description] for p in pages},
     }
+
+
+def page_key(path: str) -> str:
+    """Which menu entry an address belongs to: "/omades/paok" -> "teams"."""
+    first = path.strip("/").split("/")[0]
+    return next((k for k, v in PAGE_SLUGS.items() if v == first), "home")
+
+
+def static_nav(path: str) -> str:
+    """The main menu as plain links, so crawlers that don't run JS still find every page."""
+    active = page_key(path)
+    return "".join(
+        f'<a href="{page_path(k)}" data-k="{k}"'
+        + (' class="active" aria-current="page"' if k == active else "")
+        + f">{html.escape(label)}</a>"
+        for k, label in NAV_PAGES
+    )
+
+
+def structured_data(page: Page, labels: dict[str, str]) -> str:
+    """schema.org JSON-LD: the site's name for Google's results (home) and the
+    breadcrumb trail (every other page). Data only: browsers never execute it,
+    so the CSP doesn't need to allow it."""
+    url = cfg.SITE_URL
+    if page.path == "/":
+        data = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "@id": f"{url}/#website",
+                    "name": cfg.SITE_NAME,
+                    "alternateName": f"{cfg.SITE_NAME} · {cfg.SITE_TAGLINE}",
+                    "url": f"{url}/",
+                    "inLanguage": "el",
+                    "description": page.description,
+                    "publisher": {"@id": f"{url}/#organization"},
+                },
+                {
+                    "@type": "Organization",
+                    "@id": f"{url}/#organization",
+                    "name": cfg.SITE_NAME,
+                    "url": f"{url}/",
+                    "logo": f"{url}/apple-touch-icon.png",
+                },
+            ],
+        }
+    else:
+        data = {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i,
+                    "name": name,
+                    "item": url + ("/" if path == "/" else path),
+                }
+                for i, (path, name) in enumerate(breadcrumbs(page.path, labels), start=1)
+            ],
+        }
+    return f'<script type="application/ld+json">{json_payload(data)}</script>'
 
 
 def share_meta(page: Page, mode: str | None) -> str:
@@ -304,14 +411,27 @@ def share_meta(page: Page, mode: str | None) -> str:
     return "\n".join(tags)
 
 
-def render_page(data: dict, page: Page, noindex: bool = False) -> str:
-    """One page: its own <head> (title, description, canonical), the shared shell
-    and the shared files. The JS then renders the content for the address."""
+def render_page(
+    data: dict, page: Page, noindex: bool = False, labels: dict[str, str] | None = None
+) -> str:
+    """One page: its own <head> (title, description, canonical, JSON-LD), the shared
+    shell with the menu as plain links, and the shared files. The JS then renders
+    the content for the address.
+
+    ``<main>`` starts with the page's heading and description, so crawlers that
+    don't run JS still read what the page is about. It is invisible (no flash
+    before the JS replaces it) but in the HTML.
+    """
     mode = data.get("site", {}).get("mode")
     # Preview links are for checking a change, not for search engines.
     noindex = noindex or mode == "preview"
     robots = '\n<meta name="robots" content="noindex, nofollow">' if noindex else ""
     name, tagline = cfg.SITE_NAME, cfg.SITE_TAGLINE
+    if labels is None:
+        labels = address_labels([r["team"] for r in data.get("standings", [])])
+    found = page.path != NOT_FOUND_PATH
+    heading = html.escape(page.title.removesuffix(f" · {name}"))
+    intro = f'<div class="ssr"><h1>{heading}</h1><p>{html.escape(page.description)}</p></div>'
     return f"""<!doctype html>
 <html lang="el" data-theme="dark">
 <head>
@@ -322,7 +442,8 @@ def render_page(data: dict, page: Page, noindex: bool = False) -> str:
 <meta name="description" content="{html.escape(page.description, quote=True)}">
 <title>{html.escape(page.title)}</title>
 {icon_links()}
-{share_meta(page, mode) if page.path != NOT_FOUND_PATH else ""}
+{share_meta(page, mode) if found else ""}
+{structured_data(page, labels) if found else ""}
 <link rel="stylesheet" href="/app.css">
 <script src="/data.js" defer></script>
 <script src="/app.js" defer></script>
@@ -331,16 +452,16 @@ def render_page(data: dict, page: Page, noindex: bool = False) -> str:
 <div class="viz-root">
   <header class="site-head">
     <a class="brand" href="/" aria-label="{name}, αρχική"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
-    <nav id="nav" aria-label="Κύρια πλοήγηση"></nav>
+    <nav id="nav" aria-label="Κύρια πλοήγηση">{static_nav(page.path)}</nav>
     <div class="head-tools">
       <button id="refresh" class="btn btn-primary" type="button" title="Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"><span class="spin" aria-hidden="true">⟳</span> Ανανέωση</button>
-      <label class="focus-pick"><span>Η ομάδα μου</span><select id="focus"></select></label>
+      <label class="focus-pick"><span>Η ομάδα μου</span><select id="focus" aria-label="Η ομάδα μου"></select></label>
       <a class="icon-btn" href="{page_path("help")}" aria-label="Οδηγίες" title="Οδηγίες">?</a>
       <button id="theme" class="icon-btn" type="button" aria-label="Αλλαγή θέματος" title="Σκοτεινό / φωτεινό">◐</button>
     </div>
     <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
   </header>
-  <main id="app" tabindex="-1"></main>
+  <main id="app" tabindex="-1">{intro if found else ""}</main>
   <footer class="site-foot" id="foot"></footer>
   <!-- Overlays stay inside .viz-root: the theme tokens (colours, fonts) live there. -->
   <button class="to-top" id="to-top" type="button" aria-label="Πάνω">↑</button>
@@ -359,13 +480,14 @@ def render_html(data: dict) -> str:
 def render_site(data: dict) -> dict[str, str]:
     """Every generated file of the site: name in dashboard/ -> content."""
     pages = site_pages(data)
+    labels = address_labels([r["team"] for r in data.get("standings", [])])
     payload = json_payload({**data, "routes": route_table(pages)})
     not_found = Page(NOT_FOUND_PATH, f"Η σελίδα δεν βρέθηκε · {cfg.SITE_NAME}", "")
     files = {
         "app.css": bundle_css(),
         "app.js": bundle_js(),
         "data.js": f"window.TIPOFF_DATA = {payload};\n",
-        NOT_FOUND_FILE: render_page(data, not_found, noindex=True),
+        NOT_FOUND_FILE: render_page(data, not_found, noindex=True, labels=labels),
     }
-    files.update({page_file(p.path): render_page(data, p) for p in pages})
+    files.update({page_file(p.path): render_page(data, p, labels=labels) for p in pages})
     return files

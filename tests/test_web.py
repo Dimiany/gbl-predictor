@@ -111,6 +111,28 @@ def test_routes_reach_the_js():
     assert data["routes"]["pages"]["teams"] == "omades"
 
 
+def test_every_page_has_crawlable_menu_heading_and_structured_data():
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    home, team = files["index.html"], files["omades/paok/apotelesmata.html"]
+    for page in (home, team):
+        assert '<a href="/vathmologia" data-k="standings">Βαθμολογία</a>' in page
+        assert page.count("<h1>") == 1
+    assert '<a href="/omades" data-k="teams" class="active" aria-current="page">' in team
+    assert "<h1>PAOK: αποτελέσματα 2026/27</h1>" in team
+
+    def ld(page):
+        block = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(
+            1
+        )
+        return json.loads(block.replace("<\\/", "</"))
+
+    assert {g["@type"] for g in ld(home)["@graph"]} == {"WebSite", "Organization"}
+    trail = ld(team)["itemListElement"]
+    assert [i["name"] for i in trail] == ["Αρχική", "Ομάδες", "PAOK", "Αποτελέσματα"]
+    assert trail[-1]["item"] == f"{cfg.SITE_URL}/omades/paok/apotelesmata"
+    assert "application/ld+json" not in files["404.html"]
+
+
 def test_page_path_and_slug():
     assert page_path("home") == "/"
     assert page_path("predictions", "next") == "/provlepseis"  # first tab = page address
@@ -207,7 +229,8 @@ def test_csp_allows_only_our_own_script_files():
     page = render_html({"season": "2026/27", "games": []})
     assert "script-src 'self';" in page
     assert "default-src 'none'" in page
-    assert re.search(r"<script(?![^>]*src=)", page) is None  # no inline script at all
+    # No inline code at all: the only inline <script> is JSON-LD data, never executed.
+    assert re.search(r"<script(?![^>]*(src=|application/ld\+json))", page) is None
 
 
 def test_only_preview_builds_are_noindex():
