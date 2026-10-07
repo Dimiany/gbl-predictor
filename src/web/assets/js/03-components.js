@@ -85,47 +85,74 @@ function tabs(id, items, initial, urlFor) {
  *   area?: name    grid area when opts.cards is set (rows become cards on phones)
  *   cap?: true|str caption above the value in a card (the label, or this text)}
  * opts.cards = 'results' | 'log' picks the card layout in app.css.
- * opts.pageSize = show that many rows, then a "show more" button (long lists on phones).
+ * opts.paged = true: pages of 20 / 40 / 60 rows with a pager below (the size is remembered).
  */
+const PAGE_SIZES = [20, 40, 60];
 function table(cols, rows, opts = {}) {
-  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1, shown = opts.pageSize || Infinity;
+  let sortIdx = opts.sortIdx ?? -1, dir = opts.dir ?? 1, page = 0;
+  let size = PAGE_SIZES.includes(+localStorage.getItem('gbl-page-size')) ? +localStorage.getItem('gbl-page-size') : PAGE_SIZES[0];
+  const paged = opts.paged && rows.length > PAGE_SIZES[0];
   const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '')});
+  const pager = h('div', {class: 'pager', role: 'navigation', 'aria-label': 'Σελίδες πίνακα'});
   const cellClass = (c, base) => [base, c.sticky ? `sticky-${c.sticky}` : '', c.hideSm ? 'hide-sm' : '', c.area ? `c-${c.area}` : ''].filter(Boolean).join(' ') || null;
   // A fade on the right edge says "there is more, swipe" while the table can still scroll.
   const edge = () => wrap.classList.toggle('more-right', wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 2);
   wrap.addEventListener('scroll', edge, {passive: true});
   new ResizeObserver(edge).observe(wrap);
+  /** Go to another page (or page size) and bring the table's top into view. */
+  function turn(to, newSize) {
+    if (newSize) { size = newSize; localStorage.setItem('gbl-page-size', String(size)); }
+    page = to; draw(); afterRender(wrap);
+    const top = wrap.getBoundingClientRect().top;
+    if (top < 70) window.scrollBy({top: top - 90, behavior: REDUCED_MOTION ? 'auto' : 'smooth'});
+  }
+  function drawPager(total) {
+    const pages = Math.ceil(total / size);
+    page = Math.min(page, pages - 1);
+    // 1 … 4 5 6 … 10: first, last and the current page's neighbours
+    const nums = [...new Set([0, page - 1, page, page + 1, pages - 1])].filter(n => n >= 0 && n < pages).sort((a, b) => a - b);
+    const btn = (label, to, attrs = {}) => h('button', {type: 'button', class: 'pg', onclick: () => turn(to), ...attrs}, label);
+    const list = [];
+    nums.forEach((n, i) => {
+      if (i && n - nums[i - 1] > 1) list.push(h('span', {class: 'pg-gap', 'aria-hidden': 'true'}, '…'));
+      list.push(btn(String(n + 1), n, n === page ? {'aria-current': 'page', class: 'pg on'} : {'aria-label': `Σελίδα ${n + 1}`}));
+    });
+    pager.replaceChildren(
+      h('div', {class: 'pg-size'}, h('span', null, 'Ανά σελίδα'),
+        segCtrl(PAGE_SIZES.map(n => [n, String(n)]), size, v => turn(0, v))),
+      h('div', {class: 'pg-pages'},
+        btn('‹', page - 1, {'aria-label': 'Προηγούμενη σελίδα', disabled: page === 0}), list,
+        btn('›', page + 1, {'aria-label': 'Επόμενη σελίδα', disabled: page >= pages - 1})),
+      h('div', {class: 'pg-count'}, `${page * size + 1}–${Math.min(total, (page + 1) * size)} από ${total}`));
+  }
   function draw() {
     const data = rows.slice();
     if (sortIdx >= 0 && cols[sortIdx].sort) {
       const f = cols[sortIdx].sort;
       data.sort((a, b) => { const x = f(a), y = f(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
     }
+    if (paged) drawPager(data.length);
     const head = h('tr', null, cols.map((c, i) => {
       const th = h('th', {class: cellClass(c, (c.num ? 'num ' : '') + (c.sort ? 'sortable' : '')), title: c.title || null, scope: 'col',
         'aria-sort': i === sortIdx ? (dir > 0 ? 'ascending' : 'descending') : null, tabindex: c.sort ? 0 : null},
         c.label, c.info ? infoDot(c.info) : null, c.sort ? h('span', {class: 'arrow'}, i === sortIdx ? (dir > 0 ? '▲' : '▼') : ' ') : null);
       if (c.sort) {
-        const act = () => { if (sortIdx === i) dir = -dir; else { sortIdx = i; dir = c.num ? -1 : 1; } draw(); };
+        const act = () => { if (sortIdx === i) dir = -dir; else { sortIdx = i; dir = c.num ? -1 : 1; } page = 0; draw(); };
         th.addEventListener('click', act);
         th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
       }
       return th;
     }));
+    const visible = paged ? data.slice(page * size, (page + 1) * size) : data;
     const body = data.length
-      ? data.slice(0, shown).map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
+      ? visible.map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
         'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r)))))
       : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || 'Δεν υπάρχουν δεδομένα.'))];
-    const rest = data.length - shown;
-    const more = rest > 0 ? h('button', {type: 'button', class: 'btn btn-ghost more-rows', onclick: () => {
-      shown += opts.pageSize; draw(); afterRender(wrap);
-      wrap.querySelectorAll('tbody tr')[shown - opts.pageSize]?.querySelector('a, button')?.focus({preventScroll: true});
-    }}, `Δείξε περισσότερους (${rest} ακόμα)`) : null;
-    wrap.replaceChildren(...[h('table', null, h('thead', null, head), h('tbody', null, body)), more].filter(Boolean));
+    wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
     requestAnimationFrame(edge);
   }
   draw();
-  return wrap;
+  return paged ? h('div', {class: 'table-block'}, wrap, pager) : wrap;
 }
 
 function segCtrl(options, value, onChange) {
@@ -219,7 +246,7 @@ function resultsTable(games, opts = {}) {
     {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
     {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
     {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
-  ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', pageSize: opts.pageSize ?? 40,
+  ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', paged: true,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
 }
 
