@@ -47,7 +47,7 @@ pages.home = () => {
   return [
     hero(feat),
     played.length ? h('section', null,
-      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'τι έγινε και τι είχε πει το μοντέλο · σύρε με το ποντίκι ή άφησέ το να κυλά', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
+      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'Πραγματικά αποτελέσματα vs Πρόβλεψη', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
       resultsTicker(played.slice(0, 14))) : null,
     h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: url('model')}, 'Λεπτομέρειες →')),
       h('div', {class: 'kpis'},
