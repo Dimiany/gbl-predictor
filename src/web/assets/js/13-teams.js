@@ -30,6 +30,26 @@ function upcomingList(name, limit) {
   }));
 }
 
+function compareTeamPanel(name, tab) {
+  if (tab && tab !== 'overview') return null;
+  const box = h('div', {class: 'team-compare'});
+  const draw = opponent => {
+    if (!opponent) { box.replaceChildren(h('p', {class: 'empty'}, 'Επίλεξε δεύτερη ομάδα για σύγκριση.')); return; }
+    const teams = [name, opponent].map(team => [team, STANDING[team]]);
+    const meetings = played.filter(g => (g.home === name && g.away === opponent) || (g.home === opponent && g.away === name)).slice(0, 6);
+    box.replaceChildren(
+      h('div', {class: 'grid-2'}, ...teams.map(([team, row]) => h('div', {class: 'panel'},
+        h('h3', null, crest(team, 24), ' ', team),
+        h('p', null, `${row.pos}η θέση · ${row.w}-${row.l} · διαφορά ${signed(row.diff)}`),
+        h('p', null, `${row.gp ? (row.pf / row.gp).toFixed(1) : '—'} πόντοι υπέρ · ${row.gp ? (row.pa / row.gp).toFixed(1) : '—'} κατά ανά αγώνα`),
+        h('p', null, `Elo ${row.elo} · φόρμα ${row.form.join(' ') || '—'}`)))),
+      h('p', {class: 'foot-note'}, meetings.length ? 'Πρόσφατες μεταξύ τους αναμετρήσεις: ' + meetings.map(g => `${g.home} ${g.hs}–${g.as} ${g.away}`).join(' · ') : 'Δεν υπάρχουν μεταξύ τους αποτελέσματα στο διαθέσιμο ιστορικό.'));
+  };
+  const select = selectEl([['', 'Διάλεξε αντίπαλο'], ...TEAMS.filter(t => t !== name).sort().map(t => [t, t])], '', draw, 'Σύγκριση με ομάδα');
+  draw('');
+  return h('section', {class: 'panel'}, sectionHead('Σύγκριση ομάδων', 'Σύγκρινε θέση, πόντους, Elo, φόρμα και πρόσφατα μεταξύ τους αποτελέσματα.'), select, box);
+}
+
 pages.team = ({name, tab}) => {
   const r = STANDING[name];
   if (!r) return [pageBanner('Δεν βρέθηκε η ομάδα', null, h('a', {class: 'btn btn-ghost', href: url('teams')}, '← Όλες οι ομάδες'))];
@@ -53,6 +73,7 @@ pages.team = ({name, tab}) => {
       kpi('Πόντοι / αγώνα', r.gp ? (r.pf / r.gp).toFixed(1) : '–', r.gp ? `δέχεται ${(r.pa / r.gp).toFixed(1)}` : '', r.gp ? {count: {to: r.pf / r.gp, dec: 1}} : {}),
       kpi('Έδρα · Εκτός', `${r.hw}-${r.hl} · ${r.aw}-${r.al}`, 'νίκες-ήττες'),
       kpi('Το μοντέλο στους αγώνες της', withPick.length ? `${okN}/${withPick.length}` : '–', `σωστοί νικητές · 🔥 ${hitsN} σίγουρες επιτυχίες`, {info: 'acc'}))),
+    compareTeamPanel(name, tab),
     tabs('team', [
       {key: 'overview', label: 'Επισκόπηση', render: () => [h('div', {class: 'grid-2'},
         h('section', {class: 'panel'}, sectionHead('Επόμενοι αγώνες', null, h('a', {href: teamHref(name, 'schedule')}, 'Όλοι →')), upcomingList(name, 6)),

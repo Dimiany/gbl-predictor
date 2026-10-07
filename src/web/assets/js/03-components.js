@@ -200,6 +200,7 @@ function predCard(p) {
   const homeFav = p.p >= 0.5, hp = Math.round(p.p * 100), ap = 100 - hp;
   const bar = hover(probBar(p), () => [
     {text: `${p.w} ${Math.max(hp, ap)}%`},
+    {text: `Το μοντέλο εκτιμά περίπου ${Math.round(Math.max(hp, ap) / 10)} στις 10 πιθανότητα νίκης για ${p.w}.`},
     {text: `Προβλεπόμενη διαφορά ${signed(p.margin)} για τον γηπεδούχο (±${p.band})`},
     {text: `Elo μόνο του: ${p.home} ${Math.round(p.p_elo * 100)}%`},
   ]);
@@ -242,7 +243,7 @@ function resultsTable(games, opts = {}) {
     {label: 'Σκορ', area: 'score', num: true, render: g => h('span', {class: 'score-cell'}, h('span', null, g.hs), h('i', null, ' – '), h('span', null, g.as))},
     {label: 'Φιλοξενούμενος', area: 'away', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
     {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
-    {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
+    {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
     {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
   ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', paged: true,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
