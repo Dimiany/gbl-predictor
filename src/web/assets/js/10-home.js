@@ -47,9 +47,9 @@ pages.home = () => {
   return [
     hero(feat),
     played.length ? h('section', null,
-      sectionHead('Τελευταία αποτελέσματα & προβλέψεις', 'Πραγματικά αποτελέσματα vs Πρόβλεψη', h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
+      sectionHead('Αποτελέσματα vs Πρόβλεψη', null, h('a', {href: url('predictions', 'all')}, 'Όλοι οι αγώνες →')),
       resultsTicker(played.slice(0, 14))) : null,
-    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', 'μετρημένο μόνο σε αγώνες που δεν είχε δει', h('a', {href: url('model')}, 'Λεπτομέρειες →')),
+    h('section', null, sectionHead('Πώς τα πάει το μοντέλο', null, h('a', {href: url('model')}, 'Λεπτομέρειες →')),
       h('div', {class: 'kpis'},
       kpi('Ακρίβεια μοντέλου', pct(M.acc), `σε ${M.n_test} αγώνες εκτός δείγματος · Elo μόνο ${pct(M.elo_acc)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
       kpi('🔥 Σίγουρες προβλέψεις', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές όταν το μοντέλο λέει ≥ ${HIT_THRESHOLD * 100}%` : 'καμία ακόμα', {info: 'hit', gold: true}),
