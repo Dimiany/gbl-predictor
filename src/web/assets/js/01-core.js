@@ -26,6 +26,10 @@ const played = D.games;
 const seasonGames = played.filter(g => g.s === season);
 /** Predictions logged before tip-off: the strict record. Retroactive rows are shown but not counted. */
 const preGameLog = D.log.filter(r => !r.retro);
+/** This season's graded predictions, retroactive ones included: they too saw only earlier games. */
+const seasonLog = D.log.filter(r => r.s === season && r.ok !== null);
+/** "2026/27" -> "2026/2027" */
+const seasonFull = season ? season.replace(/\/(\d\d)$/, '/20$1') : '';
 /** Number of the next round: the games each team in it has played, plus one (the most common
  *  value, so a postponed game doesn't throw it off). Midweek in a weekend round, the teams
  *  still to play haven't moved yet, so this stays right. Without fixtures: games played + 1. */

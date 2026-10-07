@@ -27,7 +27,7 @@ function infoDot(key) {
 /** KPI tile. opts: {info, count:{to, dec, fmt}, gold} */
 function kpi(label, value, sub, opts = {}) {
   const val = h('div', {class: 'kpi-value'}, value);
-  if (opts.count) Object.assign(val.dataset, {count: opts.count.to, dec: opts.count.dec || 0, fmt: opts.count.fmt || 'plain'});
+  if (opts.count) Object.assign(val.dataset, {count: opts.count.to, dec: opts.count.dec || 0, fmt: opts.count.fmt || 'plain'}, opts.count.of ? {of: opts.count.of} : {});
   return h('div', {class: 'kpi' + (opts.gold ? ' gold' : '')},
     h('div', {class: 'kpi-label'}, label, opts.info ? infoDot(opts.info) : null), val, h('div', {class: 'kpi-sub'}, sub));
 }

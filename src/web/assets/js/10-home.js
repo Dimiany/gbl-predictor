@@ -36,8 +36,7 @@ function hitsSorted() {
 }
 
 pages.home = () => {
-  const graded = preGameLog.filter(r => r.ok !== null), pending = preGameLog.length - graded.length;
-  const correct = graded.filter(r => r.ok).length;
+  const seasonOk = seasonLog.filter(r => r.ok).length;
   const conf = confidentPicks(), confOk = conf.filter(g => outcome(g).ok).length;
   const hits = hitsSorted();
   const fs = STANDING[state.focus];
@@ -53,7 +52,7 @@ pages.home = () => {
       h('div', {class: 'kpis'},
       kpi('Ακρίβεια μοντέλου', pct(M.acc), `σε ${M.n_test} αγώνες εκτός δείγματος · Elo μόνο ${pct(M.elo_acc)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
       kpi('🔥 Σίγουρες προβλέψεις', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές όταν το μοντέλο λέει ≥ ${HIT_THRESHOLD * 100}%` : 'καμία ακόμα', {info: 'hit', gold: true}),
-      kpi('Ρεκόρ προβλέψεων', graded.length ? `${correct}/${graded.length}` : '–', graded.length ? `${pct(correct / graded.length)} σωστοί · ${pending} σε αναμονή` : `${pending} σε αναμονή`, {info: 'record'}),
+      kpi(`Τρέχουσα σεζόν ${seasonFull}`, seasonLog.length ? `${seasonOk}/${seasonLog.length}` : '–', seasonLog.length ? 'Σωστές προβλέψεις' : 'η σεζόν μόλις ξεκίνησε', {info: 'season', count: seasonLog.length ? {to: seasonOk, of: seasonLog.length} : null}),
       kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι κατά μέσο όρο · σύνολο ±${M.total_mae}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}}))),
     nextRoundSection(),
     hits.length ? h('section', null,
