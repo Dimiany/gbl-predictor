@@ -19,16 +19,16 @@ function historyTab() {
     const totalMae = totalErrs.length ? (totalErrs.reduce((a, b) => a + b, 0) / totalErrs.length).toFixed(1) : null;
     box.replaceChildren(
       h('p', {class: 'summary-line'}, graded.length
-        ? `${ok}/${graded.length} σωστοί νικητές (${pct(ok / graded.length)}) · μέση απόκλιση διαφοράς ${mae} πόντοι · ${rows.length - graded.length} σε αναμονή`
+        ? `${ok}/${graded.length} αγώνες με σωστή πρόβλεψη νικητή (${pct(ok / graded.length)}) · μέσο σφάλμα διαφοράς ${mae} πόντοι · ${rows.length - graded.length} σε αναμονή`
         : `${rows.length} προβλέψεις σε αναμονή`),
       h('p', {class: 'summary-line'}, totalMae == null ? '' : `Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`),
       table([
         {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
         {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:8px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
         {label: 'Πρόβλεψη', area: 'pred', cap: true, num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
-        {label: 'Νικητής (πιθ.)', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
+        {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
         {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
-        {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
+        {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
         {label: 'Σύνολο πόντων', area: 'total', cap: true, num: true, info: 'totalmae', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => r.ahs == null || r.phs == null ? '' : `${r.phs + r.pas} → ${r.ahs + r.aas} (${Math.abs((r.phs + r.pas) - (r.ahs + r.aas))} π.)`},
         {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
@@ -43,7 +43,7 @@ function historyTab() {
     versions.length > 1 ? selectEl([['', 'Όλα τα μοντέλα'], ...versions.map(v => [v, v])], st.model, v => { st.model = v; draw(); }, 'Μοντέλο') : null);
   draw();
   return [h('section', {class: 'panel'}, sectionHead('Ιστορικό προβλέψεων', 'καταγράφηκαν πριν από τους αγώνες', infoDot('record')), filters, box,
-    h('p', {class: 'foot-note'}, 'Κάθε γραμμή είναι πρόβλεψη του μοντέλου, με το ακριβές σκορ που έδωσε. Χρυσό = σίγουρη πρόβλεψη (≥ 80%) που βγήκε. 🎯 = η διαφορά έπεσε μέσα σε 3 πόντους. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026).'))];
+    h('p', {class: 'foot-note'}, 'Κάθε γραμμή δείχνει την πρόβλεψη και το τελικό σκορ. Η χρυσή ένδειξη σημαίνει ότι το φαβορί είχε πιθανότητα ≥80% και κέρδισε. 🎯 σημαίνει ότι η προβλεπόμενη διαφορά απείχε έως 3 πόντους από την πραγματική. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026).'))];
 }
 
 function hitsTab() {
@@ -52,11 +52,11 @@ function hitsTab() {
   const sharp = played.filter(g => outcome(g)?.sharp);
   return [
     h('section', {class: 'kpis'},
-      kpi('🔥 Σίγουρες επιτυχίες', String(hits.length), `από ${conf.length} σίγουρες προβλέψεις (${conf.length ? pct(hits.length / conf.length) : '–'})`, {gold: true, info: 'hit', count: {to: hits.length}}),
+      kpi('🔥 Επιτυχίες ≥80%', String(hits.length), `από ${conf.length} προβλέψεις με πιθανότητα ≥80% (${conf.length ? pct(hits.length / conf.length) : '–'})`, {gold: true, info: 'hit', count: {to: hits.length}}),
       kpi('🎯 Ακριβείς διαφορές', String(sharp.length), `σωστός νικητής και διαφορά μέσα σε ±${SHARP_POINTS} πόντους`, {count: {to: sharp.length}, info: 'mae'}),
-      kpi('Πιο σίγουρη', hits.length ? pctProb(favProb(hits[0].pick)) : '–', hits.length ? `${hits[0].home} – ${hits[0].away}, ${dayLabel(hits[0].d)}` : '')),
-    hits.length ? h('div', {class: 'hof'}, hits.map(hofCard)) : h('p', {class: 'empty'}, 'Καμία σίγουρη επιτυχία ακόμα.'),
-    sharp.length ? h('section', {class: 'panel'}, sectionHead('🎯 Ακριβείς διαφορές', `η προβλεπόμενη διαφορά απείχε ≤ ${SHARP_POINTS} πόντους`), resultsTable(sharp)) : null,
+      kpi('Υψηλότερη πιθανότητα', hits.length ? pctProb(favProb(hits[0].pick)) : '–', hits.length ? `${hits[0].home} – ${hits[0].away}, ${dayLabel(hits[0].d)}` : '')),
+    hits.length ? h('div', {class: 'hof'}, hits.map(hofCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχει ακόμη επιτυχία σε πρόβλεψη υψηλής πιθανότητας.'),
+    sharp.length ? h('section', {class: 'panel'}, sectionHead('🎯 Μικρό σφάλμα διαφοράς', `ο νικητής προβλέφθηκε σωστά και η διαφορά απείχε έως ${SHARP_POINTS} πόντους`), resultsTable(sharp)) : null,
   ];
 }
 
@@ -74,7 +74,7 @@ pages.predictions = ({tab}) => [
   tabs('predictions', [
     {key: 'next', label: 'Επόμενη αγωνιστική', count: D.next.length, render: () => [nextRoundSection(false)]},
     {key: 'history', label: 'Ιστορικό', count: D.log.length, render: historyTab},
-    {key: 'hits', label: '🔥 Επιτυχίες', count: hitsSorted().length, render: hitsTab},
+    {key: 'hits', label: '🔥 Επιτυχίες ≥80%', count: hitsSorted().length, render: hitsTab},
     {key: 'all', label: 'Όλοι οι αγώνες', count: played.length, render: () => [h('section', {class: 'panel'},
       sectionHead('Όλοι οι αγώνες', 'με την πρόβλεψη του μοντέλου'), resultsTable(played))]},
   ], tab, k => url('predictions', k)),

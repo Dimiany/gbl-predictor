@@ -132,7 +132,7 @@ NAV_PAGES: list[tuple[str, str]] = [
 PAGE_LABELS: dict[str, str] = {**dict(NAV_PAGES), "help": "Οδηγίες"}
 #: Short names of the tabs that have their own address (breadcrumbs).
 TAB_LABELS: dict[str, dict[str, str]] = {
-    "predictions": {"history": "Ιστορικό", "hits": "Hall of Fame", "all": "Όλοι οι αγώνες"},
+    "predictions": {"history": "Ιστορικό", "hits": "Επιτυχίες", "all": "Όλοι οι αγώνες"},
     "model": {"metrics": "Οδηγός δεικτών", "how": "Πώς δουλεύει"},
     "team": {"results": "Αποτελέσματα", "schedule": "Πρόγραμμα"},
 }
@@ -223,8 +223,8 @@ def site_pages(data: dict) -> list[Page]:
         ),
         page(
             page_path("predictions", "hits"),
-            "Hall of Fame: οι σίγουρες προβλέψεις που βγήκαν",
-            "Οι αγώνες όπου το μοντέλο έδωσε στο φαβορί 80% και πάνω και είχε δίκιο.",
+            "Επιτυχίες σε προβλέψεις υψηλής πιθανότητας",
+            "Αγώνες όπου το μοντέλο εκτίμησε πιθανότητα νίκης 80% και πάνω για το φαβορί και εκείνο κέρδισε.",
         ),
         page(
             page_path("predictions", "all"),
@@ -253,8 +253,8 @@ def site_pages(data: dict) -> list[Page]:
         page(
             page_path("model"),
             "Πόσο εύστοχο είναι το μοντέλο",
-            "Η απόδοση του μοντέλου πρόβλεψης, μετρημένη μόνο σε αγώνες που δεν "
-            "είχε δει: ποσοστό επιτυχίας, log-loss, Brier και βαθμονόμηση.",
+            "Η απόδοση του μοντέλου, αξιολογημένη σε αγώνες που δεν είχε δει: "
+            "ποσοστό σωστών προβλέψεων, log-loss, Brier και βαθμονόμηση.",
         ),
         page(
             page_path("model", "metrics"),
