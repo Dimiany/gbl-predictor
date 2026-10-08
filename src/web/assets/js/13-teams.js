@@ -47,7 +47,8 @@ function compareTeamPanel(name, tab) {
   };
   const select = selectEl([['', 'Διάλεξε αντίπαλο'], ...TEAMS.filter(t => t !== name).sort().map(t => [t, t])], '', draw, 'Σύγκριση με ομάδα');
   draw('');
-  return h('section', {class: 'panel'}, sectionHead('Σύγκριση ομάδων', 'Σύγκρινε θέση, πόντους, Elo, φόρμα και πρόσφατα μεταξύ τους αποτελέσματα.'), select, box);
+  return h('section', {class: 'panel'}, sectionHead('Σύγκριση ομάδων', 'Σύγκρινε θέση, πόντους, Elo, φόρμα και πρόσφατα μεταξύ τους αποτελέσματα.'),
+    h('div', {class: 'team-compare-select'}, select), box);
 }
 
 pages.team = ({name, tab}) => {
