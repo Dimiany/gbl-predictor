@@ -49,8 +49,8 @@ pages.contact = () => {
   const formBox = h('div');
   const canSend = SERVED || Boolean(SITE.firestore);
   const field = (label, input) => h('label', {class: 'field' + (input.dataset.full ? ' full' : '')}, label, input);
-  const name = h('input', {name: 'name', required: true, maxlength: 80, autocomplete: 'name', placeholder: 'π.χ. Δημήτρης'});
-  const email = h('input', {name: 'email', type: 'email', required: true, maxlength: 120, autocomplete: 'email', placeholder: 'π.χ. onoma@gmail.com'});
+  const name = h('input', {name: 'name', required: true, maxlength: 80, autocomplete: 'name'});
+  const email = h('input', {name: 'email', type: 'email', required: true, maxlength: 120, autocomplete: 'email'});
   const topic = h('select', {name: 'topic'}, TOPICS.map(t => h('option', {value: t}, t)));
   const message = h('textarea', {name: 'message', required: true, maxlength: 4000, placeholder: 'Γράψε μας…', 'data-full': '1'});
   // Honeypot: invisible to people, filled in by spam bots. A filled one "succeeds" silently.
