@@ -178,11 +178,11 @@ function verdict(ok) {
   if (ok == null) return h('span', {class: 'verdict pending'}, '⏳ εκκρεμεί');
   return h('span', {class: 'verdict ' + (ok ? 'good' : 'bad')}, ok ? '✓ Σωστό' : '✗ Λάθος');
 }
-function hitBadge(prob) { return h('span', {class: 'hit-badge', title: `Σίγουρη πρόβλεψη (${pctProb(prob)}) που βγήκε σωστή`}, '🔥 ', pctProb(prob)); }
-function sharpBadge(err) { return h('span', {class: 'sharp-badge', title: 'Η προβλεπόμενη διαφορά έπεσε σχεδόν ακριβώς'}, '🎯 ', err === 0 ? 'ακριβώς' : `±${err}`); }
+function hitBadge(prob) { return h('span', {class: 'hit-badge', title: `Το φαβορί είχε πιθανότητα ${pctProb(prob)} και κέρδισε`}, '🔥 ', pctProb(prob)); }
+function sharpBadge(err) { return h('span', {class: 'sharp-badge', title: 'Η προβλεπόμενη διαφορά ήταν κοντά στην πραγματική'}, '🎯 ', err === 0 ? 'ακριβώς' : `±${err}`); }
 /** Confidence label for an upcoming game. */
 function confBadge(prob) {
-  if (prob >= HIT_THRESHOLD) return h('span', {class: 'conf lock'}, '🔒 σίγουρο');
+  if (prob >= HIT_THRESHOLD) return h('span', {class: 'conf lock'}, '🔒 ισχυρό φαβορί');
   if (prob >= 0.6) return h('span', {class: 'conf lean'}, 'φαβορί');
   return h('span', {class: 'conf toss'}, 'ανοιχτό');
 }
@@ -200,6 +200,7 @@ function predCard(p) {
   const homeFav = p.p >= 0.5, hp = Math.round(p.p * 100), ap = 100 - hp;
   const bar = hover(probBar(p), () => [
     {text: `${p.w} ${Math.max(hp, ap)}%`},
+    {text: `Το μοντέλο εκτιμά ότι η ομάδα ${p.w} έχει περίπου ${Math.round(Math.max(hp, ap) / 10)} στις 10 πιθανότητες να κερδίσει.`},
     {text: `Προβλεπόμενη διαφορά ${signed(p.margin)} για τον γηπεδούχο (±${p.band})`},
     {text: `Elo μόνο του: ${p.home} ${Math.round(p.p_elo * 100)}%`},
   ]);
@@ -242,7 +243,7 @@ function resultsTable(games, opts = {}) {
     {label: 'Σκορ', area: 'score', num: true, render: g => h('span', {class: 'score-cell'}, h('span', null, g.hs), h('i', null, ' – '), h('span', null, g.as))},
     {label: 'Φιλοξενούμενος', area: 'away', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
     {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
-    {label: 'Απόκλιση', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
+    {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
     {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
   ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', paged: true,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
@@ -296,7 +297,7 @@ function hero(p) {
       h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια'),
         M.n_test ? h('small', null, fraction(Math.round(M.acc * M.n_test), M.n_test), ' εύστοχες προβλέψεις συνολικά') : null),
       // The average margin error (±10) is left to the Model page, where it can be explained.
-      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, fraction(hits, conf.length)), h('span', null, '🔥 σίγουρες προβλέψεις βγήκαν'),
+      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, fraction(hits, conf.length)), h('span', null, '🔥 επιτυχημένες προβλέψεις ≥80%'),
         h('small', null, `αγώνες όπου το μοντέλο έδινε ${HIT_THRESHOLD * 100}% και πάνω`)) : null));
   const inner = h('div', {class: 'banner-inner'}, copy);
   if (p) {

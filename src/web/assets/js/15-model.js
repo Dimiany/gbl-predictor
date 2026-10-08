@@ -6,15 +6,15 @@ function performanceTab() {
   const conf = confidentPicks(), confOk = conf.filter(g => outcome(g).ok).length;
   return [
     h('section', {class: 'kpis'},
-      kpi('Σωστός νικητής', pct(M.acc), `${M.n_test} αγώνες · πάντα ο γηπεδούχος: ${pct(M.home_rate)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
-      kpi('🔥 Σίγουρες (≥80%)', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές` : '', {info: 'hit', gold: true}),
+      kpi('Σωστή πρόβλεψη νικητή', pct(M.acc), `${M.n_test} αγώνες · αν κέρδιζε πάντα ο γηπεδούχος: ${pct(M.home_rate)}`, {info: 'acc', count: {to: Math.round(M.acc * 100), fmt: 'pct'}}),
+      kpi('🔥 Υψηλή πιθανότητα (≥80%)', conf.length ? `${confOk}/${conf.length}` : '–', conf.length ? `${pct(confOk / conf.length)} σωστές` : '', {info: 'hit', gold: true}),
       kpi('Log-loss', fx(M.ll), `χαμηλότερο = καλύτερο · Elo μόνο ${fx(M.elo_ll)}`, {info: 'logloss', count: {to: M.ll, dec: 3}}),
       kpi('Brier', fx(M.brier), `0.25 = κορόνα-γράμματα · Elo ${fx(M.elo_brier)}`, {info: 'brier', count: {to: M.brier, dec: 3}}),
-      kpi('Σφάλμα διαφοράς', `±${M.margin_mae}`, `πόντοι · R² ${fx(M.margin_r2, 2)}`, {info: 'mae', count: {to: M.margin_mae, dec: 1, fmt: 'pm'}})),
+      kpi('Μέσο σφάλμα διαφοράς', `${M.margin_mae}`, `πόντοι · R² ${fx(M.margin_r2, 2)}`, {info: 'mae', count: {to: M.margin_mae, dec: 1}})),
     h('div', {class: 'grid-2-even'},
       h('section', {class: 'panel'}, sectionHead('Βαθμονόμηση', 'αληθεύουν τα ποσοστά;', infoDot('calibration')), h('div', {class: 'chart', 'data-chart': 'cal'}),
         h('p', {class: 'foot-note'}, 'Κάθε τελεία: αγώνες με παρόμοια πιθανότητα για το φαβορί. Ο αριθμός δίπλα δείχνει πόσοι είναι. Κοντά στη διαγώνιο = ειλικρινή ποσοστά.')),
-      h('section', {class: 'panel'}, sectionHead('Ακρίβεια ανά βεβαιότητα', 'όσο πιο σίγουρο, τόσο πιο σωστό;'),
+      h('section', {class: 'panel'}, sectionHead('Επιτυχίες ανά πιθανότητα', 'Πόσο συχνά κερδίζει το φαβορί σε κάθε εύρος πιθανότητας;'),
         table([
           {label: 'Πιθανότητα φαβορί', render: b => `${pct(b.a)}–${pct(Math.min(1, b.b))}`},
           {label: 'Αγώνες', num: true, render: b => b.n},
@@ -22,7 +22,7 @@ function performanceTab() {
           {label: 'Νίκες φαβορί', num: true, render: b => h('b', null, pct(b.won / b.n))},
           {label: '', hideSm: true, render: b => h('div', {class: 'meter', style: 'width:120px'}, h('i', {'data-w': pct(b.won / b.n)}))},
         ], bins, {rowClass: b => b.a >= HIT_THRESHOLD ? 'hit' : null}),
-        h('p', {class: 'foot-note'}, 'Walk-forward προβλέψεις: κάθε αγώνας προβλέφθηκε μόνο με όσα είχαν παιχτεί πριν.'))),
+        h('p', {class: 'foot-note'}, 'Σε κάθε αγώνα, η πρόβλεψη έγινε μόνο με βάση όσα αποτελέσματα ήταν γνωστά μέχρι τότε.'))),
   ];
 }
 
@@ -42,7 +42,7 @@ function howTab() {
       [['📡', 'Δεδομένα', 'Αποτελέσματα, πρόγραμμα και σήματα από το FlashScore. Οι αγώνες με παράταση διορθώνονται με το τελικό σκορ, και οι διπλές εγγραφές αφαιρούνται.'],
         ['🏆', 'Elo & φόρμα', 'Κάθε ομάδα έχει βαθμό Elo που αλλάζει με κάθε αγώνα, συν φόρμα 5 αγώνων και ποσοστό νικών της σεζόν. Σε κάθε νέα σεζόν όλα ξεκινούν ξανά, εκτός από το 75% του Elo.'],
         ['🧠', 'Μοντέλο', `Μία γραμμική εξίσωση προβλέπει τη διαφορά πόντων: ${M.intercept} + ${M.coef[0]}×ΔElo + ${M.coef[1]}×Δφόρμα + ${M.coef[2]}×Δ%νικών.`],
-        ['🎯', 'Πρόβλεψη', `Από τη διαφορά βγαίνει η πιθανότητα, Φ(διαφορά / ${M.sigma}), και το σκορ. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και βαθμολογείται μετά.`],
+        ['🎯', 'Πρόβλεψη', `Από τη διαφορά υπολογίζονται η πιθανότητα, Φ(διαφορά / ${M.sigma}), και το σκορ. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και αξιολογείται μετά.`],
       ].map(([icon, title, text]) => h('div', {class: 't-step'}, h('div', {class: 't-ico', 'aria-hidden': 'true'}, icon), h('h3', null, title), h('p', null, text)))),
     h('div', {class: 'grid-2-even'},
       h('section', {class: 'panel howto'}, sectionHead('Γιατί τόσο απλό;'),

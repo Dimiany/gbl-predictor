@@ -25,9 +25,30 @@ function upcomingList(name, limit) {
   return h('div', null, list.map(u => {
     const p = u.pi >= 0 ? D.next[u.pi] : null, home = u.home === name;
     return h('div', {class: 'sched-game'}, h('span', {class: 'muted small'}, dayLabel(u.d)),
-      h('span', {class: 'vs'}, h('span', {class: 'muted small'}, home ? 'vs' : '@'), tlink(home ? u.away : u.home), u.t ? h('span', {class: 'muted small'}, u.t) : null),
+      h('span', {class: 'vs'}, h('span', {class: 'muted small'}, home ? 'εντός έδρας με' : 'εκτός έδρας με'), tlink(home ? u.away : u.home), u.t ? h('span', {class: 'muted small'}, u.t) : null),
       p ? h('span', {class: 'pchip'}, h('span', {class: 'dot'}), `${p.phs}–${p.pas} · ${name} ${pct(p.home === name ? p.p : 1 - p.p)}`) : h('span', {class: 'pchip'}));
   }));
+}
+
+function compareTeamPanel(name, tab) {
+  if (tab && tab !== 'overview') return null;
+  const box = h('div', {class: 'team-compare'});
+  const draw = opponent => {
+    if (!opponent) { box.replaceChildren(h('p', {class: 'empty'}, 'Επίλεξε δεύτερη ομάδα για σύγκριση.')); return; }
+    const teams = [name, opponent].map(team => [team, STANDING[team]]);
+    const meetings = played.filter(g => (g.home === name && g.away === opponent) || (g.home === opponent && g.away === name)).slice(0, 6);
+    box.replaceChildren(
+      h('div', {class: 'grid-2'}, ...teams.map(([team, row]) => h('div', {class: 'panel'},
+        h('h3', null, crest(team, 24), ' ', team),
+        h('p', null, `${row.pos}η θέση · ${row.w}-${row.l} · διαφορά ${signed(row.diff)}`),
+        h('p', null, `${row.gp ? (row.pf / row.gp).toFixed(1) : '—'} πόντοι υπέρ · ${row.gp ? (row.pa / row.gp).toFixed(1) : '—'} κατά ανά αγώνα`),
+        h('p', null, `Elo ${row.elo} · φόρμα ${row.form.join(' ') || '—'}`)))),
+      h('p', {class: 'foot-note'}, meetings.length ? 'Πρόσφατες μεταξύ τους αναμετρήσεις: ' + meetings.map(g => `${g.home} ${g.hs}–${g.as} ${g.away}`).join(' · ') : 'Δεν υπάρχουν μεταξύ τους αποτελέσματα στο διαθέσιμο ιστορικό.'));
+  };
+  const select = selectEl([['', 'Διάλεξε αντίπαλο'], ...TEAMS.filter(t => t !== name).sort().map(t => [t, t])], '', draw, 'Σύγκριση με ομάδα');
+  draw('');
+  return h('section', {class: 'panel'}, sectionHead('Σύγκριση ομάδων', 'Σύγκρινε θέση, πόντους, Elo, φόρμα και πρόσφατα μεταξύ τους αποτελέσματα.'),
+    h('div', {class: 'team-compare-select'}, select), box);
 }
 
 pages.team = ({name, tab}) => {
@@ -47,12 +68,13 @@ pages.team = ({name, tab}) => {
             h('p', {class: 'hero-sub'}, `${r.pos}ος στη βαθμολογία · ${r.w}-${r.l} · σερί ${streakGr(r.streak)}`)))),
       h('button', {class: 'btn btn-outline', type: 'button', onclick: () => setFocus(name), disabled: name === state.focus},
         name === state.focus ? '★ Η ομάδα μου' : '☆ Ορισμός ως η ομάδα μου'))),
-    h('section', null, sectionHead('Η σεζόν με μια ματιά', `${season} · δύναμη, επίθεση/άμυνα, έδρα και πόσο καλά την «διαβάζει» το μοντέλο`),
+    h('section', null, sectionHead('Η εικόνα της ομάδας', `${season} · δύναμη, επίθεση και άμυνα, έδρα και πόσο εύστοχα προβλέπει το μοντέλο τους αγώνες της`),
       h('div', {class: 'kpis'},
       kpi('Elo', String(r.elo), `${signed(r.elo - 1500)} από τον μέσο όρο`, {info: 'elo', count: {to: r.elo}}),
       kpi('Πόντοι / αγώνα', r.gp ? (r.pf / r.gp).toFixed(1) : '–', r.gp ? `δέχεται ${(r.pa / r.gp).toFixed(1)}` : '', r.gp ? {count: {to: r.pf / r.gp, dec: 1}} : {}),
       kpi('Έδρα · Εκτός', `${r.hw}-${r.hl} · ${r.aw}-${r.al}`, 'νίκες-ήττες'),
-      kpi('Το μοντέλο στους αγώνες της', withPick.length ? `${okN}/${withPick.length}` : '–', `σωστοί νικητές · 🔥 ${hitsN} σίγουρες επιτυχίες`, {info: 'acc'}))),
+      kpi('Προβλέψεις για την ομάδα', withPick.length ? `${okN}/${withPick.length}` : '–', `σωστοί νικητές · 🔥 ${hitsN} επιτυχίες σε προβλέψεις υψηλής πιθανότητας`, {info: 'acc'}))),
+    compareTeamPanel(name, tab),
     tabs('team', [
       {key: 'overview', label: 'Επισκόπηση', render: () => [h('div', {class: 'grid-2'},
         h('section', {class: 'panel'}, sectionHead('Επόμενοι αγώνες', null, h('a', {href: teamHref(name, 'schedule')}, 'Όλοι →')), upcomingList(name, 6)),
