@@ -16,11 +16,10 @@ function performanceTab() {
         h('p', {class: 'foot-note'}, 'Κάθε σημείο ομαδοποιεί αγώνες όπου το φαβορί είχε παρόμοια πιθανότητα νίκης· ο αριθμός δείχνει πόσοι αγώνες περιλαμβάνονται. Για παράδειγμα, σε αγώνες με πιθανότητα 70%, το φαβορί θα πρέπει να κερδίζει περίπου 7 στους 10. Όσο πιο κοντά βρίσκονται τα σημεία στη διαγώνιο, τόσο καλύτερα ταιριάζουν οι πιθανότητες του μοντέλου με τα αποτελέσματα.')),
       h('section', {class: 'panel'}, sectionHead('Επιτυχίες ανά πιθανότητα', 'Πόσο συχνά κερδίζει το φαβορί σε κάθε εύρος πιθανότητας;'),
         table([
-          {label: 'Πιθανότητα φαβορί', render: b => `${pct(b.a)}–${pct(Math.min(1, b.b))}`},
+          {label: 'Πιθανότητα', render: b => `${pct(b.a)}–${pct(Math.min(1, b.b))}`},
           {label: 'Αγώνες', num: true, render: b => b.n},
           {label: 'Μέση πρόβλεψη', num: true, render: b => pct(b.sp / b.n)},
-          {label: 'Νίκες φαβορί', num: true, render: b => h('b', null, pct(b.won / b.n))},
-          {label: '', hideSm: true, render: b => h('div', {class: 'meter', style: 'width:120px'}, h('i', {'data-w': pct(b.won / b.n)}))},
+          {label: 'Νίκες', num: true, render: b => h('b', null, pct(b.won / b.n))},
         ], bins, {rowClass: b => b.a >= HIT_THRESHOLD ? 'hit' : null}),
         h('p', {class: 'foot-note'}, 'Σε κάθε αγώνα, η πρόβλεψη έγινε μόνο με βάση όσα αποτελέσματα ήταν γνωστά μέχρι τότε.'))),
   ];
