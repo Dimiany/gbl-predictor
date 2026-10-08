@@ -6,7 +6,7 @@ const TOPICS = ['Πρόταση', 'Πρόβλημα', 'Ερώτηση', 'Άλλ�
 
 const FAQ = [
   ['Πόσο συχνά ενημερώνεται;', PUBLIC
-    ? 'Αυτόματα, κάθε βράδυ που υπάρχει λόγος: μετά από κάθε αγωνιστική για τα αποτελέσματα και πριν από την επόμενη για τις προβλέψεις.'
+    ? 'Αυτόματα, μετά από κάθε αγωνιστική για να ενημερωθούν τα αποτελέσματα και πριν από την επόμενη για να ανανεωθούν οι προβλέψεις.'
     : 'Όποτε πατάς «⟳ Ανανέωση», και αυτόματα όταν ανοίγεις την εφαρμογή αν έχουν περάσει πάνω από 6 ώρες.'],
   ['Γιατί μια ομάδα που κέρδισε έχει ακόμα χαμηλό Elo;', 'Το Elo κινείται σιγά-σιγά: μία νίκη ανεβάζει 5–15 πόντους, ανάλογα με το πόσο αναμενόμενη ήταν. Χρειάζονται αρκετοί αγώνες για να «πιάσει» την πραγματική δύναμη.'],
   ['Λαμβάνονται υπόψη οι τραυματισμοί;', 'Όχι αυτόματα. Υπάρχει μηχανισμός για απουσίες παικτών με βάση τη σημασία τους, που χρειάζεται τα ρόστερ. Είναι στις ιδέες για το μέλλον.'],
@@ -49,8 +49,8 @@ pages.contact = () => {
   const formBox = h('div');
   const canSend = SERVED || Boolean(SITE.firestore);
   const field = (label, input) => h('label', {class: 'field' + (input.dataset.full ? ' full' : '')}, label, input);
-  const name = h('input', {name: 'name', required: true, maxlength: 80, autocomplete: 'name', placeholder: 'π.χ. Δημήτρης'});
-  const email = h('input', {name: 'email', type: 'email', required: true, maxlength: 120, autocomplete: 'email', placeholder: 'π.χ. onoma@gmail.com'});
+  const name = h('input', {name: 'name', required: true, maxlength: 80, autocomplete: 'name'});
+  const email = h('input', {name: 'email', type: 'email', required: true, maxlength: 120, autocomplete: 'email'});
   const topic = h('select', {name: 'topic'}, TOPICS.map(t => h('option', {value: t}, t)));
   const message = h('textarea', {name: 'message', required: true, maxlength: 4000, placeholder: 'Γράψε μας…', 'data-full': '1'});
   // Honeypot: invisible to people, filled in by spam bots. A filled one "succeeds" silently.
@@ -89,7 +89,7 @@ pages.contact = () => {
       showToast('Δεν στάλθηκε: ' + err.message, 'bad', 6000);
       submit.disabled = false; submit.textContent = 'Αποστολή →';
     }
-  }}, h('div', {class: 'form-grid'}, field('Όνομα', name), field('Email', email), field('Θέμα', topic),
+  }}, h('div', {class: 'form-grid'}, field('Όνομα', name), field('Email *', email), field('Θέμα', topic),
     h('div'), field('Μήνυμα', message)),
   h('label', {class: 'hp-field', 'aria-hidden': 'true'}, 'Αφήστε το κενό', trap),
   h('div', {style: 'margin-top:16px;display:flex;justify-content:flex-end'}, submit),
