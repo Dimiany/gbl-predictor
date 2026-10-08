@@ -89,7 +89,7 @@ pages.contact = () => {
       showToast('Δεν στάλθηκε: ' + err.message, 'bad', 6000);
       submit.disabled = false; submit.textContent = 'Αποστολή →';
     }
-  }}, h('div', {class: 'form-grid'}, field('Όνομα', name), field('Email *', email), field('Θέμα', topic),
+  }}, h('div', {class: 'form-grid'}, field('Όνομα', name), field(h('span', null, 'Email * ', h('small', {class: 'muted'}, '(υποχρεωτικό πεδίο)')), email), field('Θέμα', topic),
     h('div'), field('Μήνυμα', message)),
   h('label', {class: 'hp-field', 'aria-hidden': 'true'}, 'Αφήστε το κενό', trap),
   h('div', {style: 'margin-top:16px;display:flex;justify-content:flex-end'}, submit),
