@@ -378,10 +378,10 @@ tr.is-focus td:first-child{box-shadow:inset 3px 0 0 var(--brand-cyan)}
 .tip .t-row{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
 .tip .key{display:inline-block;width:12px;height:2px;border-radius:1px;flex:none}
 .tip .t-sub{color:var(--text-secondary)}
-.toast{position:fixed;right:20px;bottom:20px;z-index:45;max-width:390px;background:var(--surface-1);color:var(--text-primary);
+.toast{position:fixed;left:50%;top:50%;z-index:45;width:min(390px,calc(100vw - 32px));background:var(--surface-1);color:var(--text-primary);
   border:1px solid var(--border);border-left:4px solid var(--brand-cyan);border-radius:14px;padding:13px 15px;box-shadow:0 18px 44px rgba(0,0,0,.4);font-size:13px;white-space:pre-line;
-  animation:toastin .35s cubic-bezier(.2,.7,.2,1) both}
-@keyframes toastin{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+  transform:translate(-50%,-50%);animation:toastin .35s cubic-bezier(.2,.7,.2,1) both}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,calc(-50% + 12px)) scale(.98)}to{opacity:1;transform:translate(-50%,-50%)}}
 .toast.bad{border-left-color:var(--bad)} .toast.good{border-left-color:var(--good)}
 .to-top{position:fixed;right:20px;bottom:20px;z-index:15;width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);
   cursor:pointer;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .25s,transform .25s;font-size:16px}
@@ -540,7 +540,6 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
   .tb-item.active::before,.tb-item.current::before{content:"";position:absolute;top:0;left:32%;right:32%;height:3px;border-radius:0 0 3px 3px;background:var(--brand-cyan)}
   .viz-root{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
   .to-top{right:14px;bottom:calc(74px + env(safe-area-inset-bottom))}
-  .toast{left:12px;right:12px;max-width:none;bottom:calc(72px + env(safe-area-inset-bottom))}
   .sheet-backdrop{position:fixed;inset:0;z-index:24;background:rgba(3,6,20,.55)}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:25;max-height:82vh;overflow:auto;outline:none;
     background:var(--surface-1);color:var(--text-primary);border-radius:20px 20px 0 0;padding:8px 18px calc(70px + env(safe-area-inset-bottom));
