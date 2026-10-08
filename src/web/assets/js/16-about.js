@@ -1,4 +1,4 @@
-// page: about — what this is, how it works, sources, disclaimer.
+// page: about — what this is, how it works, disclaimer.
 
 pages.about = () => {
   const conf = confidentPicks(), confOk = conf.filter(g => outcome(g).ok).length;
@@ -17,14 +17,8 @@ pages.about = () => {
         kpi('🔥 Υψηλή πιθανότητα', conf.length ? `${confOk}/${conf.length}` : '–', '≥ 80% και σωστές', {gold: true}),
         kpi('Ομάδες', String(TEAMS.length), `Basket League ${season}`, {count: {to: TEAMS.length}})))),
     h('section', null, sectionHead('Πώς δουλεύει, σε 4 βήματα', null, h('a', {href: url('model', 'how')}, 'Λεπτομέρειες →')), howTab()[0]),
-    h('div', {class: 'grid-2-even'},
-      h('section', {class: 'panel howto'}, sectionHead('Πηγές δεδομένων'),
-        h('dl', {class: 'glossary'},
-          h('dt', null, 'Αποτελέσματα & πρόγραμμα'), h('dd', null, 'FlashScore μέσω RapidAPI, ενημέρωση με το κουμπί «Ανανέωση».'),
-          h('dt', null, 'Λογότυπα ομάδων'), h('dd', null, 'Από το FlashScore.'),
-          h('dt', null, 'Χρώματα'), h('dd', null, 'Εμπνευσμένα από την ταυτότητα της Stoiximan GBL.'))),
-      h('section', {class: 'panel howto'}, sectionHead('Αποποίηση'),
-        h('p', null, 'Ανεξάρτητη, μη επίσημη εφαρμογή. Δεν έχει σχέση με την ΕΣΑΚΕ, τη Stoiximan ή τις ομάδες. Τα λογότυπα και τα ονόματα ανήκουν στους κατόχους τους.'),
-        h('p', null, h('b', null, 'Δεν είναι συμβουλή στοιχηματισμού.'), ' Οι πιθανότητες είναι εκτιμήσεις με αβεβαιότητα: ένα «80%» σημαίνει ότι περίπου 1 στις 5 φορές θα χάσει το φαβορί.'))),
+    h('section', {class: 'panel howto'}, sectionHead('Δήλωση αποποίησης ευθύνης'),
+      h('p', null, 'Ανεξάρτητη, μη επίσημη εφαρμογή. Δεν έχει σχέση με την ΕΣΑΚΕ, τη Stoiximan ή τις ομάδες. Τα λογότυπα και τα ονόματα ανήκουν στους κατόχους τους.'),
+      h('p', null, h('b', null, 'Δεν είναι συμβουλή στοιχηματισμού.'), ' Οι πιθανότητες είναι εκτιμήσεις με αβεβαιότητα: ένα «80%» σημαίνει ότι περίπου 1 στις 5 φορές θα χάσει το φαβορί.')),
   ];
 };
