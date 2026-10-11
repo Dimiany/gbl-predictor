@@ -1,18 +1,12 @@
 fixture_date,fixture_time,matchday,home_team,away_team
-10/10/2026,15:00,,Peristeri,Iraklis
-10/10/2026,16:00,,Maroussi,Mykonos
-10/10/2026,16:00,,PAOK,Doxa Lefkadas
-10/10/2026,17:00,,AS Karditsas Iaponiki,Vikos Falcons Ioanninon
-10/10/2026,17:30,,Aris,AEK
-10/10/2026,19:00,,Promitheas Vikos Cola,Panathinaikos
 11/10/2026,13:00,,Olympiacos,Kolossos Rodou
 17/10/2026,15:00,,AEK,Mykonos
 17/10/2026,16:00,,Kolossos Rodou,PAOK
 17/10/2026,17:00,,Iraklis,AS Karditsas Iaponiki
 17/10/2026,17:00,,Doxa Lefkadas,Promitheas Vikos Cola
 17/10/2026,17:30,,Aris,Maroussi
+18/10/2026,13:00,,Panathinaikos,Peristeri
 18/10/2026,13:00,,Vikos Falcons Ioanninon,Olympiacos
-18/10/2026,16:00,,Panathinaikos,Peristeri
 24/10/2026,15:00,,Mykonos,Aris
 24/10/2026,17:00,,Doxa Lefkadas,Iraklis
 24/10/2026,17:30,,PAOK,AEK
@@ -26,7 +20,7 @@ fixture_date,fixture_time,matchday,home_team,away_team
 31/10/2026,17:00,,Maroussi,Promitheas Vikos Cola
 31/10/2026,17:30,,Iraklis,PAOK
 01/11/2026,13:00,,Olympiacos,Peristeri
-01/11/2026,17:30,,Aris,Panathinaikos
+01/11/2026,17:15,,Aris,Panathinaikos
 07/11/2026,15:00,,Doxa Lefkadas,Aris
 07/11/2026,16:00,,Kolossos Rodou,Peristeri
 07/11/2026,17:00,,Iraklis,Mykonos
@@ -47,7 +41,7 @@ fixture_date,fixture_time,matchday,home_team,away_team
 21/11/2026,17:30,,Panathinaikos,Maroussi
 21/11/2026,17:30,,PAOK,Aris
 22/11/2026,13:00,,Mykonos,Vikos Falcons Ioanninon
-22/11/2026,16:00,,Olympiacos,AS Karditsas Iaponiki
+22/11/2026,15:00,,AS Karditsas Iaponiki,Olympiacos
 05/12/2026,16:00,,PAOK,Promitheas Vikos Cola
 05/12/2026,17:00,,AEK,Kolossos Rodou
 05/12/2026,17:00,,Maroussi,Iraklis
@@ -68,7 +62,7 @@ fixture_date,fixture_time,matchday,home_team,away_team
 19/12/2026,17:00,,Maroussi,PAOK
 19/12/2026,17:00,,Vikos Falcons Ioanninon,Peristeri
 20/12/2026,13:00,,AEK,Olympiacos
-20/12/2026,16:00,,Doxa Lefkadas,Panathinaikos
+20/12/2026,20:00,,Panathinaikos,Doxa Lefkadas
 27/12/2026,13:00,,Olympiacos,Mykonos
 27/12/2026,13:00,,Peristeri,Aris
 27/12/2026,17:00,,AS Karditsas Iaponiki,Doxa Lefkadas
@@ -116,8 +110,8 @@ fixture_date,fixture_time,matchday,home_team,away_team
 06/02/2027,17:00,,PAOK,Maroussi
 06/02/2027,17:00,,Peristeri,Vikos Falcons Ioanninon
 06/02/2027,17:00,,Promitheas Vikos Cola,Aris
+07/02/2027,17:00,,Doxa Lefkadas,Panathinaikos
 07/02/2027,17:00,,Olympiacos,Iraklis
-07/02/2027,17:00,,Panathinaikos,Doxa Lefkadas
 13/02/2027,17:00,,Iraklis,Promitheas Vikos Cola
 13/02/2027,17:00,,Maroussi,AS Karditsas Iaponiki
 13/02/2027,17:00,,Vikos Falcons Ioanninon,Mykonos
@@ -130,7 +124,7 @@ fixture_date,fixture_time,matchday,home_team,away_team
 06/03/2027,17:00,,Mykonos,Peristeri
 06/03/2027,17:00,,PAOK,Iraklis
 06/03/2027,17:00,,Promitheas Vikos Cola,Doxa Lefkadas
-07/03/2027,17:00,,AS Karditsas Iaponiki,Olympiacos
+07/03/2027,17:00,,Olympiacos,AS Karditsas Iaponiki
 07/03/2027,17:00,,Panathinaikos,Aris
 13/03/2027,17:00,,Aris,Doxa Lefkadas
 13/03/2027,17:00,,AS Karditsas Iaponiki,Promitheas Vikos Cola
