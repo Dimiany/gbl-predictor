@@ -140,6 +140,10 @@ dashboard/, models/            generated, gitignored
    once it's stored as a secret. Mock HTTP in tests (see `test_api_client.py`).
    The Firebase web `apiKey` and project ID are public by design; Firestore
    rules are the protection.
+   The GitHub repo is **public** (since 12/10/2026): everything committed, and every
+   commit's author email, is visible to anyone. Never commit personal data (contact
+   messages, emails, phone numbers). Workflows run on `pull_request`, never
+   `pull_request_target`, so PRs from forks never see the secrets. Keep it that way.
 7. `sync_for_notebook()` and `pull_latest()` never raise and return a status
    line. Keep that: an API or git hiccup must never block a build.
 8. `prediction_history.csv` holds predictions only. Actuals are joined at display
