@@ -29,7 +29,11 @@ function historyTab() {
         {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
         {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
         {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
-        {label: 'Σύνολο', area: 'total', cap: 'Σύνολο πόντων', num: true, info: 'totalmae', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => r.ahs == null || r.phs == null ? '' : `${r.phs + r.pas}→${r.ahs + r.aas} (${Math.abs((r.phs + r.pas) - (r.ahs + r.aas))}π.)`},
+        {label: h('span', {class: 'total-heading'}, h('span', null, 'Σύνολο πόντων'), h('small', null, 'πρόβλεψη → τελικό')), area: 'total', cap: 'Σύνολο πόντων · πρόβλεψη → τελικό', num: true, info: 'totalmae', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
+          if (r.ahs == null || r.phs == null) return '';
+          const predicted = r.phs + r.pas, actual = r.ahs + r.aas, error = Math.abs(predicted - actual);
+          return h('span', {class: 'total-points'}, h('span', null, h('small', null, 'Πρόβλεψη'), predicted), h('span', null, h('small', null, 'Τελικό'), actual), h('small', null, `Διαφορά ${error} π.`));
+        }},
         {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
