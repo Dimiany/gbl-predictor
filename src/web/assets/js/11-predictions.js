@@ -34,7 +34,7 @@ function historyTab() {
           const predicted = r.phs + r.pas, actual = r.ahs + r.aas, error = Math.abs(predicted - actual);
           return h('span', {class: 'total-points'}, h('span', null, h('small', null, 'Πρόβλεψη'), predicted), h('span', null, h('small', null, 'Τελικό'), actual), h('small', null, `Διαφορά ${error} π.`));
         }},
-        {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
+        {label: 'Κατάσταση', area: 'out', cap: true, render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
       ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', paged: true,
