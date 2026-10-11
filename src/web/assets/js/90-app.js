@@ -161,7 +161,7 @@ if (SITE.mode === 'preview') {
       h('div', {class: 'foot-col'},
         h('div', {class: 'foot-brand'}, h('img', {src: document.querySelector('.brand-badge img')?.src || '', alt: ''}), BRAND.name),
         h('p', {style: 'margin:0 0 6px;max-width:340px'}, h('b', null, BRAND.tagline), ' · ', BRAND.slogan),
-        h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και βαθμολογείται δημόσια.')),
+        h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και αξιολογείται με βάση το τελικό αποτέλεσμα.')),
       col('Σελίδες', [[url('home'), 'Αρχική'], [url('predictions'), 'Προβλέψεις'], [url('standings'), 'Βαθμολογία'], [url('teams'), 'Ομάδες'], [url('schedule'), 'Πρόγραμμα']]),
       col('Μοντέλο', [[url('model'), 'Απόδοση'], [url('model', 'metrics'), 'Οδηγός δεικτών'], [url('model', 'how'), 'Πώς δουλεύει'], [url('predictions', 'hits'), '🔥 Επιτυχίες ≥80%']]),
       col('Βοήθεια', [[url('help'), 'Οδηγίες'], [url('about'), 'Σχετικά'], [url('contact'), 'Επικοινωνία']])),
