@@ -1,5 +1,13 @@
 // page: predictions — tabs: next round · logged history · hits · every game.
 
+const HISTORY_WINNER_SHORT = {
+  Olympiacos: 'ΟΣΦΠ', Panathinaikos: 'ΠΑΟ', AEK: 'ΑΕΚ', PAOK: 'ΠΑΟΚ', Aris: 'ΑΡΗΣ',
+  'AS Karditsas Iaponiki': 'ΚΑΡΔ.', 'Doxa Lefkadas': 'ΔΟΞΑ', Iraklis: 'ΗΡΑΚ.',
+  'Kolossos Rodou': 'ΚΟΛ.', Maroussi: 'ΜΑΡ.', Mykonos: 'ΜΥΚ.',
+  Panionios: 'ΠΑΝ.', Peristeri: 'ΠΕΡ.', 'Promitheas Vikos Cola': 'ΠΡΟΜ.',
+  'Vikos Falcons Ioanninon': 'ΒΙΚΟΣ',
+};
+
 function historyTab() {
   const box = h('div');
   const st = {season: '', team: '', status: 'all', model: ''};
@@ -24,13 +32,15 @@ function historyTab() {
       h('p', {class: 'summary-line'}, totalMae == null ? '' : `Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`),
       table([
         {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:8px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
-        {label: 'Πρόβλεψη', area: 'pred', cap: true, num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
-        {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
-        {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
-        {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
-        {label: 'Σύνολο πόντων', area: 'total', cap: true, num: true, info: 'totalmae', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => r.ahs == null || r.phs == null ? '' : `${r.phs + r.pas} → ${r.ahs + r.aas} (${Math.abs((r.phs + r.pas) - (r.ahs + r.aas))} π.)`},
-        {label: '', area: 'out', render: r => h('span', {style: 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
+        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: h('span', {class: 'history-heading'}, 'Πρόβλεψη', h('small', null, 'σκορ · νικητής')), area: 'pred', cap: 'Πρόβλεψη · σκορ και νικητής', sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {class: 'history-detail'}, h('b', null, `${r.phs}–${r.pas}`), h('small', {title: r.w}, `${HISTORY_WINNER_SHORT[r.w] || r.w} · ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`))},
+        {label: h('span', {class: 'history-heading'}, 'Αποτέλεσμα', h('small', null, 'τελικό σκορ · απόκλιση')), area: 'result', cap: 'Αποτέλεσμα · τελικό σκορ και απόκλιση', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'history-detail'}, h('b', null, `${r.ahs}–${r.aas}`), h('small', null, `Απόκλιση ${marginErr(r, r.ahs, r.aas)} π.`))},
+        {label: h('span', {class: 'total-heading'}, h('span', null, 'Σύνολο πόντων'), h('small', null, 'πρόβλεψη → τελικό')), area: 'total', cap: 'Σύνολο πόντων · πρόβλεψη → τελικό', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
+          if (r.ahs == null || r.phs == null) return '';
+          const predicted = r.phs + r.pas, actual = r.ahs + r.aas, error = Math.abs(predicted - actual);
+          return h('span', {class: 'total-points'}, h('span', null, h('small', null, 'Πρόβλεψη'), predicted), h('span', null, h('small', null, 'Τελικό'), actual), h('small', null, `Διαφορά ${error} π.`));
+        }},
+        {label: 'Κατάσταση', area: 'out', cap: true, render: r => h('span', {class: 'history-status'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
       ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', paged: true,
