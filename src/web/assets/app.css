@@ -301,9 +301,13 @@ tbody tr:hover td{background:var(--surface-2)}
 .match-cell .m-home .tlink{flex-direction:row-reverse}
 .match-cell .m-away{display:flex;justify-content:flex-start;min-width:0}
 /* Round separator in the history: ──── 2η αγωνιστική ──── */
-tr.group-row td{padding:18px 6px 6px;border-bottom:0;background:none!important}
-.group-row span{display:flex;align-items:center;gap:14px;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-strong)}
-.group-row span::before,.group-row span::after{content:"";flex:1;height:1px;background:var(--border)}
+/* Right padding keeps the round's record clear of the table's scroll fade. */
+tr.group-row td{padding:26px 34px 8px 6px;border-bottom:0;background:none!important}
+.g-inner{display:flex;align-items:center;gap:12px}
+.g-label{font-size:12px;font-style:italic;font-weight:650;color:var(--accent-strong);white-space:nowrap}
+.g-line{flex:1;height:1px;background:var(--border)}
+.g-note{font-size:11.5px;font-style:italic;color:var(--text-secondary);white-space:nowrap;font-variant-numeric:tabular-nums}
+.g-note b{font-style:normal;font-weight:750;color:var(--text-primary)}
 /* Keep the predictions history inside its panel on desktop. */
 @media (min-width:901px){
 .cards-log table{table-layout:fixed}

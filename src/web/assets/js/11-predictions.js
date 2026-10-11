@@ -22,6 +22,21 @@ function historyTab() {
   const seasons = [...new Set(D.log.map(r => r.s))].sort().reverse();
   const versions = [...new Set(D.log.map(r => r.v))];
   const isHit = r => r.ok && Math.max(r.p, 1 - r.p) >= HIT_THRESHOLD;
+  // Each round's record over all its logged predictions (not just the filtered rows:
+  // filtering by "correct" would always show 100%).
+  const roundRecord = {};
+  D.log.forEach(r => {
+    const rec = roundRecord[roundOf(r.d).key] ??= {ok: 0, graded: 0};
+    if (r.ok !== null) { rec.graded++; if (r.ok) rec.ok++; }
+  });
+  const roundGroup = r => {
+    const g = roundOf(r.d), rec = roundRecord[g.key];
+    const note = rec.graded
+      ? h('span', {class: 'g-note', title: T('Σωστές προβλέψεις νικητή στην αγωνιστική', 'Winners called correctly in this round')},
+        h('b', null, `${rec.ok}/${rec.graded}`), ` · ${pct(rec.ok / rec.graded)}`)
+      : h('span', {class: 'g-note muted'}, T('σε αναμονή', 'pending'));
+    return {...g, note};
+  };
   const draw = () => {
     const rows = D.log.filter(r => (!st.season || r.s === st.season) && (!st.team || r.home === st.team || r.away === st.team)
       && (!st.model || r.v === st.model)
@@ -53,7 +68,7 @@ function historyTab() {
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: T('Μοντέλο', 'Model'), hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: T(`καταγράφηκε ${r.at}`, `recorded ${r.at}`)}, r.v)},
       ], rows, {sortIdx: 0, dir: -1, empty: T('Καμία πρόβλεψη με αυτά τα φίλτρα.', 'No predictions match these filters.'), cards: 'log', paged: true,
-        group: {col: 0, of: r => roundOf(r.d)},
+        group: {col: 0, of: roundGroup},
         rowClass: r => [isFocus(r.home, r.away) ? 'is-focus' : '', isHit(r) ? 'hit' : ''].join(' ').trim() || null}));
   };
   const filters = h('div', {class: 'filters'},

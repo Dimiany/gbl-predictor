@@ -87,8 +87,8 @@ function tabs(id, items, initial, urlFor) {
  *   cap?: true|str caption above the value in a card (the label, or this text)}
  * opts.cards = 'results' | 'log' picks the card layout in app.css.
  * opts.paged = true: pages of 20 / 40 / 60 rows with a pager below (the size is remembered).
- * opts.group = {col, of(row) -> {key, label}}: while sorted by column `col`, a full-width
- *   separator row with the label goes above each new key (rounds in the history).
+ * opts.group = {col, of(row) -> {key, label, note?}}: while sorted by column `col`, a full-width
+ *   separator row (label left, note right) goes above each new key (rounds in the history).
  */
 const PAGE_SIZES = [20, 40, 60];
 function table(cols, rows, opts = {}) {
@@ -157,7 +157,8 @@ function table(cols, rows, opts = {}) {
         const g = opts.group.of(r);
         if (g.key === lastKey) return [row];
         lastKey = g.key;
-        return [h('tr', {class: 'group-row'}, h('td', {colspan: cols.length}, h('span', null, g.label))), row];
+        return [h('tr', {class: 'group-row'}, h('td', {colspan: cols.length}, h('div', {class: 'g-inner'},
+          h('span', {class: 'g-label'}, g.label), h('span', {class: 'g-line', 'aria-hidden': 'true'}), g.note || null))), row];
       })
       : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || T('Δεν υπάρχουν δεδομένα.', 'No data.')))];
     wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
