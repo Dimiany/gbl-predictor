@@ -2,9 +2,9 @@
 
 const HISTORY_WINNER_SHORT = {
   Olympiacos: 'ΟΣΦΠ', Panathinaikos: 'ΠΑΟ', AEK: 'ΑΕΚ', PAOK: 'ΠΑΟΚ', Aris: 'ΑΡΗΣ',
-  'AS Karditsas Iaponiki': 'ΚΑΡΔΙΤΣΑ', 'Doxa Lefkadas': 'ΔΟΞΑ', Iraklis: 'ΗΡΑΚΛΗΣ',
-  'Kolossos Rodou': 'ΚΟΛΟΣΣΟΣ', Maroussi: 'ΜΑΡΟΥΣΙ', Mykonos: 'ΜΥΚΟΝΟΣ',
-  Panionios: 'ΠΑΝΙ.', Peristeri: 'ΠΕΡΙΣΤ.', 'Promitheas Vikos Cola': 'ΠΡΟΜ.',
+  'AS Karditsas Iaponiki': 'ΚΑΡΔ.', 'Doxa Lefkadas': 'ΔΟΞΑ', Iraklis: 'ΗΡΑΚ.',
+  'Kolossos Rodou': 'ΚΟΛ.', Maroussi: 'ΜΑΡ.', Mykonos: 'ΜΥΚ.',
+  Panionios: 'ΠΑΝ.', Peristeri: 'ΠΕΡ.', 'Promitheas Vikos Cola': 'ΠΡΟΜ.',
   'Vikos Falcons Ioanninon': 'ΒΙΚΟΣ',
 };
 
@@ -32,7 +32,7 @@ function historyTab() {
       h('p', {class: 'summary-line'}, totalMae == null ? '' : `Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`),
       table([
         {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center;flex-wrap:nowrap'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
         {label: 'Πρόβλεψη', area: 'pred', cap: true, num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
         {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {title: r.w}, `${HISTORY_WINNER_SHORT[r.w] || r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`)},
         {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
