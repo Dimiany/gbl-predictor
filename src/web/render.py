@@ -268,8 +268,8 @@ def site_pages(data: dict, lang: str = "el") -> list[Page]:
         page(
             page_path("teams"),
             f"Ομάδες Basket League {season}",
-            f"Οι {len(teams) or 14} ομάδες της {league}: ρεκόρ, φόρμα, Elo, "
-            "αποτελέσματα και πρόγραμμα.",
+            f"Οι {len(teams) or 14} ομάδες της {league} με σειρά δύναμης (Elo): "
+            "τι είναι το Elo, ρεκόρ, φόρμα, αποτελέσματα και πρόγραμμα.",
         ),
         page(
             page_path("schedule"),
@@ -387,7 +387,7 @@ def english_pages(data: dict) -> list[Page]:
         page(
             path("teams"),
             f"Greek Basketball Teams {season}",
-            f"All {len(teams) or 14} teams in the {league}: records, form, Elo ratings, results and fixtures.",
+            f"All {len(teams) or 14} teams in the {league} ranked by Elo strength: what Elo is, records, form, results and fixtures.",
         ),
         page(
             path("schedule"),

@@ -365,6 +365,10 @@ tr.is-focus td:first-child{box-shadow:inset 3px 0 0 var(--brand-cyan)}
 .team-tile.is-focus{box-shadow:0 0 0 2px var(--brand-cyan),var(--shadow)}
 .tile-top{display:flex;justify-content:space-between;align-items:center;position:relative}
 .tile-pos{font-size:12px;font-weight:750;color:var(--text-secondary)}
+.tile-elo{font-size:15px;font-weight:800;color:var(--accent-strong);font-variant-numeric:tabular-nums}
+.tile-elo small{font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:.04em}
+.elo-note{margin-bottom:18px}
+.elo-note p{margin:6px 0 0}
 .tile-name{display:flex;align-items:center;gap:12px;font-weight:800;font-size:15.5px;margin:12px 0 4px;min-width:0;position:relative}
 .tile-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile-row{display:flex;justify-content:space-between;align-items:center;color:var(--text-secondary);font-size:12.5px;margin-top:9px;gap:8px;position:relative}
