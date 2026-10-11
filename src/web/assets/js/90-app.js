@@ -109,7 +109,7 @@ const menuBtn = h('button', {type: 'button', class: 'tb-item', 'aria-haspopup': 
 const sheet = h('div', {class: 'sheet', id: 'menu-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': T('Όλες οι σελίδες', 'All pages'), tabindex: '-1', hidden: true},
   h('div', {class: 'sheet-grip', 'aria-hidden': 'true'}),
   [...NAV, ['help', T('Οδηγίες', 'Help')]].map(([k, label]) => h('a', {href: url(k), 'data-k': k}, label, h('span', {'aria-hidden': 'true'}, '›'))),
-  h('a', {class: 'sheet-lang', href: otherLanguagePath(), hreflang: T('en', 'el'), lang: T('en', 'el')}, T('English', 'Ελληνικά'), h('span', {'aria-hidden': 'true'}, T('EN', 'ΕΛ'))));
+  h('a', {class: 'sheet-lang', href: otherLanguagePath(), hreflang: T('en', 'el'), lang: T('en', 'el')}, T('English', 'Ελληνικά'), h('img', {class: 'flag', src: T('/flag-gb.svg', '/flag-gr.svg'), alt: '', width: 21, height: 14})));
 const backdrop = h('div', {class: 'sheet-backdrop', hidden: true});
 function setMenu(open) {
   sheet.hidden = backdrop.hidden = !open;

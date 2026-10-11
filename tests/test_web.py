@@ -112,6 +112,8 @@ def test_english_edition_has_an_en_address_for_every_page_and_a_language_switch(
     assert 'class="lang-switch" href="/en"' in files["index.html"]
     assert 'class="lang-switch" href="/"' in files["en.html"]
     assert 'class="lang-switch" href="/en/standings"' in files["standings.html"]
+    assert 'src="/flag-gb.svg"' in files["standings.html"]  # the flag of the language it opens
+    assert 'src="/flag-gr.svg"' in files["en/standings.html"]
     assert cfg.SITE_SLOGAN_EN in files["data-en.js"]
     assert cfg.SITE_SLOGAN_EN not in files["data.js"]
 
@@ -473,7 +475,13 @@ def test_page_links_favicon_and_touch_icon_files(tmp_path):
     assert '<link rel="apple-touch-icon" href="/apple-touch-icon.png">' in page
     assert "img-src 'self' data:" in page  # own files + inlined fallback crests
     build.write_site_files(tmp_path, mode="live")
-    for name in ("favicon.svg", "favicon.ico", "apple-touch-icon.png"):
+    for name in (
+        "favicon.svg",
+        "favicon.ico",
+        "apple-touch-icon.png",
+        "flag-gr.svg",
+        "flag-gb.svg",
+    ):
         assert (tmp_path / name).stat().st_size > 100, name
 
 

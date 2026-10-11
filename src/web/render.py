@@ -56,6 +56,9 @@ ICON_FILES = {
     "favicon.svg": "favicon.svg",
     "apple-touch-icon.png": "apple-touch-icon.png",
     "favicon.ico": "tipoff.ico",
+    # Language switch: the flag of the language the link opens (UK flag for English).
+    "flag-gr.svg": "flag-gr.svg",
+    "flag-gb.svg": "flag-gb.svg",
 }
 
 
@@ -620,7 +623,7 @@ def render_page(
     <a class="brand" href="{page_path("home", lang=lang)}" aria-label="{name}, {t("αρχική", "home")}"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
     <nav id="nav" aria-label="{t("Κύρια πλοήγηση", "Main navigation")}">{static_nav(page.path, lang)}</nav>
     <div class="head-tools">
-      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("English", "Ελληνικά")}" title="{t("English", "Ελληνικά")}">{t("EN", "ΕΛ")}</a>
+      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("English", "Ελληνικά")}" title="{t("English", "Ελληνικά")}"><img class="flag" src="/flag-{t("gb", "gr")}.svg" alt="" width="21" height="14">{t("EN", "ΕΛ")}</a>
       <button id="refresh" class="btn btn-primary" type="button" title="{t("Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις", "Fetches new results and makes the predictions again")}"><span class="spin" aria-hidden="true">⟳</span> {t("Ανανέωση", "Refresh")}</button>
       <label class="focus-pick"><span>{t("Η ομάδα μου", "My team")}</span><select id="focus" aria-label="{t("Η ομάδα μου", "My team")}"></select></label>
       <a class="icon-btn" href="{page_path("help", lang=lang)}" aria-label="{t("Οδηγίες", "Help")}" title="{t("Οδηγίες", "Help")}">?</a>
