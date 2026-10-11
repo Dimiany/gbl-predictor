@@ -7,11 +7,19 @@ function setFocus(team) {
   route(false);
 }
 
+/** Teams ordered by Elo (the user's call, 12/10/2026): strength, not the league table. */
 pages.teams = () => [
-  pageBanner(T('Ομάδες', 'Teams'), T(`${TEAMS.length} ομάδες · κλικ σε μια ομάδα για τη σελίδα της`, `${TEAMS.length} teams · click a team for its page`)),
-  h('div', {class: 'team-grid'}, D.standings.map(r => {
+  pageBanner(T('Ομάδες', 'Teams'), T(`${TEAMS.length} ομάδες, με σειρά δύναμης (Elo) · κλικ σε μια ομάδα για τη σελίδα της`, `${TEAMS.length} teams, in order of strength (Elo) · click a team for its page`)),
+  h('section', {class: 'panel howto elo-note'},
+    sectionHead(T('Τι είναι το Elo;', 'What is Elo?'), null, infoDot('elo')),
+    h('p', null, T('Ένας βαθμός δύναμης για κάθε ομάδα. Όλες ξεκινούν κοντά στο 1500. Μετά από κάθε αγώνα, η νικήτρια παίρνει πόντους από την ηττημένη: περισσότερους όταν κερδίζει μια ισχυρότερη ομάδα, λιγότερους όταν κερδίζει ένα αναμενόμενο παιχνίδι. Έτσι το Elo δείχνει ποια ομάδα είναι πραγματικά δυνατή, όχι μόνο ποια έχει τις περισσότερες νίκες.',
+      'A strength rating for every team. All start near 1500. After each game the winner takes points from the loser: more for beating a stronger team, fewer for winning an expected game. So Elo shows which team is actually strong, not just which has the most wins.')),
+    h('p', {class: 'foot-note'}, T('Οι ομάδες εδώ είναι ταξινομημένες κατά Elo. Δεν είναι η θέση τους στη βαθμολογία: αυτή φαίνεται με μικρά γράμματα σε κάθε κάρτα και στη σελίδα Βαθμολογία.',
+      'The teams here are ranked by Elo. This is not their league position: that is shown in small print on each card and on the Standings page.'))),
+  h('div', {class: 'team-grid'}, [...D.standings].sort((a, b) => b.elo - a.elo).map((r, i) => {
     const tile = h('a', {class: 'team-tile' + (r.team === state.focus ? ' is-focus' : ''), href: teamHref(r.team)},
-      h('div', {class: 'tile-top'}, h('span', {class: 'tile-pos'}, ordinal(r.pos)), h('span', {class: 'muted small'}, `Elo ${r.elo}`)),
+      h('div', {class: 'tile-top'}, h('span', {class: 'tile-elo'}, h('small', null, `#${i + 1} Elo`), ' ', String(r.elo)),
+        h('span', {class: 'muted small'}, T(`${ordinal(r.pos)} στη βαθμολογία`, `${ordinal(r.pos)} in the table`))),
       h('div', {class: 'tile-name'}, crest(r.team, 40), h('span', null, tn(r.team))),
       h('div', {class: 'tile-row'}, h('span', null, `${r.w}-${r.l} · ${signed(r.diff)}`), formChips(r.form)));
     tile.addEventListener('pointermove', e => { const b = tile.getBoundingClientRect(); tile.style.setProperty('--mx', `${e.clientX - b.left}px`); });
