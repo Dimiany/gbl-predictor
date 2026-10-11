@@ -1,5 +1,13 @@
 // page: predictions — tabs: next round · logged history · hits · every game.
 
+const HISTORY_WINNER_SHORT = {
+  Olympiacos: 'ΟΣΦΠ', Panathinaikos: 'ΠΑΟ', AEK: 'ΑΕΚ', PAOK: 'ΠΑΟΚ', Aris: 'ΑΡΗΣ',
+  'AS Karditsas Iaponiki': 'ΚΑΡΔΙΤΣΑ', 'Doxa Lefkadas': 'ΔΟΞΑ', Iraklis: 'ΗΡΑΚΛΗΣ',
+  'Kolossos Rodou': 'ΚΟΛΟΣΣΟΣ', Maroussi: 'ΜΑΡΟΥΣΙ', Mykonos: 'ΜΥΚΟΝΟΣ',
+  Panionios: 'ΠΑΝΙ.', Peristeri: 'ΠΕΡΙΣΤ.', 'Promitheas Vikos Cola': 'ΠΡΟΜ.',
+  'Vikos Falcons Ioanninon': 'ΒΙΚΟΣ',
+};
+
 function historyTab() {
   const box = h('div');
   const st = {season: '', team: '', status: 'all', model: ''};
@@ -24,9 +32,9 @@ function historyTab() {
       h('p', {class: 'summary-line'}, totalMae == null ? '' : `Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`),
       table([
         {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:8px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center;flex-wrap:nowrap'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
         {label: 'Πρόβλεψη', area: 'pred', cap: true, num: true, render: r => h('b', null, `${r.phs}–${r.pas}`)},
-        {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => `${r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`},
+        {label: 'Νικητής πρόβλεψης · πιθανότητα', area: 'win', cap: 'Νικητής', info: 'prob', sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {title: r.w}, `${HISTORY_WINNER_SHORT[r.w] || r.w} ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`)},
         {label: 'Αποτέλεσμα', area: 'result', cap: true, num: true, render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'score-cell'}, `${r.ahs}–${r.aas}`)},
         {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? '' : `${marginErr(r, r.ahs, r.aas)} π.`},
         {label: h('span', {class: 'total-heading'}, h('span', null, 'Σύνολο πόντων'), h('small', null, 'πρόβλεψη → τελικό')), area: 'total', cap: 'Σύνολο πόντων · πρόβλεψη → τελικό', num: true, info: 'totalmae', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
