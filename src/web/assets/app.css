@@ -313,6 +313,7 @@ tbody tr:hover td{background:var(--surface-2)}
 .total-heading,.total-points{display:inline-flex;flex-direction:column;align-items:center;line-height:1.3}
 .total-heading small,.total-points small{font-size:10px;font-weight:500;color:var(--text-secondary);text-transform:none;letter-spacing:0}
 .total-points{gap:2px;font-variant-numeric:tabular-nums}
+.history-status{display:flex;width:100%;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
 /* opts.center (standings): every column centred except the team name; the sort arrow
    hangs to the right so it doesn't push the label off centre. */
 .t-center th,.t-center td{text-align:center}
