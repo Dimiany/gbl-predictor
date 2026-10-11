@@ -48,6 +48,55 @@ const nextRoundDates = () => {
   return a === b ? dayLabel(a) : `${dayLabel(a)} – ${dayLabel(b)}`;
 };
 
+/** "2025/26" for an ISO date (August onward = new season, like features.season_of). */
+const seasonOfDate = iso => {
+  const y = +iso.slice(0, 4), start = +iso.slice(5, 7) >= 8 ? y : y - 1;
+  return `${start}/${String(start + 1).slice(2)}`;
+};
+/** Which round a game day belongs to. The data has no round numbers, so they come from the
+ *  calendar: game days at most 2 days apart are one round; a day or two with only a few games
+ *  (a quarter of a full round or less) are rescheduled games; once every pair has met twice,
+ *  the rest is playoffs. Checked on 2025/26 (13 teams, byes): 26 rounds, then playoffs.
+ *  Returns {key, label}; the label names the season when it isn't the current one. */
+let roundDays = null;
+function roundOf(iso) {
+  if (!roundDays) {
+    roundDays = {};
+    const bySeason = {};
+    [...played, ...D.upcoming].forEach(g => (bySeason[seasonOfDate(g.d)] ??= []).push(g));
+    for (const [s, games] of Object.entries(bySeason)) {
+      games.sort((a, b) => a.d.localeCompare(b.d));
+      const teams = new Set(games.flatMap(g => [g.home, g.away])).size, regular = teams * (teams - 1);
+      const regularEnd = games.length > regular ? games[regular - 1].d : null;
+      const perDay = {};
+      games.forEach(g => { perDay[g.d] = (perDay[g.d] || 0) + 1; });
+      const clusters = [];
+      Object.keys(perDay).sort().forEach((d, i, days) => {
+        if (!i || (parse(d) - parse(days[i - 1])) / 864e5 > 2) clusters.push({days: [], games: 0});
+        clusters[clusters.length - 1].days.push(d);
+        clusters[clusters.length - 1].games += perDay[d];
+      });
+      let no = 0;
+      roundDays[s] = new Map(clusters.flatMap(c => {
+        let label;
+        if (regularEnd && c.days[0] > regularEnd) label = 'Playoffs';
+        else if (c.games <= Math.floor(teams / 2) / 2) label = T('Αγώνες εξ αναβολής', 'Rescheduled games');
+        else { const k = ++no; label = T(`${k}η αγωνιστική`, `Round ${k}`); }
+        return c.days.map(d => [d, label]);
+      }));
+    }
+  }
+  const s = seasonOfDate(iso), days = roundDays[s];
+  if (!days) return {key: s, label: s};
+  // A logged fixture can sit a day or two off the played date (rescheduled): take the nearest day.
+  let label = days.get(iso);
+  if (!label) {
+    let best = Infinity;
+    for (const [d, l] of days) { const gap = Math.abs(parse(d) - parse(iso)); if (gap < best) { best = gap; label = l; } }
+  }
+  return {key: `${s} ${label}`, label: s === season ? label : `${label} · ${s}`};
+}
+
 /** Page registry: pages[name] = ({tab, name}) => Node[]. Filled by the 1x-*.js files. */
 const pages = {};
 

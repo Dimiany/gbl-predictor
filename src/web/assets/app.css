@@ -296,6 +296,19 @@ td{padding:9px 8px;border-bottom:1px solid var(--grid);white-space:nowrap}
 tbody tr{transition:background .15s}
 tbody tr:hover td{background:var(--surface-2)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+/* Home team right-aligned against the dash, away team left-aligned: the dashes line up. */
+.match-cell{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;width:100%}
+.match-cell .m-home{display:flex;justify-content:flex-end;min-width:0}
+.match-cell .m-home .tlink{flex-direction:row-reverse}
+.match-cell .m-away{display:flex;justify-content:flex-start;min-width:0}
+/* Round separator in the history: ──── 2η αγωνιστική ──── */
+/* Right padding keeps the round's record clear of the table's scroll fade. */
+tr.group-row td{padding:26px 34px 8px 6px;border-bottom:0;background:none!important}
+.g-inner{display:flex;align-items:center;gap:12px}
+.g-label{font-size:12px;font-style:italic;font-weight:650;color:var(--accent-strong);white-space:nowrap}
+.g-line{flex:1;height:1px;background:var(--border)}
+.g-note{font-size:11.5px;font-style:italic;color:var(--text-secondary);white-space:nowrap;font-variant-numeric:tabular-nums}
+.g-note b{font-style:normal;font-weight:750;color:var(--text-primary)}
 /* Keep the predictions history inside its panel on desktop. */
 @media (min-width:901px){
 .cards-log table{table-layout:fixed}
@@ -309,7 +322,6 @@ tbody tr:hover td{background:var(--surface-2)}
 .cards-log th:nth-child(7),.cards-log td:nth-child(7){width:7%}
 .cards-log td{text-align:center}
 .cards-log td.c-match{white-space:nowrap;text-align:center}
-.cards-log td.c-match>span{flex-wrap:nowrap;white-space:nowrap;justify-content:center}
 .cards-log td.c-match .tlink{max-width:100%;min-width:0}
 .cards-log td.c-total{text-align:center;white-space:normal}
 }
@@ -538,7 +550,7 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
   .cards-results .score-cell i{display:none}
   .cards-log tr{grid-template-columns:repeat(2,minmax(0,1fr));justify-content:stretch;gap:10px 12px;align-items:start;grid-template-areas:"date out" "match match" "pred result" "total total"}
   .cards-log .c-match{grid-area:match}
-  .cards-log .c-match>span{flex-wrap:wrap}
+  .cards-sm tr.group-row{display:block;padding:16px 4px 2px;border-bottom:0;background:none!important;box-shadow:none!important}
   .cards-log .c-pred{grid-area:pred}
   .cards-log .c-result{grid-area:result}
   .cards-log .c-total{grid-area:total;justify-self:center;text-align:center}

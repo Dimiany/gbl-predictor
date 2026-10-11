@@ -22,6 +22,21 @@ function historyTab() {
   const seasons = [...new Set(D.log.map(r => r.s))].sort().reverse();
   const versions = [...new Set(D.log.map(r => r.v))];
   const isHit = r => r.ok && Math.max(r.p, 1 - r.p) >= HIT_THRESHOLD;
+  // Each round's record over all its logged predictions (not just the filtered rows:
+  // filtering by "correct" would always show 100%).
+  const roundRecord = {};
+  D.log.forEach(r => {
+    const rec = roundRecord[roundOf(r.d).key] ??= {ok: 0, graded: 0};
+    if (r.ok !== null) { rec.graded++; if (r.ok) rec.ok++; }
+  });
+  const roundGroup = r => {
+    const g = roundOf(r.d), rec = roundRecord[g.key];
+    const note = rec.graded
+      ? h('span', {class: 'g-note', title: T('Σωστές προβλέψεις νικητή στην αγωνιστική', 'Winners called correctly in this round')},
+        h('b', null, `${rec.ok}/${rec.graded}`), ` · ${pct(rec.ok / rec.graded)}`)
+      : h('span', {class: 'g-note muted'}, T('σε αναμονή', 'pending'));
+    return {...g, note};
+  };
   const draw = () => {
     const rows = D.log.filter(r => (!st.season || r.s === st.season) && (!st.team || r.home === st.team || r.away === st.team)
       && (!st.model || r.v === st.model)
@@ -41,7 +56,7 @@ function historyTab() {
       h('p', {class: 'summary-line'}, totalMae == null ? '' : T(`Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`, `Average total-score error: ${totalMae} points.`)),
       table([
         {label: T('Ημέρα', 'Date'), area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: T('Αγώνας', 'Game'), area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: T('Αγώνας', 'Game'), area: 'match', sort: r => r.home, render: r => h('span', {class: 'match-cell'}, h('span', {class: 'm-home'}, tlink(r.home)), h('span', {class: 'muted'}, '–'), h('span', {class: 'm-away'}, tlink(r.away)))},
         {label: h('span', {class: 'history-heading'}, T('Πρόβλεψη', 'Prediction'), h('small', null, T('σκορ · νικητής', 'score · winner'))), area: 'pred', cap: T('Πρόβλεψη · σκορ και νικητής', 'Prediction · score and winner'), sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {class: 'history-detail'}, h('b', null, `${r.phs}–${r.pas}`), h('small', {title: tn(r.w)}, `${winnerShort(r.w)} · ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`))},
         {label: h('span', {class: 'history-heading'}, T('Αποτέλεσμα', 'Result'), h('small', null, T('τελικό σκορ · απόκλιση', 'final score · margin error'))), area: 'result', cap: T('Αποτέλεσμα · τελικό σκορ και απόκλιση', 'Result · final score and margin error'), sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'history-detail'}, h('b', null, `${r.ahs}–${r.aas}`), h('small', null, T(`Απόκλιση ${marginErr(r, r.ahs, r.aas)} π.`, `Off by ${marginErr(r, r.ahs, r.aas)} pts`)))},
         {label: h('span', {class: 'total-heading'}, h('span', null, T('Σύνολο πόντων', 'Total points')), h('small', null, T('πρόβλεψη → τελικό', 'predicted → final'))), area: 'total', cap: T('Σύνολο πόντων · πρόβλεψη → τελικό', 'Total points · predicted → final'), sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
@@ -53,6 +68,7 @@ function historyTab() {
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
         {label: T('Μοντέλο', 'Model'), hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: T(`καταγράφηκε ${r.at}`, `recorded ${r.at}`)}, r.v)},
       ], rows, {sortIdx: 0, dir: -1, empty: T('Καμία πρόβλεψη με αυτά τα φίλτρα.', 'No predictions match these filters.'), cards: 'log', paged: true,
+        group: {col: 0, of: roundGroup},
         rowClass: r => [isFocus(r.home, r.away) ? 'is-focus' : '', isHit(r) ? 'hit' : ''].join(' ').trim() || null}));
   };
   const filters = h('div', {class: 'filters'},
