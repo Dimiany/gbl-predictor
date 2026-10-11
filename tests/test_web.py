@@ -24,6 +24,7 @@ from src.web.render import (
     bundle_js,
     js_modules,
     json_payload,
+    page_file,
     page_path,
     render_html,
     render_site,
@@ -89,6 +90,20 @@ def test_render_site_has_shared_files_and_one_page_per_address():
         assert name in files, name
         assert '<script src="/app.js" defer></script>' in files[name]
         assert 'data-theme="dark"' in files[name]
+
+
+def test_english_edition_has_an_en_address_for_every_page_and_a_language_switch():
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    english_pages = site_pages(SITE_DATA, lang="en")
+    assert len(english_pages) == len(site_pages(SITE_DATA))
+    assert all(page_file(page.path) in files for page in english_pages)
+
+    history = files["en/predictions/history.html"]
+    assert '<html lang="en"' in history
+    assert '<script src="/data-en.js" defer></script>' in history
+    assert 'href="/predictions/history"' in history
+    assert 'href="/en/help"' in history
+    assert 'content="en_US"' in history
 
 
 def test_every_address_is_unique_and_has_its_own_title():

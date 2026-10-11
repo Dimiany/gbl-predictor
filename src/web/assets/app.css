@@ -62,6 +62,8 @@ nav a:hover{color:#fff}
 nav a.active{color:#fff;font-weight:700}
 nav a.active::after{transform:scaleX(1)}
 .head-tools{display:flex;gap:8px;align-items:center}
+.lang-switch{display:inline-grid;place-items:center;min-width:36px;height:34px;padding:0 8px;border:1px solid rgba(255,255,255,.32);border-radius:9px;color:#fff;font-size:12px;font-weight:800;letter-spacing:.05em;text-decoration:none}
+.lang-switch:hover{background:rgba(255,255,255,.12);border-color:#fff}
 .focus-pick{display:flex;gap:8px;align-items:center;color:rgba(255,255,255,.7);font-size:12.5px}
 select,.btn,.icon-btn{font:inherit;font-size:13px;border-radius:10px;padding:7px 11px;cursor:pointer}
 select{color:var(--text-primary);background:var(--surface-1);border:1px solid var(--border)}

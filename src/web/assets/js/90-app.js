@@ -32,6 +32,10 @@ const KNOWN_TEAMS = [...new Set([...TEAMS, ...played.flatMap(g => [g.home, g.awa
 /** /page[/tab]  or  /teams/<team>[/tab]  ->  {page, tab, name} */
 function parseRoute() {
   const parts = location.pathname.split('/').filter(Boolean).map(p => decodeURIComponent(p));
+  if (ROUTES.prefix) {
+    if (parts.shift() !== ROUTES.prefix) return {page: 'notfound'};
+    if (!parts.length) return {page: 'home'};
+  }
   if (!parts.length || (parts.length === 1 && parts[0] === 'index.html')) return {page: 'home'};
   const page = Object.keys(ROUTES.pages).find(k => k !== 'home' && ROUTES.pages[k] === parts[0]);
   const notFound = {page: 'notfound'};

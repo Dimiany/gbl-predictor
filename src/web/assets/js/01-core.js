@@ -4,14 +4,15 @@
 
 /** Everything the pages show, from data.js (src/web/data.py + render.route_table). */
 const D = window.TIPOFF_DATA;
+const ENGLISH = D.lang === 'en';
 /** Site name and lines (src/config.py SITE_*). */
 const BRAND = D.brand || {name: 'TipOff', tagline: 'Greek Basketball Predictor', slogan: '', url: ''};
 const NS = 'http://www.w3.org/2000/svg';
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 
-const DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
-const MONTHS = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+const DAYS = ENGLISH ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
+const MONTHS = ENGLISH ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 
 /** A pick is a "hit" when the model gave the favourite at least this much and was right. */
 const HIT_THRESHOLD = 0.8;
@@ -56,13 +57,48 @@ const pages = {};
 const ROUTES = D.routes || {pages: {}, tabs: {}, meta: {}};
 /** Same rule as render.slug(): "AS Karditsas Iaponiki" -> "as-karditsas-iaponiki". */
 const slugOf = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const joinPath = (...parts) => '/' + parts.filter(Boolean).join('/');
+const joinPath = (...parts) => '/' + [ROUTES.prefix, ...parts].filter(Boolean).join('/');
 /** Address of a page and, optionally, one of its tabs: url('model', 'how') -> '/model/how-it-works'. */
 const url = (page, tab) => joinPath(ROUTES.pages[page || 'home'], tab && ROUTES.tabs[page]?.[tab]);
 /** Address of a team page (and tab). */
 const teamHref = (t, tab) => joinPath(ROUTES.pages.teams, slugOf(t), tab && ROUTES.tabs.team?.[tab]);
 /** Tab key for an address part ('' = the first tab, which lives at the page's own address). */
 const tabFromSlug = (group, part) => Object.keys(ROUTES.tabs[group] || {}).find(k => ROUTES.tabs[group][k] === (part || ''));
+
+/** English edition text. Dynamic copy is composed from the same short phrases,
+ * so the Greek source remains the single place for the product UI. */
+const EN_TEXT = {
+  'Αρχική': 'Home', 'Προβλέψεις': 'Predictions', 'Βαθμολογία': 'Standings', 'Ομάδες': 'Teams', 'Πρόγραμμα': 'Schedule', 'Μοντέλο': 'Model', 'Σχετικά': 'About', 'Επικοινωνία': 'Contact', 'Οδηγίες': 'Help',
+  'Επόμενη αγωνιστική': 'Next round', 'Ιστορικό': 'History', 'Όλοι οι αγώνες': 'All games', 'Απόδοση': 'Performance', 'Οδηγός δεικτών': 'Metrics guide', 'Πώς δουλεύει': 'How it works',
+  'Ημέρα': 'Date', 'Αγώνας': 'Matchup', 'Πρόβλεψη': 'Prediction', 'Αποτέλεσμα': 'Result', 'Κατάσταση': 'Status', 'Σύνολο πόντων': 'Total points', 'τελικό σκορ · απόκλιση': 'final score · margin error', 'σκορ · νικητής': 'score · winner', 'πρόβλεψη → τελικό': 'prediction → final',
+  'Γηπεδούχος': 'Home', 'Φιλοξενούμενος': 'Away', 'Σκορ': 'Score', 'Σφάλμα διαφοράς': 'Margin error', 'Νικητής πρόβλεψης · πιθανότητα': 'Predicted winner · probability',
+  'Πιθανότητα': 'Probability', 'Αγώνες': 'Games', 'Νίκες': 'Wins', 'Ήττες': 'Losses', 'Ομάδα': 'Team', 'Φόρμα': 'Form', 'Έδρα': 'Home', 'Εκτός': 'Away', 'Υπ': 'PF', 'Κατ': 'PA', 'Σερί': 'Streak',
+  'Όλες οι σεζόν': 'All seasons', 'Όλες οι ομάδες': 'All teams', 'Όλα τα μοντέλα': 'All models', 'Όλες': 'All', 'Σίγουρες': 'High confidence', 'Σωστές': 'Correct', 'Λάθος': 'Incorrect', 'Σε αναμονή': 'Pending',
+  'Μοντέλο': 'Model', 'Εκκρεμεί': 'Pending', 'Σωστό': 'Correct', 'Λάθος': 'Incorrect', 'Πρόβλεψη μοντέλου': 'Model prediction',
+  'Περισσότερα': 'More', 'Κανένας αγώνας.': 'No games.', 'Κανένας αγώνας ακόμα.': 'No games yet.', 'Κανένας προγραμματισμένος αγώνας.': 'No scheduled games.',
+  'Πλήρης': 'Full', 'Όλες →': 'All →', 'Όλοι →': 'All →', 'Σελίδα ομάδας →': 'Team page →', 'Λεπτομέρειες →': 'Details →', 'Στην αρχική': 'Back to home', 'Δεν βρέθηκε η ομάδα': 'Team not found', 'Όλες οι ομάδες': 'All teams',
+  'Ανανεώση': 'Refresh', 'Η ομάδα μου': 'My team', 'Σκοτεινό / φωτεινό': 'Dark / light', 'Αλλαγή θέματος': 'Change theme', 'Πάνω': 'Back to top',
+  'Η σελίδα δεν βρέθηκε': 'Page not found', 'Ίσως άλλαξε η διεύθυνση ή γράφτηκε λάθος.': 'The address may have changed or been entered incorrectly.',
+  'Μενού': 'Menu', 'Όλες οι σελίδες': 'All pages', 'Πλοήγηση': 'Navigation',
+  'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και αξιολογείται με βάση το τελικό αποτέλεσμα.': 'Predictions, standings and statistics for the Stoiximan Basket League. Every prediction is recorded before tip-off and assessed against the final result.',
+  'Οι προβλέψεις του ': 'The predictions from ',
+  ' είναι αποτέλεσμα μαθηματικών υπολογισμών και στατιστικών αλγορίθμων: Ένας τρόπος να διαβάσουμε το παιχνίδι μέσα από τους αριθμούς. ': ' are produced by mathematical calculations and statistical algorithms: a way to read the game through the numbers. ',
+  'Δεν αποτελούν σε καμία περίπτωση προτάσεις ή συμβουλές στοιχηματισμού.': 'They are not betting recommendations or advice.',
+};
+const EN_TERMS = [
+  ['Μέσο σφάλμα συνολικού σκορ', 'Average total-score error'], ['Μέσο σφάλμα διαφοράς', 'Average margin error'], ['σωστή πρόβλεψη νικητή', 'correct winner prediction'], ['αγώνες με', 'games with'], ['σε αναμονή', 'pending'], ['πόντοι', 'points'], ['π.', 'pts'], ['Απόκλιση', 'Margin error'], ['Διαφορά', 'Difference'], ['Πρόβλεψη', 'Prediction'], ['Τελικό', 'Final'], ['σκορ', 'score'], ['νικητής', 'winner'], ['επόμενη αγωνιστική', 'next round'], ['αγωνιστικές', 'rounds'], ['αγωνιστική', 'round'], ['μέχρι το τέλος της κανονικής περιόδου', 'through the end of the regular season'], ['ανά ημέρα', 'by day'], ['μόνο αγώνες με πρόβλεψη', 'only games with a prediction'], ['Όλοι οι αγώνες', 'All games'], ['Κάνε κλικ', 'Click'], ['κλικ', 'click'], ['καταγράφηκε', 'recorded'], ['πριν από τους αγώνες', 'recorded before tip-off'], ['Πρόβλεψη και αποτέλεσμα', 'Prediction and result'], ['Αποτελέσματα', 'Results'], ['Επισκόπηση', 'Overview'], ['Επόμενοι αγώνες', 'Upcoming games'], ['Όλο το πρόγραμμα', 'Full schedule'], ['Προηγούμενη σεζόν', 'Previous season'], ['Σύγκριση ομάδων', 'Compare teams'], ['Διάλεξε αντίπαλο', 'Choose an opponent'], ['Θέση', 'Position'], ['πόντοι υπέρ', 'points scored'], ['κατά ανά αγώνα', 'allowed per game'], ['εντός έδρας με', 'home vs'], ['εκτός έδρας με', 'away vs'], ['Η εικόνα της ομάδας', 'Team overview'], ['Ορισμός ως η ομάδα μου', 'Set as my team'], ['Η ομάδα μου', 'My team'], ['Τώρα', 'Now'], ['Αρχή', 'Start'], ['Υψηλό', 'High'], ['Χαμηλό', 'Low'], ['Πίνακας', 'Table'], ['σεζόν', 'season'], ['δύναμη σε σχέση με το 1500', 'strength relative to 1500'], ['με μπλε · οι υπόλοιποι με γκρι', 'in blue · all others in grey'],
+];
+const EN_TEAMS = {
+  'AS Karditsas Iaponiki': 'Karditsa Iaponiki', 'Doxa Lefkadas': 'Doxa Lefkadas',
+  'Kolossos Rodou': 'Kolossos Rhodes', 'Promitheas Vikos Cola': 'Promitheas Vikos Cola',
+  'Vikos Falcons Ioanninon': 'Vikos Falcons Ioannina',
+};
+function tx(value) {
+  if (!ENGLISH || typeof value !== 'string') return value;
+  if (EN_TEAMS[value]) return EN_TEAMS[value];
+  if (EN_TEXT[value]) return EN_TEXT[value];
+  return EN_TERMS.reduce((out, [greek, english]) => out.replaceAll(greek, english), value);
+}
 
 /** Title, description and canonical for the current address (the static <head> of every
  *  page has them too; this keeps them right as the visitor moves around). */
@@ -89,9 +125,9 @@ function h(tag, props, ...kids) {
     if (k === 'class') n.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(n.style, v);
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
-    else n.setAttribute(k, v === true ? '' : v);
+    else n.setAttribute(k, v === true ? '' : (typeof v === 'string' && /^(aria-label|title|placeholder)$/.test(k) ? tx(v) : v));
   }
-  for (const c of kids.flat(Infinity)) if (c != null && c !== false && c !== '') n.append(c instanceof Node ? c : String(c));
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false && c !== '') n.append(c instanceof Node ? c : tx(String(c)));
   return n;
 }
 /** Create an SVG element, optionally appending it to `parent`. */
@@ -107,14 +143,14 @@ const css = name => getComputedStyle(document.querySelector('.viz-root')).getPro
 // ---------------------------------------------------------------- formatting
 const parse = iso => new Date(iso + 'T12:00:00');
 const pad2 = n => String(n).padStart(2, '0');
-const dayLabel = iso => { const d = parse(iso); return `${DAYS[d.getDay()]} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`; };
+const dayLabel = iso => { const d = parse(iso); return ENGLISH ? `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : `${DAYS[d.getDay()]} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`; };
 const fullDate = iso => { const d = parse(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 const pct = x => x == null ? '–' : Math.round(x * 100) + '%';
 /** A model probability for display: never claims certainty (99.6% shows as 99%). */
 const pctProb = x => x == null ? '–' : Math.min(99, Math.max(1, Math.round(x * 100))) + '%';
 const fx = (x, n = 3) => x == null ? '–' : x.toFixed(n);
 const signed = x => (x > 0 ? '+' : '') + x;
-const streakGr = st => st.replace('W', 'Ν').replace('L', 'Η');
+const streakGr = st => ENGLISH ? st : st.replace('W', 'Ν').replace('L', 'Η');
 
 // ---------------------------------------------------------------- teams & picks
 const isFocus = (...teams) => teams.includes(state.focus);
@@ -137,7 +173,7 @@ function crest(team, size = 20) {
   const initials = team.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   return h('span', {class: 'crest crest-fallback', 'aria-hidden': 'true', style: `${style};font-size:${Math.round(size * 0.4)}px`}, initials);
 }
-const tlink = (t, size = 18) => h('a', {class: 'tlink', href: teamHref(t), title: t}, crest(t, size), h('span', {class: 'tname'}, t));
+const tlink = (t, size = 18) => h('a', {class: 'tlink', href: teamHref(t), title: tx(t)}, crest(t, size), h('span', {class: 'tname'}, tx(t)));
 
 // ---------------------------------------------------------------- motion
 let revealObserver = null;
