@@ -14,17 +14,17 @@ pages.schedule = () => {
         const p = u.pi >= 0 ? D.next[u.pi] : null;
         return h('div', {class: 'sched-game' + (isFocus(u.home, u.away) ? ' is-focus' : '')}, h('span', {class: 'muted'}, u.t || ''),
           h('span', {class: 'vs'}, tlink(u.home), h('span', {class: 'muted'}, '–'), tlink(u.away)),
-          p ? h('span', {class: 'pchip', title: `Το μοντέλο εκτιμά ότι η ομάδα ${p.w} έχει περίπου ${Math.round(Math.max(p.p, 1 - p.p) * 10)} στις 10 πιθανότητες να κερδίσει.`}, h('span', {class: 'dot'}), `${p.phs}–${p.pas} · ${p.w} ${pct(Math.max(p.p, 1 - p.p))}`) : h('span', {class: 'pchip'}));
-      }))) : [h('p', {class: 'empty'}, 'Κανένας αγώνας.')]));
+          p ? h('span', {class: 'pchip', title: T(`Το μοντέλο εκτιμά ότι η ομάδα ${tn(p.w)} έχει περίπου ${Math.round(Math.max(p.p, 1 - p.p) * 10)} στις 10 πιθανότητες να κερδίσει.`, `The model gives ${tn(p.w)} about a ${Math.round(Math.max(p.p, 1 - p.p) * 10)} in 10 chance of winning.`)}, h('span', {class: 'dot'}), `${p.phs}–${p.pas} · ${tn(p.w)} ${pct(Math.max(p.p, 1 - p.p))}`) : h('span', {class: 'pchip'}));
+      }))) : [h('p', {class: 'empty'}, T('Κανένας αγώνας.', 'No games.'))]));
   };
   const monthCtrl = segCtrl(months.map(mo => [mo, `${MONTHS[+mo.slice(5) - 1]} '${mo.slice(2, 4)}`]), st.month, v => { st.month = v; draw(); });
   const filters = h('div', {class: 'filters'},
-    selectEl([['', 'Όλες οι ομάδες'], ...TEAMS.slice().sort().map(t => [t, t])], st.team, v => { st.team = v; monthCtrl.style.display = v ? 'none' : ''; draw(); }, 'Ομάδα'),
+    selectEl([['', T('Όλες οι ομάδες', 'All teams')], ...teamOptions()], st.team, v => { st.team = v; monthCtrl.style.display = v ? 'none' : ''; draw(); }, T('Ομάδα', 'Team')),
     monthCtrl,
-    selectEl([['all', 'Όλοι οι αγώνες'], ['predicted', 'Μόνο αγώνες με πρόβλεψη']], st.predictedOnly ? 'predicted' : 'all', v => { st.predictedOnly = v === 'predicted'; draw(); }, 'Προβλέψεις'));
+    selectEl([['all', T('Όλοι οι αγώνες', 'All games')], ['predicted', T('Μόνο αγώνες με πρόβλεψη', 'Only games with a prediction')]], st.predictedOnly ? 'predicted' : 'all', v => { st.predictedOnly = v === 'predicted'; draw(); }, T('Προβλέψεις', 'Predictions')));
   draw();
-  return [pageBanner('Πρόγραμμα', `${D.upcoming.length} αγώνες μέχρι το τέλος της κανονικής περιόδου`),
-    h('section', {class: 'panel'}, sectionHead('Αγώνες ανά ημέρα', 'δεξιά: η πρόβλεψη του μοντέλου (σκορ · φαβορί και πιθανότητα), μόνο για την επόμενη αγωνιστική', infoDot('prob')),
+  return [pageBanner(T('Πρόγραμμα', 'Schedule'), T(`${D.upcoming.length} αγώνες μέχρι το τέλος της κανονικής περιόδου`, `${D.upcoming.length} games to the end of the regular season`)),
+    h('section', {class: 'panel'}, sectionHead(T('Αγώνες ανά ημέρα', 'Games by day'), T('δεξιά: η πρόβλεψη του μοντέλου (σκορ · φαβορί και πιθανότητα), μόνο για την επόμενη αγωνιστική', 'on the right: the model\'s prediction (score · favourite and probability), for the next round only'), infoDot('prob')),
       filters, box,
-      h('p', {class: 'foot-note'}, 'Το μοντέλο προβλέπει μόνο την επόμενη αγωνιστική. Για τους μελλοντικούς αγώνες δεν εμφανίζουμε ακόμη πρόβλεψη, επειδή τα δεδομένα των ομάδων μπορεί να αλλάξουν.'))];
+      h('p', {class: 'foot-note'}, T('Το μοντέλο προβλέπει μόνο την επόμενη αγωνιστική. Για τους μελλοντικούς αγώνες δεν εμφανίζουμε ακόμη πρόβλεψη, επειδή τα δεδομένα των ομάδων μπορεί να αλλάξουν.', 'The model predicts only the next round. Later games get no prediction yet, because the teams\' numbers can still change.')))];
 };

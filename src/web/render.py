@@ -185,7 +185,9 @@ def address_labels(teams: list[str], lang: str = "el") -> dict[str, str]:
     for group in ("predictions", "model"):
         labels |= {page_path(group, t, lang=lang): v for t, v in tab_labels[group].items()}
     for team in teams:
-        labels[page_path("team", team=team, lang=lang)] = team
+        labels[page_path("team", team=team, lang=lang)] = (
+            cfg.TEAM_NAMES_EN.get(team, team) if lang == "en" else team
+        )
         labels |= {page_path("team", t, team, lang=lang): v for t, v in tab_labels["team"].items()}
     return labels
 
@@ -417,21 +419,22 @@ def english_pages(data: dict) -> list[Page]:
         page(path("help"), "Help", f"How to use {name}: pages, tabs, metrics and symbols."),
     ]
     for team in teams:
+        shown = cfg.TEAM_NAMES_EN.get(team, team)
         pages += [
             page(
                 path("team", team=team),
-                f"{team}: Results, Schedule and Predictions",
-                f"{team} in the {league}: record, form, Elo rating and model predictions for upcoming games.",
+                f"{shown}: Results, Schedule and Predictions",
+                f"{shown} in the {league}: record, form, Elo rating and model predictions for upcoming games.",
             ),
             page(
                 path("team", "results", team),
-                f"{team}: Results {season}",
-                f"All {team} results in the {league}, with a model prediction for each game.",
+                f"{shown}: Results {season}",
+                f"All {shown} results in the {league}, with a model prediction for each game.",
             ),
             page(
                 path("team", "schedule", team),
-                f"{team}: Schedule {season}",
-                f"Upcoming {team} fixtures in the {league}.",
+                f"{shown}: Schedule {season}",
+                f"Upcoming {shown} fixtures in the {league}.",
             ),
         ]
     return pages
@@ -446,6 +449,13 @@ def route_table(pages: list[Page], lang: str = "el") -> dict:
         "meta": {p.path: [p.title, p.description] for p in pages},
         "prefix": "en" if lang == "en" else "",
     }
+
+
+def other_language_path(path: str, lang: str) -> str:
+    """The same address in the other language: "/standings" <-> "/en/standings", "/" <-> "/en"."""
+    if lang == "en":
+        return path.removeprefix("/en") or "/"
+    return "/en" if path == "/" else "/en" + path
 
 
 def page_key(path: str) -> str:
@@ -547,6 +557,12 @@ def share_meta(page: Page, mode: str | None, lang: str = "el") -> str:
     ]
     if mode == "live":
         tags.append(f'<link rel="canonical" href="{address}">')
+        # Each page and its translation point at each other (hreflang); Greek is the default.
+        greek = page.path if lang == "el" else other_language_path(page.path, lang)
+        english = other_language_path(greek, "el")
+        for code, path in (("el", greek), ("en", english), ("x-default", greek)):
+            href = url + ("/" if path == "/" else path)
+            tags.append(f'<link rel="alternate" hreflang="{code}" href="{href}">')
     return "\n".join(tags)
 
 
@@ -570,14 +586,18 @@ def render_page(
     noindex = noindex or mode == "preview"
     robots = '\n<meta name="robots" content="noindex, nofollow">' if noindex else ""
     name, tagline = cfg.SITE_NAME, cfg.SITE_TAGLINE
-    if lang == "en":
-        tagline = "The numbers, before tip-off."
     if labels is None:
         labels = address_labels([r["team"] for r in data.get("standings", [])], lang)
     found = page.path != NOT_FOUND_PATH
     heading = html.escape(page.title.removesuffix(f" · {name}"))
     intro = f'<div class="ssr"><h1>{heading}</h1><p>{html.escape(page.description)}</p></div>'
-    language_url = page.path.removeprefix("/en") or "/" if lang == "en" else "/en" + page.path
+    language_url = other_language_path(page.path, lang)
+    other = "el" if lang == "en" else "en"
+
+    def t(el: str, en: str) -> str:
+        """Shell text in the page's language (the JS has the same T())."""
+        return en if lang == "en" else el
+
     return f"""<!doctype html>
 <html lang="{lang}" data-theme="dark">
 <head>
@@ -597,21 +617,21 @@ def render_page(
 <body>
 <div class="viz-root">
   <header class="site-head">
-    <a class="brand" href="{page_path("home", lang=lang)}" aria-label="{name}, {"home" if lang == "en" else "αρχική"}"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
-    <nav id="nav" aria-label="{"Primary navigation" if lang == "en" else "Κύρια πλοήγηση"}">{static_nav(page.path, lang)}</nav>
+    <a class="brand" href="{page_path("home", lang=lang)}" aria-label="{name}, {t("αρχική", "home")}"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
+    <nav id="nav" aria-label="{t("Κύρια πλοήγηση", "Main navigation")}">{static_nav(page.path, lang)}</nav>
     <div class="head-tools">
-      <a class="lang-switch" href="{language_url}" hreflang="{"el" if lang == "en" else "en"}" lang="{"el" if lang == "en" else "en"}">{"ΕΛ" if lang == "en" else "EN"}</a>
-      <button id="refresh" class="btn btn-primary" type="button" title="{"Fetch the latest results and generate predictions" if lang == "en" else "Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"}"><span class="spin" aria-hidden="true">⟳</span> {"Refresh" if lang == "en" else "Ανανέωση"}</button>
-      <label class="focus-pick"><span>{"My team" if lang == "en" else "Η ομάδα μου"}</span><select id="focus" aria-label="{"My team" if lang == "en" else "Η ομάδα μου"}"></select></label>
-      <a class="icon-btn" href="{page_path("help", lang=lang)}" aria-label="{"Help" if lang == "en" else "Οδηγίες"}" title="{"Help" if lang == "en" else "Οδηγίες"}">?</a>
-      <button id="theme" class="icon-btn" type="button" aria-label="{"Change theme" if lang == "en" else "Αλλαγή θέματος"}" title="{"Dark / light" if lang == "en" else "Σκοτεινό / φωτεινό"}">◐</button>
+      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("English", "Ελληνικά")}" title="{t("English", "Ελληνικά")}">{t("EN", "ΕΛ")}</a>
+      <button id="refresh" class="btn btn-primary" type="button" title="{t("Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις", "Fetches new results and makes the predictions again")}"><span class="spin" aria-hidden="true">⟳</span> {t("Ανανέωση", "Refresh")}</button>
+      <label class="focus-pick"><span>{t("Η ομάδα μου", "My team")}</span><select id="focus" aria-label="{t("Η ομάδα μου", "My team")}"></select></label>
+      <a class="icon-btn" href="{page_path("help", lang=lang)}" aria-label="{t("Οδηγίες", "Help")}" title="{t("Οδηγίες", "Help")}">?</a>
+      <button id="theme" class="icon-btn" type="button" aria-label="{t("Αλλαγή θέματος", "Change theme")}" title="{t("Σκοτεινό / φωτεινό", "Dark / light")}">◐</button>
     </div>
     <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
   </header>
   <main id="app" tabindex="-1">{intro if found else ""}</main>
   <footer class="site-foot" id="foot"></footer>
   <!-- Overlays stay inside .viz-root: the theme tokens (colours, fonts) live there. -->
-  <button class="to-top" id="to-top" type="button" aria-label="Πάνω">↑</button>
+  <button class="to-top" id="to-top" type="button" aria-label="{t("Πάνω", "Back to top")}">↑</button>
   <div id="tip" class="tip" role="tooltip" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </div>
@@ -631,7 +651,16 @@ def render_site(data: dict) -> dict[str, str]:
     labels = address_labels([r["team"] for r in data.get("standings", [])])
     en_labels = address_labels([r["team"] for r in data.get("standings", [])], lang="en")
     payload = json_payload({**data, "lang": "el", "routes": route_table(pages)})
-    en_payload = json_payload({**data, "lang": "en", "routes": route_table(en_pages, lang="en")})
+    en_brand = {**data.get("brand", {}), "slogan": cfg.SITE_SLOGAN_EN}
+    en_payload = json_payload(
+        {
+            **data,
+            "lang": "en",
+            "brand": en_brand,
+            "team_names": cfg.TEAM_NAMES_EN,
+            "routes": route_table(en_pages, lang="en"),
+        }
+    )
     not_found = Page(NOT_FOUND_PATH, f"Η σελίδα δεν βρέθηκε · {cfg.SITE_NAME}", "")
     files = {
         "app.css": bundle_css(),

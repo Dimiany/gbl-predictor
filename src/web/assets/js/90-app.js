@@ -4,10 +4,10 @@ const app = document.getElementById('app');
 const root = document.documentElement;
 
 /** Main menu [page key, label]: render.NAV_PAGES (the static HTML of every page has it too). */
-const NAV = ROUTES.nav || [['home', 'Αρχική']];
+const NAV = ROUTES.nav || [['home', T('Αρχική', 'Home')]];
 
-pages.notfound = () => [pageBanner('Η σελίδα δεν βρέθηκε', 'Ίσως άλλαξε η διεύθυνση ή γράφτηκε λάθος.',
-  h('a', {class: 'btn btn-ghost', href: url('home')}, '← Στην αρχική'))];
+pages.notfound = () => [pageBanner(T('Η σελίδα δεν βρέθηκε', 'Page not found'), T('Ίσως άλλαξε η διεύθυνση ή γράφτηκε λάθος.', 'The address may have changed or been mistyped.'),
+  h('a', {class: 'btn btn-ghost', href: url('home')}, T('← Στην αρχική', '← Back to home')))];
 
 /** Post-render effects for any freshly inserted subtree (page or tab panel). */
 function afterRender(container) {
@@ -69,13 +69,22 @@ function route(scrollTop) {
   });
   menuBtn.classList.toggle('current', !TABBAR.some(([k]) => k === active));
   setMenu(false);
-  applyMeta(r.page === 'notfound' ? `Η σελίδα δεν βρέθηκε · ${BRAND.name}` : `${r.name || BRAND.name} · ${BRAND.name}`);
+  document.querySelectorAll('a[hreflang]').forEach(a => { a.href = otherLanguagePath(); });
+  applyMeta(r.page === 'notfound' ? T(`Η σελίδα δεν βρέθηκε · ${BRAND.name}`, `Page not found · ${BRAND.name}`) : `${r.name ? tn(r.name) : BRAND.name} · ${BRAND.name}`);
   afterRender(app);
   if (scrollTop) window.scrollTo({top: 0});
 }
 
 // ---------------------------------------------------------------- header
 const nav = document.getElementById('nav');
+/** EN / ΕΛ button (header; on phones in the menu sheet): the same address in the other
+ *  language (/standings <-> /en/standings). It loads a whole new page (the other language
+ *  has its own data file), so the in-page router skips links with hreflang. */
+function otherLanguagePath() {
+  const path = location.pathname;
+  if (ENGLISH) return path.replace(/^\/en(?=\/|$)/, '') || '/';
+  return path === '/' ? '/en' : '/en' + path;
+}
 nav.replaceChildren(...NAV.map(([k, label]) => h('a', {href: url(k), 'data-k': k}, label)));
 
 // ---------------------------------------------------------------- phone tab bar
@@ -94,12 +103,13 @@ function icon(name) {
   s('path', {d: ICONS[name]}, svg);
   return svg;
 }
-const TABBAR = [['home', 'Αρχική'], ['predictions', 'Προβλέψεις'], ['standings', 'Βαθμολογία'], ['teams', 'Ομάδες']];
+const TABBAR = [['home', T('Αρχική', 'Home')], ['predictions', T('Προβλέψεις', 'Predictions')], ['standings', T('Βαθμολογία', 'Standings')], ['teams', T('Ομάδες', 'Teams')]];
 const menuBtn = h('button', {type: 'button', class: 'tb-item', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-controls': 'menu-sheet'},
-  icon('menu'), h('span', null, 'Μενού'));
-const sheet = h('div', {class: 'sheet', id: 'menu-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Όλες οι σελίδες', tabindex: '-1', hidden: true},
+  icon('menu'), h('span', null, T('Μενού', 'Menu')));
+const sheet = h('div', {class: 'sheet', id: 'menu-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': T('Όλες οι σελίδες', 'All pages'), tabindex: '-1', hidden: true},
   h('div', {class: 'sheet-grip', 'aria-hidden': 'true'}),
-  [...NAV, ['help', 'Οδηγίες']].map(([k, label]) => h('a', {href: url(k), 'data-k': k}, label, h('span', {'aria-hidden': 'true'}, '›'))));
+  [...NAV, ['help', T('Οδηγίες', 'Help')]].map(([k, label]) => h('a', {href: url(k), 'data-k': k}, label, h('span', {'aria-hidden': 'true'}, '›'))),
+  h('a', {class: 'sheet-lang', href: otherLanguagePath(), hreflang: T('en', 'el'), lang: T('en', 'el')}, T('English', 'Ελληνικά'), h('span', {'aria-hidden': 'true'}, T('EN', 'ΕΛ'))));
 const backdrop = h('div', {class: 'sheet-backdrop', hidden: true});
 function setMenu(open) {
   sheet.hidden = backdrop.hidden = !open;
@@ -111,11 +121,11 @@ menuBtn.addEventListener('click', () => setMenu(sheet.hidden));
 backdrop.addEventListener('click', () => setMenu(false));
 addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) { setMenu(false); menuBtn.focus(); } });
 document.querySelector('.viz-root').append(backdrop, sheet,
-  h('nav', {class: 'tabbar', 'aria-label': 'Πλοήγηση'},
+  h('nav', {class: 'tabbar', 'aria-label': T('Πλοήγηση', 'Navigation')},
     TABBAR.map(([k, label]) => h('a', {class: 'tb-item', href: url(k), 'data-k': k}, icon(k), h('span', null, label))), menuBtn));
 
 const focusSel = document.getElementById('focus');
-focusSel.replaceChildren(...TEAMS.slice().sort().map(t => h('option', {value: t, selected: t === state.focus}, t)));
+focusSel.replaceChildren(...teamOptions().map(([t, label]) => h('option', {value: t, selected: t === state.focus}, label)));
 focusSel.addEventListener('change', e => setFocus(e.target.value));
 
 // Theme: dark by default; the toggle wins and is remembered.
@@ -133,20 +143,20 @@ refreshBtn.hidden = PUBLIC;
 const resetRefresh = () => { refreshBtn.disabled = false; refreshBtn.classList.remove('busy'); };
 refreshBtn.addEventListener('click', async () => {
   if (!SERVED) {
-    showToast(`Για να δουλέψει η Ανανέωση, άνοιξε τη σελίδα από το εικονίδιο «${BRAND.name}» στην επιφάνεια εργασίας.`, 'bad', 9000);
+    showToast(T(`Για να δουλέψει η Ανανέωση, άνοιξε τη σελίδα από το εικονίδιο «${BRAND.name}» στην επιφάνεια εργασίας.`, `For Refresh to work, open the page from the "${BRAND.name}" icon on the desktop.`), 'bad', 9000);
     return;
   }
   refreshBtn.disabled = true; refreshBtn.classList.add('busy');
   showToast(SITE.cloud_sync
-    ? 'Φέρνω τα νέα δεδομένα από το GitHub και εκπαιδεύω το μοντέλο… (~20 δευτερόλεπτα)'
-    : 'Φέρνω νέα αποτελέσματα, εκπαιδεύω το μοντέλο και βγάζω προβλέψεις… (~20 δευτερόλεπτα)');
+    ? T('Φέρνω τα νέα δεδομένα από το GitHub και εκπαιδεύω το μοντέλο… (~20 δευτερόλεπτα)', 'Fetching the new data from GitHub and training the model… (~20 seconds)')
+    : T('Φέρνω νέα αποτελέσματα, εκπαιδεύω το μοντέλο και βγάζω προβλέψεις… (~20 δευτερόλεπτα)', 'Fetching new results, training the model and making predictions… (~20 seconds)'));
   try {
     const res = await fetch('/api/refresh', {method: 'POST', headers: {'X-GBL-Refresh': '1'}});
     const body = await res.json();
-    if (body.ok) { showToast('Έτοιμο!\n' + body.message, 'good'); setTimeout(() => location.reload(), 1500); }
-    else { showToast('Κάτι δεν πήγε καλά:\n' + body.message + '\n\nΔες τις «Οδηγίες».', 'bad'); resetRefresh(); }
+    if (body.ok) { showToast(T('Έτοιμο!\n', 'Done!\n') + body.message, 'good'); setTimeout(() => location.reload(), 1500); }
+    else { showToast(T('Κάτι δεν πήγε καλά:\n', 'Something went wrong:\n') + body.message + T('\n\nΔες τις «Οδηγίες».', '\n\nSee "Help".'), 'bad'); resetRefresh(); }
   } catch {
-    showToast(`Δεν βρέθηκε το πρόγραμμα. Μήπως έκλεισε το μαύρο παράθυρο; Άνοιξε ξανά το «${BRAND.name}».`, 'bad');
+    showToast(T(`Δεν βρέθηκε το πρόγραμμα. Μήπως έκλεισε το μαύρο παράθυρο; Άνοιξε ξανά το «${BRAND.name}».`, `The program wasn't found. Was the black window closed? Open "${BRAND.name}" again.`), 'bad');
     resetRefresh();
   }
 });
@@ -154,7 +164,7 @@ refreshBtn.addEventListener('click', async () => {
 // Preview links say so on every page, so a test build is never mistaken for the real site.
 if (SITE.mode === 'preview') {
   document.querySelector('.viz-root').prepend(h('div', {class: 'preview-strip', role: 'note'},
-    h('b', null, 'ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ'), ' · αλλαγές προς έγκριση, όχι το κανονικό site · τα μηνύματα της φόρμας πάνε σε δοκιμαστική συλλογή'));
+    h('b', null, T('ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΔΟΣΗ', 'TEST VERSION')), T(' · αλλαγές προς έγκριση, όχι το κανονικό site · τα μηνύματα της φόρμας πάνε σε δοκιμαστική συλλογή', ' · changes awaiting approval, not the real site · form messages go to a test collection')));
 }
 
 // ---------------------------------------------------------------- footer
@@ -165,14 +175,15 @@ if (SITE.mode === 'preview') {
       h('div', {class: 'foot-col'},
         h('div', {class: 'foot-brand'}, h('img', {src: document.querySelector('.brand-badge img')?.src || '', alt: ''}), BRAND.name),
         h('p', {style: 'margin:0 0 6px;max-width:340px'}, h('b', null, BRAND.tagline), ' · ', BRAND.slogan),
-        h('p', {style: 'margin:0;max-width:340px'}, 'Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και αξιολογείται με βάση το τελικό αποτέλεσμα.')),
-      col('Σελίδες', [[url('home'), 'Αρχική'], [url('predictions'), 'Προβλέψεις'], [url('standings'), 'Βαθμολογία'], [url('teams'), 'Ομάδες'], [url('schedule'), 'Πρόγραμμα']]),
-      col('Μοντέλο', [[url('model'), 'Απόδοση'], [url('model', 'metrics'), 'Οδηγός δεικτών'], [url('model', 'how'), 'Πώς δουλεύει'], [url('predictions', 'hits'), '🔥 Επιτυχίες ≥80%']]),
-      col('Βοήθεια', [[url('help'), 'Οδηγίες'], [url('about'), 'Σχετικά'], [url('contact'), 'Επικοινωνία']])),
+        h('p', {style: 'margin:0;max-width:340px'}, T('Προβλέψεις, βαθμολογία και στατιστικά για τη Stoiximan Basket League. Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα και αξιολογείται με βάση το τελικό αποτέλεσμα.', 'Predictions, standings and statistics for the Stoiximan Basket League. Every prediction is recorded before the game and graded against the final result.'))),
+      col(T('Σελίδες', 'Pages'), [[url('home'), T('Αρχική', 'Home')], [url('predictions'), T('Προβλέψεις', 'Predictions')], [url('standings'), T('Βαθμολογία', 'Standings')], [url('teams'), T('Ομάδες', 'Teams')], [url('schedule'), T('Πρόγραμμα', 'Schedule')]]),
+      col(T('Μοντέλο', 'Model'), [[url('model'), T('Απόδοση', 'Performance')], [url('model', 'metrics'), T('Οδηγός δεικτών', 'Metrics guide')], [url('model', 'how'), T('Πώς δουλεύει', 'How it works')], [url('predictions', 'hits'), T('🔥 Επιτυχίες ≥80%', '🔥 Hits ≥80%')]]),
+      col(T('Βοήθεια', 'Help'), [[url('help'), T('Οδηγίες', 'Help')], [url('about'), T('Σχετικά', 'About')], [url('contact'), T('Επικοινωνία', 'Contact')]])),
     h('div', {class: 'foot-bottom'},
       h('p', {class: 'foot-disclaimer'},
-        'Οι προβλέψεις του ', BRAND.name, ' είναι αποτέλεσμα μαθηματικών υπολογισμών και στατιστικών αλγορίθμων: Ένας τρόπος να διαβάσουμε το παιχνίδι μέσα από τους αριθμούς. ',
-        h('b', null, 'Δεν αποτελούν σε καμία περίπτωση προτάσεις ή συμβουλές στοιχηματισμού.'))));
+        T(`Οι προβλέψεις του ${BRAND.name} είναι αποτέλεσμα μαθηματικών υπολογισμών και στατιστικών αλγορίθμων: Ένας τρόπος να διαβάσουμε το παιχνίδι μέσα από τους αριθμούς. `,
+          `${BRAND.name}'s predictions come from mathematical calculations and statistical algorithms: a way to read the game through the numbers. `),
+        h('b', null, T('Δεν αποτελούν σε καμία περίπτωση προτάσεις ή συμβουλές στοιχηματισμού.', 'They are in no way betting tips or betting advice.')))));
 })();
 
 // ---------------------------------------------------------------- scroll effects
@@ -197,7 +208,7 @@ addEventListener('scroll', () => {
 document.addEventListener('click', e => {
   const a = e.target.closest('a[href]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  if (a.target || a.hasAttribute('download')) return;
+  if (a.target || a.hasAttribute('download') || a.hasAttribute('hreflang')) return;  // other language: a full page load
   const to = new URL(a.href, location.href);
   if (to.origin !== location.origin || /\.\w+$/.test(to.pathname)) return;  // other sites, files
   e.preventDefault();

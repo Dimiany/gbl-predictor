@@ -206,7 +206,9 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   first tab lives at the page's own address. The first public addresses
   (06/10/2026) were greeklish (`/vathmologia`, `/omades/...`): `firebase.json`
   301-redirects them (both sites; `test_web.py` checks every destination exists).
-  Planned: an English edition of the site under `/en/` with the same addresses. Slugs live only in `render.PAGE_SLUGS` /
+  English edition (since 11/10/2026): every address also exists under `/en` (`/en`,
+  `/en/standings`, ...), with its own `data-en.js` (`D.lang = 'en'`, `D.routes.prefix = 'en'`).
+  Slugs live only in `render.PAGE_SLUGS` /
   `TAB_SLUGS` and reach the JS through `data.js` (`D.routes`). JS builds links
   with `url(page, tab)` / `teamHref(team, tab)` and navigates with `go(path)`;
   never hardcode an address. Old `#/...` links are redirected on load.
@@ -234,6 +236,13 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   (crests, icons) or data URIs. Network: same origin + Firestore only.
 - Site-mode flags in `01-core.js`: `SITE`, `PUBLIC`, `SERVED`. Anything that needs
   the local server must check `SERVED`; public-only text checks `PUBLIC`.
+- Every visible string is written in both languages at the call: `T('Βαθμολογία', 'Standings')`
+  (JS, 01-core) / `t(...)` in `render_page`. No word-by-word dictionaries. Team names on the page
+  go through `tn(team)` (English names: `config.TEAM_NAMES_EN`, chosen by Claude with the user's
+  OK, 11/10/2026); data and addresses keep the canonical names. English titles/descriptions for
+  search: `render.english_pages()`. The EN / ΕΛ link (`hreflang`) reloads the page (the router
+  skips it); on phones it sits in the Menu sheet. Live pages carry hreflang alternates and the
+  sitemap lists both languages. The desktop-only manual in `18-help.js` stays Greek.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
 - Every section gets a `sectionHead(title, plain-Greek explanation)`; the user asked
   for explanatory headings. The footer carries only the user-approved disclaimer

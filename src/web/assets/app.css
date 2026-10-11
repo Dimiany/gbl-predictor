@@ -479,7 +479,9 @@ dl.glossary dt{font-weight:750} dl.glossary dd{margin:0;color:var(--text-seconda
 .preview-strip b{letter-spacing:.06em}
 .form-note{margin:14px 0 0;font-size:12.5px;color:var(--text-secondary);line-height:1.55}
 .hp-field{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
-@media (max-width:520px){.head-tools{gap:6px}#focus{max-width:108px}.icon-btn{width:34px;height:34px}#refresh{padding:0 10px}}
+/* Phones: the language link moves from the header into the menu sheet (90-app.js). */
+.sheet-lang{display:none!important}
+@media (max-width:520px){.lang-switch{display:none}.sheet-lang{display:flex!important}.head-tools{gap:6px}#focus{max-width:108px}.icon-btn{width:34px;height:34px}#refresh{padding:0 10px}}
 
 /* ---------------------------------------------------------------- phones: tables, cards, KPIs */
 /* Wide tables scroll sideways on phones; a fade on the right edge says there is more. */

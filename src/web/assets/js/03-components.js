@@ -20,9 +20,9 @@ function pageBanner(title, sub, extra, crumb) {
 function infoDot(key) {
   const m = METRICS[key];
   if (!m) return null;
-  const btn = h('button', {class: 'info', type: 'button', 'aria-label': `Τι σημαίνει: ${m.title}`,
+  const btn = h('button', {class: 'info', type: 'button', 'aria-label': T(`Τι σημαίνει: ${m.title}`, `What it means: ${m.title}`),
     onclick: e => { e.preventDefault(); e.stopPropagation(); state.flashMetric = key; go(url('model', 'metrics')); }}, 'i');
-  return hover(btn, () => [{text: m.title}, {text: m.short}, {text: 'Κλικ για αναλυτική εξήγηση', cls: 't-sub'}]);
+  return hover(btn, () => [{text: m.title}, {text: m.short}, {text: T('Κλικ για αναλυτική εξήγηση', 'Click for the full explanation'), cls: 't-sub'}]);
 }
 
 /** KPI tile. opts: {info, count:{to, dec, fmt}, gold} */
@@ -94,7 +94,7 @@ function table(cols, rows, opts = {}) {
   let size = PAGE_SIZES.includes(+localStorage.getItem('gbl-page-size')) ? +localStorage.getItem('gbl-page-size') : PAGE_SIZES[0];
   const paged = opts.paged && rows.length > PAGE_SIZES[0];
   const wrap = h('div', {class: 'table-wrap' + (opts.cards ? ` cards-sm cards-${opts.cards}` : '') + (opts.center ? ' t-center' : '')});
-  const pager = h('div', {class: 'pager', role: 'navigation', 'aria-label': 'Σελίδες πίνακα'});
+  const pager = h('div', {class: 'pager', role: 'navigation', 'aria-label': T('Σελίδες πίνακα', 'Table pages')});
   const cellClass = (c, base) => [base, c.sticky ? `sticky-${c.sticky}` : '', c.hideSm ? 'hide-sm' : '', c.area ? `c-${c.area}` : ''].filter(Boolean).join(' ') || null;
   // A fade on the right edge says "there is more, swipe" while the table can still scroll.
   const edge = () => wrap.classList.toggle('more-right', wrap.scrollLeft + wrap.clientWidth < wrap.scrollWidth - 2);
@@ -116,15 +116,15 @@ function table(cols, rows, opts = {}) {
     const list = [];
     nums.forEach((n, i) => {
       if (i && n - nums[i - 1] > 1) list.push(h('span', {class: 'pg-gap', 'aria-hidden': 'true'}, '…'));
-      list.push(btn(String(n + 1), n, n === page ? {'aria-current': 'page', class: 'pg on'} : {'aria-label': `Σελίδα ${n + 1}`}));
+      list.push(btn(String(n + 1), n, n === page ? {'aria-current': 'page', class: 'pg on'} : {'aria-label': T(`Σελίδα ${n + 1}`, `Page ${n + 1}`)}));
     });
     pager.replaceChildren(
-      h('div', {class: 'pg-size'}, h('span', null, 'Ανά σελίδα'),
+      h('div', {class: 'pg-size'}, h('span', null, T('Ανά σελίδα', 'Per page')),
         segCtrl(PAGE_SIZES.map(n => [n, String(n)]), size, v => turn(0, v))),
       h('div', {class: 'pg-pages'},
-        btn('‹', page - 1, {'aria-label': 'Προηγούμενη σελίδα', disabled: page === 0}), list,
-        btn('›', page + 1, {'aria-label': 'Επόμενη σελίδα', disabled: page >= pages - 1})),
-      h('div', {class: 'pg-count'}, `${page * size + 1}–${Math.min(total, (page + 1) * size)} από ${total}`));
+        btn('‹', page - 1, {'aria-label': T('Προηγούμενη σελίδα', 'Previous page'), disabled: page === 0}), list,
+        btn('›', page + 1, {'aria-label': T('Επόμενη σελίδα', 'Next page'), disabled: page >= pages - 1})),
+      h('div', {class: 'pg-count'}, `${page * size + 1}–${Math.min(total, (page + 1) * size)} ${T('από', 'of')} ${total}`));
   }
   function draw() {
     const data = rows.slice();
@@ -148,7 +148,7 @@ function table(cols, rows, opts = {}) {
     const body = data.length
       ? visible.map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
         'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r)))))
-      : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || 'Δεν υπάρχουν δεδομένα.'))];
+      : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || T('Δεν υπάρχουν δεδομένα.', 'No data.')))];
     wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
     requestAnimationFrame(edge);
   }
@@ -172,25 +172,25 @@ function selectEl(options, value, onChange, label) {
 // ---------------------------------------------------------------- small badges
 function formChips(form) {
   return h('span', {class: 'form'}, form.map(r =>
-    h('span', {class: 'chip ' + (r === 'W' ? 'win' : 'loss'), title: r === 'W' ? 'Νίκη' : 'Ήττα'}, r === 'W' ? 'Ν' : 'Η')));
+    h('span', {class: 'chip ' + (r === 'W' ? 'win' : 'loss'), title: r === 'W' ? T('Νίκη', 'Win') : T('Ήττα', 'Loss')}, r === 'W' ? T('Ν', 'W') : T('Η', 'L'))));
 }
 function verdict(ok) {
-  if (ok == null) return h('span', {class: 'verdict pending'}, '⏳ εκκρεμεί');
-  return h('span', {class: 'verdict ' + (ok ? 'good' : 'bad')}, ok ? '✓ Σωστό' : '✗ Λάθος');
+  if (ok == null) return h('span', {class: 'verdict pending'}, T('⏳ εκκρεμεί', '⏳ pending'));
+  return h('span', {class: 'verdict ' + (ok ? 'good' : 'bad')}, ok ? T('✓ Σωστό', '✓ Correct') : T('✗ Λάθος', '✗ Wrong'));
 }
-function hitBadge(prob) { return h('span', {class: 'hit-badge', title: `Το φαβορί είχε πιθανότητα ${pctProb(prob)} και κέρδισε`}, '🔥 ', pctProb(prob)); }
-function sharpBadge(err) { return h('span', {class: 'sharp-badge', title: 'Η προβλεπόμενη διαφορά ήταν κοντά στην πραγματική'}, '🎯 ', err === 0 ? 'ακριβώς' : `±${err}`); }
+function hitBadge(prob) { return h('span', {class: 'hit-badge', title: T(`Το φαβορί είχε πιθανότητα ${pctProb(prob)} και κέρδισε`, `The favourite had a ${pctProb(prob)} chance and won`)}, '🔥 ', pctProb(prob)); }
+function sharpBadge(err) { return h('span', {class: 'sharp-badge', title: T('Η προβλεπόμενη διαφορά ήταν κοντά στην πραγματική', 'The predicted margin was close to the real one')}, '🎯 ', err === 0 ? T('ακριβώς', 'exact') : `±${err}`); }
 /** Confidence label for an upcoming game. */
 function confBadge(prob) {
-  if (prob >= HIT_THRESHOLD) return h('span', {class: 'conf lock'}, '🔒 ισχυρό φαβορί');
-  if (prob >= 0.6) return h('span', {class: 'conf lean'}, 'φαβορί');
-  return h('span', {class: 'conf toss'}, 'ανοιχτό');
+  if (prob >= HIT_THRESHOLD) return h('span', {class: 'conf lock'}, T('🔒 ισχυρό φαβορί', '🔒 strong favourite'));
+  if (prob >= 0.6) return h('span', {class: 'conf lean'}, T('φαβορί', 'favourite'));
+  return h('span', {class: 'conf toss'}, T('ανοιχτό', 'open'));
 }
 
 // ---------------------------------------------------------------- probability bar
 function probBar(p, cls = 'prob') {
   const hp = Math.round(p.p * 100), ap = 100 - hp, homeFav = p.p >= 0.5;
-  return h('div', {class: cls, role: 'img', tabindex: 0, 'aria-label': `Πιθανότητα νίκης: ${p.home} ${hp}%, ${p.away} ${ap}%`},
+  return h('div', {class: cls, role: 'img', tabindex: 0, 'aria-label': T(`Πιθανότητα νίκης: ${tn(p.home)} ${hp}%, ${tn(p.away)} ${ap}%`, `Win probability: ${tn(p.home)} ${hp}%, ${tn(p.away)} ${ap}%`)},
     h('div', {class: 'seg ' + (homeFav ? 'accent' : 'track'), 'data-w': `${hp}%`}),
     h('div', {class: 'seg ' + (homeFav ? 'track' : 'accent'), 'data-w': `${ap}%`}));
 }
@@ -199,19 +199,20 @@ function probBar(p, cls = 'prob') {
 function predCard(p) {
   const homeFav = p.p >= 0.5, hp = Math.round(p.p * 100), ap = 100 - hp;
   const bar = hover(probBar(p), () => [
-    {text: `${p.w} ${Math.max(hp, ap)}%`},
-    {text: `Το μοντέλο εκτιμά ότι η ομάδα ${p.w} έχει περίπου ${Math.round(Math.max(hp, ap) / 10)} στις 10 πιθανότητες να κερδίσει.`},
-    {text: `Προβλεπόμενη διαφορά ${signed(p.margin)} για τον γηπεδούχο (±${p.band})`},
-    {text: `Elo μόνο του: ${p.home} ${Math.round(p.p_elo * 100)}%`},
+    {text: `${tn(p.w)} ${Math.max(hp, ap)}%`},
+    {text: T(`Το μοντέλο εκτιμά ότι η ομάδα ${tn(p.w)} έχει περίπου ${Math.round(Math.max(hp, ap) / 10)} στις 10 πιθανότητες να κερδίσει.`,
+      `The model gives ${tn(p.w)} about a ${Math.round(Math.max(hp, ap) / 10)} in 10 chance of winning.`)},
+    {text: T(`Προβλεπόμενη διαφορά ${signed(p.margin)} για τον γηπεδούχο (±${p.band})`, `Predicted margin ${signed(p.margin)} for the home team (±${p.band})`)},
+    {text: T(`Elo μόνο του: ${tn(p.home)} ${Math.round(p.p_elo * 100)}%`, `Elo alone: ${tn(p.home)} ${Math.round(p.p_elo * 100)}%`)},
   ]);
   return tilt(h('article', {class: 'card' + (isFocus(p.home, p.away) ? ' is-focus' : '')},
     h('div', {class: 'card-when'}, h('span', null, `${dayLabel(p.d)} · ${p.t || '–'}`), confBadge(Math.max(p.p, 1 - p.p))),
     h('div', {class: 'board'},
-      h('div', {class: 'board-row board-head', 'aria-hidden': 'true'}, h('span', {title: 'Πρώτα ο γηπεδούχος'}, 'Ομάδες'), h('span', {title: 'Νίκες-ήττες'}, 'Ν-Η'), h('span', null, 'Πρόβλεψη')),
-      h('div', {class: 'board-row' + (homeFav ? ' fav' : '')}, tlink(p.home), h('span', {class: 'elo', title: 'Γηπεδούχος · ρεκόρ'}, record(p.home)), h('span', {class: 'pts'}, p.phs)),
+      h('div', {class: 'board-row board-head', 'aria-hidden': 'true'}, h('span', {title: T('Πρώτα ο γηπεδούχος', 'Home team first')}, T('Ομάδες', 'Teams')), h('span', {title: T('Νίκες-ήττες', 'Wins-losses')}, T('Ν-Η', 'W-L')), h('span', null, T('Πρόβλεψη', 'Prediction'))),
+      h('div', {class: 'board-row' + (homeFav ? ' fav' : '')}, tlink(p.home), h('span', {class: 'elo', title: T('Γηπεδούχος · ρεκόρ', 'Home team · record')}, record(p.home)), h('span', {class: 'pts'}, p.phs)),
       h('div', {class: 'board-row' + (homeFav ? '' : ' fav')}, tlink(p.away), h('span', {class: 'elo'}, record(p.away)), h('span', {class: 'pts'}, p.pas))),
     bar,
-    h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', {class: 'muted', title: `Elo ${p.home_elo} – ${p.away_elo}`}, `πιθανότητα νίκης · ±${p.band} π.`), h('span', null, ap + '%')),
+    h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', {class: 'muted', title: `Elo ${p.home_elo} – ${p.away_elo}`}, T(`πιθανότητα νίκης · ±${p.band} π.`, `win probability · ±${p.band} pts`)), h('span', null, ap + '%')),
     (p.notes || []).map(n => h('div', {class: 'card-note'}, n))));
 }
 
@@ -227,7 +228,7 @@ function fraction(n, of) {
 function predCell(pk, home) {
   if (!pk) return h('span', {class: 'muted'}, '–');
   const pw = pk.w === home ? pk.p : 1 - pk.p;
-  return h('span', {class: 'pred'}, h('b', null, `${pk.phs}–${pk.pas}`), ` · ${pk.w} ${pctProb(pw)}`);
+  return h('span', {class: 'pred'}, h('b', null, `${pk.phs}–${pk.pas}`), ` · ${tn(pk.w)} ${pctProb(pw)}`);
 }
 function outcomeCell(g) {
   const o = outcome(g);
@@ -238,13 +239,13 @@ function outcomeCell(g) {
 /** Results with the model's exact call next to the real score; confident hits glow gold. */
 function resultsTable(games, opts = {}) {
   return table([
-    {label: 'Ημέρα', area: 'date', sort: g => g.d, render: g => dayLabel(g.d)},
-    {label: 'Γηπεδούχος', area: 'home', sort: g => g.home, render: g => h('span', {class: g.hs > g.as ? 'strong' : null}, tlink(g.home))},
-    {label: 'Σκορ', area: 'score', num: true, render: g => h('span', {class: 'score-cell'}, h('span', null, g.hs), h('i', null, ' – '), h('span', null, g.as))},
-    {label: 'Φιλοξενούμενος', area: 'away', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
-    {label: 'Πρόβλεψη μοντέλου', area: 'pred', cap: 'Πρόβλεψη', render: g => predCell(g.pick, g.home)},
-    {label: 'Σφάλμα διαφοράς', area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + ' π.' : ''},
-    {label: 'Αποτέλεσμα', area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
+    {label: T('Ημέρα', 'Date'), area: 'date', sort: g => g.d, render: g => dayLabel(g.d)},
+    {label: T('Γηπεδούχος', 'Home'), area: 'home', sort: g => g.home, render: g => h('span', {class: g.hs > g.as ? 'strong' : null}, tlink(g.home))},
+    {label: T('Σκορ', 'Score'), area: 'score', num: true, render: g => h('span', {class: 'score-cell'}, h('span', null, g.hs), h('i', null, ' – '), h('span', null, g.as))},
+    {label: T('Φιλοξενούμενος', 'Away'), area: 'away', sort: g => g.away, render: g => h('span', {class: g.as > g.hs ? 'strong' : null}, tlink(g.away))},
+    {label: T('Πρόβλεψη μοντέλου', 'Model prediction'), area: 'pred', cap: T('Πρόβλεψη', 'Prediction'), render: g => predCell(g.pick, g.home)},
+    {label: T('Σφάλμα διαφοράς', 'Margin error'), area: 'err', cap: true, num: true, info: 'mae', sort: g => g.pick ? marginErr(g.pick, g.hs, g.as) : 999, render: g => g.pick ? marginErr(g.pick, g.hs, g.as) + T(' π.', ' pts') : ''},
+    {label: T('Αποτέλεσμα', 'Result'), area: 'out', sort: g => g.pick ? (outcome(g).hit ? 2 : outcome(g).ok ? 1 : 0) : -1, render: outcomeCell},
   ], games, {sortIdx: 0, dir: -1, empty: opts.empty, cards: 'results', paged: true,
     rowClass: g => [isFocus(g.home, g.away) ? 'is-focus' : '', outcome(g)?.hit ? 'hit' : ''].join(' ').trim() || null});
 }
@@ -254,20 +255,20 @@ function tickerItem(g) {
   const hw = g.hs > g.as, o = outcome(g), pk = g.pick;
   const pickWinnerProb = pk ? (pk.w === g.home ? pk.p : 1 - pk.p) : null;
   return h('a', {class: 'tick' + (o?.hit ? ' hit' : ''), href: teamHref(isFocus(g.away) ? g.away : g.home), draggable: 'false',
-    title: `${g.home} ${g.hs}–${g.as} ${g.away}` + (pk ? ` · πρόβλεψη ${pk.phs}–${pk.pas}` : '')},
+    title: `${tn(g.home)} ${g.hs}–${g.as} ${tn(g.away)}` + (pk ? T(` · πρόβλεψη ${pk.phs}–${pk.pas}`, ` · prediction ${pk.phs}–${pk.pas}`) : '')},
     h('span', {class: 't-date'}, h('span', null, dayLabel(g.d)), o ? (o.hit ? hitBadge(o.prob) : verdict(o.ok)) : h('span')),
-    h('span', {class: 't-team' + (hw ? '' : ' lost')}, crest(g.home, 18), h('span', null, g.home)),
-    h('span', {class: 't-team' + (hw ? ' lost' : '')}, crest(g.away, 18), h('span', null, g.away)),
+    h('span', {class: 't-team' + (hw ? '' : ' lost')}, crest(g.home, 18), h('span', null, tn(g.home))),
+    h('span', {class: 't-team' + (hw ? ' lost' : '')}, crest(g.away, 18), h('span', null, tn(g.away))),
     h('span', {class: 't-boxes'},
-      h('span', {class: 't-box t-result'}, h('small', null, 'Αποτέλεσμα'), h('b', null, `${g.hs}–${g.as}`)),
-      h('span', {class: 't-box t-pred' + (o ? (o.ok ? ' ok' : ' bad') : '')}, h('small', null, 'Πρόβλεψη'),
+      h('span', {class: 't-box t-result'}, h('small', null, T('Αποτέλεσμα', 'Result')), h('b', null, `${g.hs}–${g.as}`)),
+      h('span', {class: 't-box t-pred' + (o ? (o.ok ? ' ok' : ' bad') : '')}, h('small', null, T('Πρόβλεψη', 'Prediction')),
         pk ? h('b', null, `${pk.phs}–${pk.pas}`) : h('b', {class: 'muted'}, '–'),
-        pk ? h('em', null, `${pk.w} ${pctProb(pickWinnerProb)}`) : null)));
+        pk ? h('em', null, `${tn(pk.w)} ${pctProb(pickWinnerProb)}`) : null)));
 }
 
 /** Latest results strip: scrolls by itself, drags with the mouse, swipes on touch. */
 function resultsTicker(games) {
-  const strip = h('div', {class: 'ticker', role: 'region', 'aria-label': 'Τελευταία αποτελέσματα και προβλέψεις', tabindex: '0'}, games.map(tickerItem));
+  const strip = h('div', {class: 'ticker', role: 'region', 'aria-label': T('Τελευταία αποτελέσματα και προβλέψεις', 'Latest results and predictions'), tabindex: '0'}, games.map(tickerItem));
   return h('div', {class: 'ticker-wrap'}, autoScroll(strip));
 }
 
@@ -277,10 +278,10 @@ function hofCard(g) {
   return h('a', {class: 'hof-card', href: teamHref(winnerOf(g))},
     h('div', {class: 'hof-top'}, h('span', null, `${dayLabel(g.d)} · ${g.s}`), hitBadge(o.prob)),
     h('div', {class: 'hof-match'},
-      h('div', {class: 'hof-row' + (hw ? ' won' : '')}, h('span', {style: 'display:flex;gap:8px;align-items:center'}, crest(g.home, 22), g.home), h('b', null, g.hs)),
-      h('div', {class: 'hof-row' + (hw ? '' : ' won')}, h('span', {style: 'display:flex;gap:8px;align-items:center'}, crest(g.away, 22), g.away), h('b', null, g.as))),
-    h('div', {class: 'hof-foot'}, h('span', null, 'Πρόβλεψη ', h('b', null, `${g.pick.phs}–${g.pick.pas}`)),
-      o.sharp ? sharpBadge(o.err) : h('span', null, `απόκλιση ${o.err} π.`)));
+      h('div', {class: 'hof-row' + (hw ? ' won' : '')}, h('span', {style: 'display:flex;gap:8px;align-items:center'}, crest(g.home, 22), tn(g.home)), h('b', null, g.hs)),
+      h('div', {class: 'hof-row' + (hw ? '' : ' won')}, h('span', {style: 'display:flex;gap:8px;align-items:center'}, crest(g.away, 22), tn(g.away)), h('b', null, g.as))),
+    h('div', {class: 'hof-foot'}, h('span', null, T('Πρόβλεψη ', 'Prediction '), h('b', null, `${g.pick.phs}–${g.pick.pas}`)),
+      o.sharp ? sharpBadge(o.err) : h('span', null, T(`απόκλιση ${o.err} π.`, `margin error ${o.err} pts`))));
 }
 
 // ---------------------------------------------------------------- hero
@@ -288,30 +289,30 @@ function hero(p) {
   const nr = D.next, conf = confidentPicks(), hits = conf.filter(g => outcome(g).ok).length;
   const copy = h('div', null,
     h('div', {class: 'eyebrow'}, h('span', {class: 'live-dot'}), `Stoiximan GBL · ${season}`),
-    h('h1', null, nr.length ? `${roundNo}η αγωνιστική` : `Basket League ${season}`),
+    h('h1', null, nr.length ? T(`${roundNo}η αγωνιστική`, `Round ${roundNo}`) : `Basket League ${season}`),
     h('p', {class: 'hero-sub'}, nr.length
-      ? `${dayLabel(nr[0].d)} – ${dayLabel(nr[nr.length - 1].d)} · ${nr.length} αγώνες · προβλέψεις με το μοντέλο ${M.version}`
-      : `Ενημέρωση ${D.updated}`),
-    h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: url('predictions')}, 'Όλες οι προβλέψεις →'), h('a', {class: 'btn btn-ghost', href: url('model')}, 'Πώς δουλεύει')),
+      ? `${nextRoundDates()} · ${nGames(nr.length)} · ` + T(`προβλέψεις με το μοντέλο ${M.version}`, `predictions by model ${M.version}`)
+      : T(`Ενημέρωση ${D.updated}`, `Updated ${D.updated}`)),
+    h('div', {class: 'hero-cta'}, h('a', {class: 'btn btn-cta', href: url('predictions')}, T('Όλες οι προβλέψεις →', 'All predictions →')), h('a', {class: 'btn btn-ghost', href: url('model')}, T('Πώς δουλεύει', 'How it works'))),
     h('div', {class: 'hero-stats'},
-      h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, 'ακρίβεια'),
-        M.n_test ? h('small', null, fraction(Math.round(M.acc * M.n_test), M.n_test), ' εύστοχες προβλέψεις συνολικά') : null),
+      h('div', {class: 'hero-stat'}, h('b', {'data-count': Math.round(M.acc * 100), 'data-fmt': 'pct'}, pct(M.acc)), h('span', null, T('ακρίβεια', 'accuracy')),
+        M.n_test ? h('small', null, fraction(Math.round(M.acc * M.n_test), M.n_test), T(' εύστοχες προβλέψεις συνολικά', ' correct predictions in total')) : null),
       // The average margin error (±10) is left to the Model page, where it can be explained.
-      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, fraction(hits, conf.length)), h('span', null, '🔥 επιτυχημένες προβλέψεις ≥80%'),
-        h('small', null, `αγώνες όπου το μοντέλο έδινε ${HIT_THRESHOLD * 100}% και πάνω`)) : null));
+      conf.length ? h('div', {class: 'hero-stat'}, h('b', null, fraction(hits, conf.length)), h('span', null, T('🔥 επιτυχημένες προβλέψεις ≥80%', '🔥 successful ≥80% predictions')),
+        h('small', null, T(`αγώνες όπου το μοντέλο έδινε ${HIT_THRESHOLD * 100}% και πάνω`, `games where the model gave ${HIT_THRESHOLD * 100}% or more`))) : null));
   const inner = h('div', {class: 'banner-inner'}, copy);
   if (p) {
     const homeFav = p.p >= 0.5, hp = Math.round(p.p * 100);
     inner.append(tilt(h('div', {class: 'feature'},
-      h('div', {class: 'feature-when'}, h('b', null, isFocus(p.home, p.away) ? '★ Η ομάδα σου' : 'Πρώτος αγώνας'), h('span', null, `${dayLabel(p.d)} · ${p.t || ''}`)),
+      h('div', {class: 'feature-when'}, h('b', null, isFocus(p.home, p.away) ? T('★ Η ομάδα σου', '★ Your team') : T('Πρώτος αγώνας', 'First game')), h('span', null, `${dayLabel(p.d)} · ${p.t || ''}`)),
       h('div', {class: 'feature-match'},
-        h('a', {class: 'feature-team' + (homeFav ? ' fav' : ''), href: teamHref(p.home)}, crest(p.home, 56), h('span', null, p.home)),
+        h('a', {class: 'feature-team' + (homeFav ? ' fav' : ''), href: teamHref(p.home)}, crest(p.home, 56), h('span', null, tn(p.home))),
         h('div', {class: 'feature-pred'},
-          h('small', null, 'Πρόβλεψη ', h('span', {class: 'brand-word'}, BRAND.name)),
+          h('small', null, T('Πρόβλεψη ', 'Prediction '), h('span', {class: 'brand-word'}, BRAND.name)),
           h('div', {class: 'feature-score'}, h('span', null, p.phs), h('span', {class: 'dash'}, '–'), h('span', null, p.pas))),
-        h('a', {class: 'feature-team' + (homeFav ? '' : ' fav'), href: teamHref(p.away)}, crest(p.away, 56), h('span', null, p.away))),
+        h('a', {class: 'feature-team' + (homeFav ? '' : ' fav'), href: teamHref(p.away)}, crest(p.away, 56), h('span', null, tn(p.away)))),
       probBar(p, 'prob-hero'),
-      h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', null, 'πιθανότητα νίκης'), h('span', null, (100 - hp) + '%'))), 4));
+      h('div', {class: 'prob-labels'}, h('span', null, hp + '%'), h('span', null, T('πιθανότητα νίκης', 'win probability')), h('span', null, (100 - hp) + '%'))), 4));
   }
   return h('section', {class: 'banner hero'}, h('div', {class: 'ball', 'aria-hidden': 'true'}), inner);
 }
