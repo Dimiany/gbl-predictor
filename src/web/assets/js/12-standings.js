@@ -1,7 +1,7 @@
 // page: standings — full sortable table, Elo bars, Elo over time.
 
 pages.standings = () => [
-  pageBanner(T('Βαθμολογία', 'Standings'), T(`${roundNo - 1} αγωνιστικές · κλικ στις επικεφαλίδες για ταξινόμηση`, `${roundNo - 1} rounds · click a heading to sort`)),
+  pageBanner(T('Βαθμολογία', 'Standings'), T(`${roundNo - 1} ${roundNo === 2 ? 'αγωνιστική' : 'αγωνιστικές'} · κλικ στις επικεφαλίδες για ταξινόμηση`, `${roundNo - 1} round${roundNo === 2 ? '' : 's'} · click a heading to sort`)),
   h('section', {class: 'panel'}, sectionHead(T('Πίνακας', 'Table'), T(`${season} · σειρά με ποσοστό νικών, μετά διαφορά πόντων · Ν-Η = νίκες-ήττες`, `${season} · ranked by win percentage, then point difference · W-L = wins-losses`), infoDot('form')),
     standingsTable(false),
     h('p', {class: 'foot-note'}, T('Η σειρά καθορίζεται πρώτα από το ποσοστό νικών και έπειτα από τη διαφορά πόντων. Στην επίσημη βαθμολογία, οι ισοβαθμίες κρίνονται και από τα αποτελέσματα μεταξύ των ομάδων.', 'The order is set by win percentage first, then by point difference. In the official standings, ties are also decided by head-to-head results.'))),
