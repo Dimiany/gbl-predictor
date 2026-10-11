@@ -87,6 +87,8 @@ function tabs(id, items, initial, urlFor) {
  *   cap?: true|str caption above the value in a card (the label, or this text)}
  * opts.cards = 'results' | 'log' picks the card layout in app.css.
  * opts.paged = true: pages of 20 / 40 / 60 rows with a pager below (the size is remembered).
+ * opts.group = {col, of(row) -> {key, label}}: while sorted by column `col`, a full-width
+ *   separator row with the label goes above each new key (rounds in the history).
  */
 const PAGE_SIZES = [20, 40, 60];
 function table(cols, rows, opts = {}) {
@@ -145,9 +147,18 @@ function table(cols, rows, opts = {}) {
       return th;
     }));
     const visible = paged ? data.slice(page * size, (page + 1) * size) : data;
+    const grouped = opts.group && sortIdx === opts.group.col;
+    let lastKey = null;
     const body = data.length
-      ? visible.map(r => h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
-        'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r)))))
+      ? visible.flatMap(r => {
+        const row = h('tr', {class: opts.rowClass ? opts.rowClass(r) : null}, cols.map(c => h('td', {class: cellClass(c, c.num ? 'num' : ''),
+          'data-label': c.cap ? (typeof c.cap === 'string' ? c.cap : c.label) : null}, c.render(r))));
+        if (!grouped) return [row];
+        const g = opts.group.of(r);
+        if (g.key === lastKey) return [row];
+        lastKey = g.key;
+        return [h('tr', {class: 'group-row'}, h('td', {colspan: cols.length}, h('span', null, g.label))), row];
+      })
       : [h('tr', null, h('td', {colspan: cols.length, class: 'empty'}, opts.empty || T('Δεν υπάρχουν δεδομένα.', 'No data.')))];
     wrap.replaceChildren(h('table', null, h('thead', null, head), h('tbody', null, body)));
     requestAnimationFrame(edge);
