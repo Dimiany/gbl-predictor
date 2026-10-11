@@ -136,6 +136,22 @@ TAB_LABELS: dict[str, dict[str, str]] = {
     "model": {"metrics": "Οδηγός δεικτών", "how": "Πώς δουλεύει"},
     "team": {"results": "Αποτελέσματα", "schedule": "Πρόγραμμα"},
 }
+EN_NAV_PAGES: list[tuple[str, str]] = [
+    ("home", "Home"),
+    ("predictions", "Predictions"),
+    ("standings", "Standings"),
+    ("teams", "Teams"),
+    ("schedule", "Schedule"),
+    ("model", "Model"),
+    ("about", "About"),
+    ("contact", "Contact"),
+]
+EN_PAGE_LABELS: dict[str, str] = {**dict(EN_NAV_PAGES), "help": "Help"}
+EN_TAB_LABELS: dict[str, dict[str, str]] = {
+    "predictions": {"history": "History", "hits": "High-confidence hits", "all": "All games"},
+    "model": {"metrics": "Metrics guide", "how": "How it works"},
+    "team": {"results": "Results", "schedule": "Schedule"},
+}
 
 
 def slug(name: str) -> str:
@@ -146,11 +162,13 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
-def page_path(page: str, tab: str | None = None, team: str | None = None) -> str:
-    """Address of a page: page_path("standings") -> "/standings"."""
+def page_path(page: str, tab: str | None = None, team: str | None = None, lang: str = "el") -> str:
+    """Address of a page, optionally under the English ``/en`` prefix."""
     parts = [PAGE_SLUGS["teams"], slug(team)] if team else [PAGE_SLUGS[page]]
     if tab:
         parts.append(TAB_SLUGS["team" if team else page][tab])
+    if lang == "en":
+        parts.insert(0, "en")
     return "/" + "/".join(p for p in parts if p)
 
 
@@ -159,24 +177,30 @@ def page_file(path: str) -> str:
     return "index.html" if path == "/" else path.strip("/") + ".html"
 
 
-def address_labels(teams: list[str]) -> dict[str, str]:
+def address_labels(teams: list[str], lang: str = "el") -> dict[str, str]:
     """Address -> short name ("/teams/paok" -> "PAOK"), for breadcrumbs."""
-    labels = {page_path(k): v for k, v in PAGE_LABELS.items()}
+    page_labels = EN_PAGE_LABELS if lang == "en" else PAGE_LABELS
+    tab_labels = EN_TAB_LABELS if lang == "en" else TAB_LABELS
+    labels = {page_path(k, lang=lang): v for k, v in page_labels.items()}
     for group in ("predictions", "model"):
-        labels |= {page_path(group, t): v for t, v in TAB_LABELS[group].items()}
+        labels |= {page_path(group, t, lang=lang): v for t, v in tab_labels[group].items()}
     for team in teams:
-        labels[page_path("team", team=team)] = team
-        labels |= {page_path("team", t, team): v for t, v in TAB_LABELS["team"].items()}
+        labels[page_path("team", team=team, lang=lang)] = (
+            cfg.TEAM_NAMES_EN.get(team, team) if lang == "en" else team
+        )
+        labels |= {page_path("team", t, team, lang=lang): v for t, v in tab_labels["team"].items()}
     return labels
 
 
-def breadcrumbs(path: str, labels: dict[str, str]) -> list[tuple[str, str]]:
+def breadcrumbs(path: str, labels: dict[str, str], lang: str = "el") -> list[tuple[str, str]]:
     """[(address, name), ...] from the home page down to ``path``; empty for home."""
-    if path == "/":
+    home = "/en" if lang == "en" else "/"
+    if path == home:
         return []
     parts = path.strip("/").split("/")
-    trail = [("/", PAGE_LABELS["home"])]
-    for i in range(1, len(parts) + 1):
+    trail = [(home, (EN_PAGE_LABELS if lang == "en" else PAGE_LABELS)["home"])]
+    start = 2 if lang == "en" else 1
+    for i in range(start, len(parts) + 1):
         sub = "/" + "/".join(parts[:i])
         if sub in labels:
             trail.append((sub, labels[sub]))
@@ -190,7 +214,7 @@ class Page:
     description: str
 
 
-def site_pages(data: dict) -> list[Page]:
+def site_pages(data: dict, lang: str = "el") -> list[Page]:
     """Every address the site has, with its title and description: for each
     page's <head>, the sitemap, and the JS (which updates them on navigation).
     The home page comes first."""
@@ -304,37 +328,160 @@ def site_pages(data: dict) -> list[Page]:
                 f"Οι επόμενοι αγώνες της {team} στη {league}.",
             ),
         ]
+    if lang == "en":
+        return english_pages(data)
     return pages
 
 
-def route_table(pages: list[Page]) -> dict:
+def english_pages(data: dict) -> list[Page]:
+    """Every English address and its search-facing metadata.
+
+    The browser UI uses the same current data as Greek, while these complete
+    English titles and descriptions make each ``/en`` URL independently useful
+    to readers and search engines.
+    """
+    name, season = cfg.SITE_NAME, data.get("season", "")
+    league = f"Stoiximan Greek Basketball League {season}".strip()
+    teams = [r["team"] for r in data.get("standings", [])]
+
+    def path(page: str, tab: str | None = None, team: str | None = None) -> str:
+        return page_path(page, tab, team, lang="en")
+
+    def page(address: str, title: str, description: str) -> Page:
+        return Page(address, f"{title} · {name}", description)
+
+    pages = [
+        Page(
+            "/en",
+            f"{name} · Greek Basketball Predictor",
+            f"Basketball score predictions, win probabilities, standings and statistics for the {league}.",
+        ),
+        page(
+            path("predictions"),
+            "Greek Basketball Predictions",
+            f"Predicted scores and win probabilities for the next round of the {league}, recorded before tip-off.",
+        ),
+        page(
+            path("predictions", "history"),
+            "Prediction History",
+            "Every model prediction alongside the final score, with filters for season, team, outcome and model version.",
+        ),
+        page(
+            path("predictions", "hits"),
+            "High-confidence Prediction Hits",
+            "Games where the model assigned the favourite an 80% or higher chance of winning and the favourite won.",
+        ),
+        page(
+            path("predictions", "all"),
+            "All Games: Predictions and Results",
+            f"Every game from the {league} and the previous season, with final scores and model predictions.",
+        ),
+        page(
+            path("standings"),
+            f"Greek Basketball Standings {season}",
+            f"{league} standings: wins, losses, point difference, home and away record, form and Elo rating.",
+        ),
+        page(
+            path("teams"),
+            f"Greek Basketball Teams {season}",
+            f"All {len(teams) or 14} teams in the {league}: records, form, Elo ratings, results and fixtures.",
+        ),
+        page(
+            path("schedule"),
+            f"Greek Basketball Schedule {season}",
+            f"The {league} schedule by day, month and team, including predictions for the next round.",
+        ),
+        page(
+            path("model"),
+            "Model Performance",
+            "Model performance assessed on games it had not seen: prediction accuracy, log loss, Brier score and calibration.",
+        ),
+        page(
+            path("model", "metrics"),
+            "Metrics Guide",
+            "A plain-English guide to every number on the site, from Elo to log loss.",
+        ),
+        page(
+            path("model", "how"),
+            "How the Prediction Model Works",
+            "How Elo, recent form and record produce a predicted score and win probability for every game.",
+        ),
+        page(
+            path("about"),
+            f"About {name}",
+            f"What {name} is, how it works, and why each prediction is recorded before tip-off.",
+        ),
+        page(
+            path("contact"),
+            "Contact",
+            f"Contact {name} with suggestions, corrections or partnership enquiries.",
+        ),
+        page(path("help"), "Help", f"How to use {name}: pages, tabs, metrics and symbols."),
+    ]
+    for team in teams:
+        shown = cfg.TEAM_NAMES_EN.get(team, team)
+        pages += [
+            page(
+                path("team", team=team),
+                f"{shown}: Results, Schedule and Predictions",
+                f"{shown} in the {league}: record, form, Elo rating and model predictions for upcoming games.",
+            ),
+            page(
+                path("team", "results", team),
+                f"{shown}: Results {season}",
+                f"All {shown} results in the {league}, with a model prediction for each game.",
+            ),
+            page(
+                path("team", "schedule", team),
+                f"{shown}: Schedule {season}",
+                f"Upcoming {shown} fixtures in the {league}.",
+            ),
+        ]
+    return pages
+
+
+def route_table(pages: list[Page], lang: str = "el") -> dict:
     """What the JS router needs: the slugs, and each address's title + description."""
     return {
         "pages": PAGE_SLUGS,
         "tabs": TAB_SLUGS,
-        "nav": [list(item) for item in NAV_PAGES],
+        "nav": [list(item) for item in (EN_NAV_PAGES if lang == "en" else NAV_PAGES)],
         "meta": {p.path: [p.title, p.description] for p in pages},
+        "prefix": "en" if lang == "en" else "",
     }
+
+
+def other_language_path(path: str, lang: str) -> str:
+    """The same address in the other language: "/standings" <-> "/en/standings", "/" <-> "/en"."""
+    if lang == "en":
+        return path.removeprefix("/en") or "/"
+    return "/en" if path == "/" else "/en" + path
 
 
 def page_key(path: str) -> str:
     """Which menu entry an address belongs to: "/teams/paok" -> "teams"."""
-    first = path.strip("/").split("/")[0]
+    parts = path.strip("/").split("/")
+    first = (
+        parts[1]
+        if parts and parts[0] == "en" and len(parts) > 1
+        else ("" if parts == ["en"] else parts[0])
+    )
     return next((k for k, v in PAGE_SLUGS.items() if v == first), "home")
 
 
-def static_nav(path: str) -> str:
+def static_nav(path: str, lang: str = "el") -> str:
     """The main menu as plain links, so crawlers that don't run JS still find every page."""
     active = page_key(path)
+    nav_pages = EN_NAV_PAGES if lang == "en" else NAV_PAGES
     return "".join(
-        f'<a href="{page_path(k)}" data-k="{k}"'
+        f'<a href="{page_path(k, lang=lang)}" data-k="{k}"'
         + (' class="active" aria-current="page"' if k == active else "")
         + f">{html.escape(label)}</a>"
-        for k, label in NAV_PAGES
+        for k, label in nav_pages
     )
 
 
-def structured_data(page: Page, labels: dict[str, str]) -> str:
+def structured_data(page: Page, labels: dict[str, str], lang: str = "el") -> str:
     """schema.org JSON-LD: the site's name for Google's results (home) and the
     breadcrumb trail (every other page). Data only: browsers never execute it,
     so the CSP doesn't need to allow it."""
@@ -349,7 +496,7 @@ def structured_data(page: Page, labels: dict[str, str]) -> str:
                     "name": cfg.SITE_NAME,
                     "alternateName": f"{cfg.SITE_NAME} · {cfg.SITE_TAGLINE}",
                     "url": f"{url}/",
-                    "inLanguage": "el",
+                    "inLanguage": lang,
                     "description": page.description,
                     "publisher": {"@id": f"{url}/#organization"},
                 },
@@ -373,13 +520,13 @@ def structured_data(page: Page, labels: dict[str, str]) -> str:
                     "name": name,
                     "item": url + ("/" if path == "/" else path),
                 }
-                for i, (path, name) in enumerate(breadcrumbs(page.path, labels), start=1)
+                for i, (path, name) in enumerate(breadcrumbs(page.path, labels, lang), start=1)
             ],
         }
     return f'<script type="application/ld+json">{json_payload(data)}</script>'
 
 
-def share_meta(page: Page, mode: str | None) -> str:
+def share_meta(page: Page, mode: str | None, lang: str = "el") -> str:
     """Open Graph / Twitter card tags (link previews in Viber, Messenger, Facebook,
     X, Slack...) and the canonical address (search engines index tipoff.gr, not
     the *.web.app aliases). Search Console is verified by a DNS TXT record.
@@ -391,6 +538,7 @@ def share_meta(page: Page, mode: str | None) -> str:
     desc = html.escape(page.description, quote=True)
     address = url + ("/" if page.path == "/" else page.path)
     image = f"{url}/{cfg.SHARE_CARD_FILE}"
+    locale = "en_US" if lang == "en" else "el_GR"
     tags = [
         '<meta property="og:type" content="website">',
         f'<meta property="og:site_name" content="{html.escape(name, quote=True)}">',
@@ -401,7 +549,7 @@ def share_meta(page: Page, mode: str | None) -> str:
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
         f'<meta property="og:image:alt" content="{html.escape(name, quote=True)}">',
-        '<meta property="og:locale" content="el_GR">',
+        f'<meta property="og:locale" content="{locale}">',
         '<meta name="twitter:card" content="summary_large_image">',
         f'<meta name="twitter:title" content="{title}">',
         f'<meta name="twitter:description" content="{desc}">',
@@ -409,11 +557,21 @@ def share_meta(page: Page, mode: str | None) -> str:
     ]
     if mode == "live":
         tags.append(f'<link rel="canonical" href="{address}">')
+        # Each page and its translation point at each other (hreflang); Greek is the default.
+        greek = page.path if lang == "el" else other_language_path(page.path, lang)
+        english = other_language_path(greek, "el")
+        for code, path in (("el", greek), ("en", english), ("x-default", greek)):
+            href = url + ("/" if path == "/" else path)
+            tags.append(f'<link rel="alternate" hreflang="{code}" href="{href}">')
     return "\n".join(tags)
 
 
 def render_page(
-    data: dict, page: Page, noindex: bool = False, labels: dict[str, str] | None = None
+    data: dict,
+    page: Page,
+    noindex: bool = False,
+    labels: dict[str, str] | None = None,
+    lang: str = "el",
 ) -> str:
     """One page: its own <head> (title, description, canonical, JSON-LD), the shared
     shell with the menu as plain links, and the shared files. The JS then renders
@@ -429,12 +587,19 @@ def render_page(
     robots = '\n<meta name="robots" content="noindex, nofollow">' if noindex else ""
     name, tagline = cfg.SITE_NAME, cfg.SITE_TAGLINE
     if labels is None:
-        labels = address_labels([r["team"] for r in data.get("standings", [])])
+        labels = address_labels([r["team"] for r in data.get("standings", [])], lang)
     found = page.path != NOT_FOUND_PATH
     heading = html.escape(page.title.removesuffix(f" · {name}"))
     intro = f'<div class="ssr"><h1>{heading}</h1><p>{html.escape(page.description)}</p></div>'
+    language_url = other_language_path(page.path, lang)
+    other = "el" if lang == "en" else "en"
+
+    def t(el: str, en: str) -> str:
+        """Shell text in the page's language (the JS has the same T())."""
+        return en if lang == "en" else el
+
     return f"""<!doctype html>
-<html lang="el" data-theme="dark">
+<html lang="{lang}" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -443,29 +608,30 @@ def render_page(
 <meta name="description" content="{html.escape(page.description, quote=True)}">
 <title>{html.escape(page.title)}</title>
 {icon_links()}
-{share_meta(page, mode) if found else ""}
-{structured_data(page, labels) if found else ""}
+{share_meta(page, mode, lang) if found else ""}
+{structured_data(page, labels, lang) if found else ""}
 <link rel="stylesheet" href="/app.css">
-<script src="/data.js" defer></script>
+<script src="/{"data-en.js" if lang == "en" else "data.js"}" defer></script>
 <script src="/app.js" defer></script>
 </head>
 <body>
 <div class="viz-root">
   <header class="site-head">
-    <a class="brand" href="/" aria-label="{name}, αρχική"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
-    <nav id="nav" aria-label="Κύρια πλοήγηση">{static_nav(page.path)}</nav>
+    <a class="brand" href="{page_path("home", lang=lang)}" aria-label="{name}, {t("αρχική", "home")}"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
+    <nav id="nav" aria-label="{t("Κύρια πλοήγηση", "Main navigation")}">{static_nav(page.path, lang)}</nav>
     <div class="head-tools">
-      <button id="refresh" class="btn btn-primary" type="button" title="Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις"><span class="spin" aria-hidden="true">⟳</span> Ανανέωση</button>
-      <label class="focus-pick"><span>Η ομάδα μου</span><select id="focus" aria-label="Η ομάδα μου"></select></label>
-      <a class="icon-btn" href="{page_path("help")}" aria-label="Οδηγίες" title="Οδηγίες">?</a>
-      <button id="theme" class="icon-btn" type="button" aria-label="Αλλαγή θέματος" title="Σκοτεινό / φωτεινό">◐</button>
+      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("English", "Ελληνικά")}" title="{t("English", "Ελληνικά")}">{t("EN", "ΕΛ")}</a>
+      <button id="refresh" class="btn btn-primary" type="button" title="{t("Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις", "Fetches new results and makes the predictions again")}"><span class="spin" aria-hidden="true">⟳</span> {t("Ανανέωση", "Refresh")}</button>
+      <label class="focus-pick"><span>{t("Η ομάδα μου", "My team")}</span><select id="focus" aria-label="{t("Η ομάδα μου", "My team")}"></select></label>
+      <a class="icon-btn" href="{page_path("help", lang=lang)}" aria-label="{t("Οδηγίες", "Help")}" title="{t("Οδηγίες", "Help")}">?</a>
+      <button id="theme" class="icon-btn" type="button" aria-label="{t("Αλλαγή θέματος", "Change theme")}" title="{t("Σκοτεινό / φωτεινό", "Dark / light")}">◐</button>
     </div>
     <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
   </header>
   <main id="app" tabindex="-1">{intro if found else ""}</main>
   <footer class="site-foot" id="foot"></footer>
   <!-- Overlays stay inside .viz-root: the theme tokens (colours, fonts) live there. -->
-  <button class="to-top" id="to-top" type="button" aria-label="Πάνω">↑</button>
+  <button class="to-top" id="to-top" type="button" aria-label="{t("Πάνω", "Back to top")}">↑</button>
   <div id="tip" class="tip" role="tooltip" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </div>
@@ -481,14 +647,30 @@ def render_html(data: dict) -> str:
 def render_site(data: dict) -> dict[str, str]:
     """Every generated file of the site: name in dashboard/ -> content."""
     pages = site_pages(data)
+    en_pages = site_pages(data, lang="en")
     labels = address_labels([r["team"] for r in data.get("standings", [])])
-    payload = json_payload({**data, "routes": route_table(pages)})
+    en_labels = address_labels([r["team"] for r in data.get("standings", [])], lang="en")
+    payload = json_payload({**data, "lang": "el", "routes": route_table(pages)})
+    en_brand = {**data.get("brand", {}), "slogan": cfg.SITE_SLOGAN_EN}
+    en_payload = json_payload(
+        {
+            **data,
+            "lang": "en",
+            "brand": en_brand,
+            "team_names": cfg.TEAM_NAMES_EN,
+            "routes": route_table(en_pages, lang="en"),
+        }
+    )
     not_found = Page(NOT_FOUND_PATH, f"Η σελίδα δεν βρέθηκε · {cfg.SITE_NAME}", "")
     files = {
         "app.css": bundle_css(),
         "app.js": bundle_js(),
         "data.js": f"window.TIPOFF_DATA = {payload};\n",
+        "data-en.js": f"window.TIPOFF_DATA = {en_payload};\n",
         NOT_FOUND_FILE: render_page(data, not_found, noindex=True, labels=labels),
     }
     files.update({page_file(p.path): render_page(data, p, labels=labels) for p in pages})
+    files.update(
+        {page_file(p.path): render_page(data, p, labels=en_labels, lang="en") for p in en_pages}
+    )
     return files

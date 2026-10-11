@@ -1,5 +1,6 @@
 // page: help — how to use the app without ever touching a terminal.
 // The desktop app gets the full manual; the public site only what visitors need.
+// The desktop manual is for the site's owner and stays in Greek; the public part has both.
 
 function cloudHelp() {
   return h('section', {class: 'panel howto'}, sectionHead('Η δημόσια έκδοση του site'),
@@ -13,24 +14,25 @@ function cloudHelp() {
 
 function publicHelp() {
   return [
-    pageBanner('Οδηγίες', 'Πώς να διαβάσεις το site.'),
-    h('section', {class: 'panel howto'}, sectionHead('Ενημέρωση'),
-      h('p', null, 'Το site ελέγχει καθημερινά για νέα αποτελέσματα και προγραμματισμένους αγώνες. Όταν χρειάζεται, ενημερώνει τα αποτελέσματα και καταγράφει προβλέψεις πριν από τους αγώνες.')),
+    pageBanner(T('Οδηγίες', 'Help'), T('Πώς να διαβάσεις το site.', 'How to read the site.')),
+    h('section', {class: 'panel howto'}, sectionHead(T('Ενημέρωση', 'Updates')),
+      h('p', null, T('Το site ελέγχει καθημερινά για νέα αποτελέσματα και προγραμματισμένους αγώνες. Όταν χρειάζεται, ενημερώνει τα αποτελέσματα και καταγράφει προβλέψεις πριν από τους αγώνες.', 'The site checks every day for new results and scheduled games. When needed, it updates the results and records predictions before the games.'))),
     siteGuide(),
   ];
 }
 
 function siteGuide() {
-  return h('section', {class: 'panel howto'}, sectionHead('Τι θα βρεις'),
+  return h('section', {class: 'panel howto'}, sectionHead(T('Τι θα βρεις', 'What you\'ll find')),
     h('dl', {class: 'glossary'},
-      ...[[url('home'), 'Αρχική', 'Η επόμενη αγωνιστική, οι επιτυχίες σε προβλέψεις υψηλής πιθανότητας, η βαθμολογία και τα τελευταία αποτελέσματα.'],
-        [url('predictions'), 'Προβλέψεις', 'Καρτέλες: Επόμενη αγωνιστική, ιστορικό με φίλτρα, 🔥 επιτυχίες, όλοι οι αγώνες.'],
-        [url('standings'), 'Βαθμολογία', 'Πλήρης πίνακας με ταξινόμηση, Elo και η εξέλιξή του.'],
-        [url('teams'), 'Ομάδες', 'Σελίδα για κάθε ομάδα: επισκόπηση, αποτελέσματα, πρόγραμμα.'],
-        [url('schedule'), 'Πρόγραμμα', 'Όλοι οι αγώνες ανά μήνα ή ανά ομάδα.'],
-        [url('model'), 'Μοντέλο', 'Απόδοση, ο οδηγός με όλους τους δείκτες, και πώς δουλεύει.'],
+      ...[[url('home'), T('Αρχική', 'Home'), T('Η επόμενη αγωνιστική, οι επιτυχίες σε προβλέψεις υψηλής πιθανότητας, η βαθμολογία και τα τελευταία αποτελέσματα.', 'The next round, the high-confidence hits, the standings and the latest results.')],
+        [url('predictions'), T('Προβλέψεις', 'Predictions'), T('Καρτέλες: Επόμενη αγωνιστική, ιστορικό με φίλτρα, 🔥 επιτυχίες, όλοι οι αγώνες.', 'Tabs: next round, history with filters, 🔥 hits, all games.')],
+        [url('standings'), T('Βαθμολογία', 'Standings'), T('Πλήρης πίνακας με ταξινόμηση, Elo και η εξέλιξή του.', 'The full sortable table, Elo and how it has moved.')],
+        [url('teams'), T('Ομάδες', 'Teams'), T('Σελίδα για κάθε ομάδα: επισκόπηση, αποτελέσματα, πρόγραμμα.', 'A page for every team: overview, results, schedule.')],
+        [url('schedule'), T('Πρόγραμμα', 'Schedule'), T('Όλοι οι αγώνες ανά μήνα ή ανά ομάδα.', 'Every game by month or by team.')],
+        [url('model'), T('Μοντέλο', 'Model'), T('Απόδοση, ο οδηγός με όλους τους δείκτες, και πώς δουλεύει.', 'Performance, the guide to every metric, and how it works.')],
       ].flatMap(([href, title, text]) => [h('dt', null, h('a', {class: 'tlink', href}, h('span', {class: 'tname'}, title))), h('dd', null, text)]),
-      h('dt', null, 'Η ομάδα μου'), h('dd', null, 'Το μενού πάνω δεξιά τονίζει την ομάδα σου παντού. Το ◐ αλλάζει ανάμεσα σε σκοτεινό και φωτεινό θέμα.'),
+      h('dt', null, 'EN / ΕΛ'), h('dd', null, T('Το κουμπί πάνω δεξιά (στο κινητό: Μενού → English) ανοίγει την ίδια σελίδα στα αγγλικά.', 'The button at the top right (on phones: Menu → Ελληνικά) opens the same page in Greek.')),
+      h('dt', null, T('Η ομάδα μου', 'My team')), h('dd', null, T('Το μενού πάνω δεξιά τονίζει την ομάδα σου παντού. Το ◐ αλλάζει ανάμεσα σε σκοτεινό και φωτεινό θέμα.', 'The menu at the top right highlights your team everywhere. ◐ switches between the dark and light themes.')),
     ));
 }
 

@@ -7,7 +7,7 @@ function eloBars(host) {
   const rows = [...D.standings].sort((a, b) => b.elo - a.elo);
   const W = Math.max(host.clientWidth, 300), rowH = 26, barH = 16, top = 8, labelW = Math.min(170, W * 0.36), valW = 44;
   const H = top + rows.length * rowH + 22;
-  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Elo ανά ομάδα σε σχέση με το 1500'}, host);
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': T('Elo ανά ομάδα σε σχέση με το 1500', 'Elo by team relative to 1500')}, host);
   const ext = Math.max(50, ...rows.map(r => Math.abs(r.elo - 1500)));
   const x0 = labelW + valW, x1 = W - valW, sx = v => x0 + (v + ext) / (2 * ext) * (x1 - x0), mid = sx(0);
   [-ext, -ext / 2, ext / 2, ext].forEach(v => {
@@ -18,7 +18,7 @@ function eloBars(host) {
   rows.forEach((r, i) => {
     const y = top + i * rowH, d = r.elo - 1500;
     const g = s('g', {class: 'bar-row' + (r.team === state.focus ? ' is-focus' : '')}, svg);
-    stext(g, labelW - 8, y + barH - 3, r.team, {'text-anchor': 'end'});
+    stext(g, labelW - 8, y + barH - 3, tn(r.team), {'text-anchor': 'end'});
     const w = Math.max(1, Math.abs(sx(d) - mid)), rad = Math.min(4, w), xs = d >= 0 ? mid : mid - w;
     // Rounded at the data end, square at the baseline.
     const path = d >= 0
@@ -26,8 +26,8 @@ function eloBars(host) {
       : `M${xs + w},${y} h-${w - rad} a${rad},${rad} 0 0 0 -${rad},${rad} v${barH - 2 * rad} a${rad},${rad} 0 0 0 ${rad},${rad} h${w - rad} z`;
     s('path', {d: path, class: d >= 0 ? 'bar-pos' : 'bar-neg', style: `--d:${i * 40}ms`}, g);
     stext(g, d >= 0 ? mid + w + 6 : mid - w - 6, y + barH - 3, String(r.elo), {'text-anchor': d >= 0 ? 'start' : 'end'});
-    const hit = s('rect', {x: 0, y: y - 4, width: W, height: rowH, class: 'bar-hit', tabindex: 0, role: 'link', 'aria-label': `${r.team}, Elo ${r.elo}`}, g);
-    hover(hit, () => [{text: `Elo ${r.elo}`}, {text: `${r.team} · ${signed(d)} από τον μέσο όρο`}, {text: `${r.pos}ος · ${r.w}-${r.l} · κλικ για τη σελίδα της`}]);
+    const hit = s('rect', {x: 0, y: y - 4, width: W, height: rowH, class: 'bar-hit', tabindex: 0, role: 'link', 'aria-label': `${tn(r.team)}, Elo ${r.elo}`}, g);
+    hover(hit, () => [{text: `Elo ${r.elo}`}, {text: T(`${tn(r.team)} · ${signed(d)} από τον μέσο όρο`, `${tn(r.team)} · ${signed(d)} from the average`)}, {text: T(`${r.pos}ος · ${r.w}-${r.l} · κλικ για τη σελίδα της`, `${ordinal(r.pos)} · ${r.w}-${r.l} · click for the team page`)}]);
     hit.addEventListener('click', () => go(teamHref(r.team)));
     hit.addEventListener('keydown', e => { if (e.key === 'Enter') go(teamHref(r.team)); });
   });
@@ -44,7 +44,7 @@ function eloAt(team, t) {
 function eloLines(host, team) {
   host.replaceChildren();
   const W = Math.max(host.clientWidth, 300), H = 280, m = {l: 40, r: 78, t: 18, b: 26};
-  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Εξέλιξη Elo, ${team}`}, host);
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': T(`Εξέλιξη Elo, ${tn(team)}`, `Elo over time, ${tn(team)}`)}, host);
   const all = Object.values(D.elo_history).flat(2);
   // Ordinal x: one slot per game day so summers don't eat the width; 3-slot gap per new season.
   const dates = [...new Set(all.map(p => p[0]))].sort();
@@ -68,7 +68,7 @@ function eloLines(host, team) {
   D.season_starts.slice(1).forEach(st => {
     const i = dates.indexOf(st), x = i > 0 ? (sx(st) + sx(dates[i - 1])) / 2 : sx(st);
     s('line', {x1: x, x2: x, y1: m.t, y2: H - m.b, class: 'season-mark'}, svg);
-    stext(svg, x + 4, m.t - 6, 'νέα σεζόν', {class: 'axis-label'});
+    stext(svg, x + 4, m.t - 6, T('νέα σεζόν', 'new season'), {class: 'axis-label'});
   });
   const pathOf = seg => seg.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)).join('');
   for (const [t, segs] of Object.entries(D.elo_history)) if (t !== team) segs.forEach(sg => s('path', {d: pathOf(sg), class: 'line-ctx'}, svg));
@@ -83,7 +83,7 @@ function eloLines(host, team) {
   const last = fsegs.length ? fsegs[fsegs.length - 1].slice(-1)[0] : null;
   if (last) {
     s('circle', {cx: sx(last[0]), cy: sy(last[1]), r: 4.5, class: 'end-dot'}, svg);
-    stext(svg, sx(last[0]) + 8, sy(last[1]) + 4, `${team} ${Math.round(last[1])}`, {style: 'fill:var(--text-primary);font-weight:700'});
+    stext(svg, sx(last[0]) + 8, sy(last[1]) + 4, `${tn(team)} ${Math.round(last[1])}`, {style: 'fill:var(--text-primary);font-weight:700'});
   }
   const cross = s('line', {y1: m.t, y2: H - m.b, class: 'crosshair', visibility: 'hidden'}, svg);
   const overlay = s('rect', {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent'}, svg);
@@ -95,8 +95,8 @@ function eloLines(host, team) {
     cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('visibility', 'visible');
     const vals = Object.keys(D.elo_history).map(tm => [tm, eloAt(tm, t)]).filter(v => v[1] !== null).sort((a, b) => b[1] - a[1]);
     const fv = eloAt(team, t);
-    showTip(e, [{text: fv === null ? team : `${team} ${Math.round(fv)}`, cls: 't-val'}, {text: fullDate(best), cls: 't-sub'},
-      ...vals.map(([tm, v]) => ({text: `${Math.round(v)}  ${tm}`, key: tm === team ? css('--accent') : css('--context'), cls: 't-sub'}))]);
+    showTip(e, [{text: fv === null ? tn(team) : `${tn(team)} ${Math.round(fv)}`, cls: 't-val'}, {text: fullDate(best), cls: 't-sub'},
+      ...vals.map(([tm, v]) => ({text: `${Math.round(v)}  ${tn(tm)}`, key: tm === team ? css('--accent') : css('--context'), cls: 't-sub'}))]);
   });
   overlay.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); hideTip(); });
 }
@@ -118,19 +118,19 @@ function calibration(host, games) {
   host.replaceChildren();
   const bins = calibrationBins(games);
   const W = Math.max(host.clientWidth, 280), H = Math.min(300, W * 0.78), m = {l: 44, r: 20, t: 12, b: 36};
-  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Βαθμονόμηση πιθανοτήτων'}, host);
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': T('Βαθμονόμηση πιθανοτήτων', 'Probability calibration')}, host);
   const sx = v => m.l + (v - 0.5) / 0.5 * (W - m.l - m.r), sy = v => m.t + (1 - v) / 0.6 * (H - m.t - m.b);
   [0.4, 0.6, 0.8, 1.0].forEach(v => { s('line', {x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v), class: 'grid'}, svg); stext(svg, m.l - 6, sy(v) + 4, pct(v), {'text-anchor': 'end', class: 'axis-label'}); });
   [0.5, 0.6, 0.7, 0.8, 0.9, 1.0].forEach(v => stext(svg, sx(v), H - 18, pct(v), {'text-anchor': 'middle', class: 'axis-label'}));
-  stext(svg, (m.l + W - m.r) / 2, H - 2, 'πιθανότητα που έδωσε το μοντέλο στο φαβορί', {'text-anchor': 'middle', class: 'axis-label'});
+  stext(svg, (m.l + W - m.r) / 2, H - 2, T('πιθανότητα που έδωσε το μοντέλο στο φαβορί', 'probability the model gave the favourite'), {'text-anchor': 'middle', class: 'axis-label'});
   s('line', {x1: sx(0.5), y1: sy(0.5), x2: sx(1), y2: sy(1), class: 'diag'}, svg);
-  stext(svg, sx(0.6) + 6, sy(0.6) + 16, 'τέλεια βαθμονόμηση', {class: 'axis-label'});
+  stext(svg, sx(0.6) + 6, sy(0.6) + 16, T('τέλεια βαθμονόμηση', 'perfect calibration'), {class: 'axis-label'});
   bins.forEach(b => {
     const px = b.sp / b.n, py = Math.max(0.4, b.won / b.n);
     s('circle', {cx: sx(px), cy: sy(py), r: 5, class: 'cal-dot'}, svg);
     stext(svg, sx(px) + 9, sy(py) + 4, String(b.n), {class: 'axis-label'});
     hover(s('circle', {cx: sx(px), cy: sy(py), r: 14, fill: 'transparent', tabindex: 0}, svg),
-      () => [{text: `${pct(b.won / b.n)} νίκες του φαβορί`}, {text: `μέση πρόβλεψη ${pct(px)} · ${b.n} αγώνες`}]);
+      () => [{text: T(`${pct(b.won / b.n)} νίκες του φαβορί`, `favourite won ${pct(b.won / b.n)}`)}, {text: T(`μέση πρόβλεψη ${pct(px)}`, `average prediction ${pct(px)}`) + ` · ${nGames(b.n)}`}]);
   });
 }
 

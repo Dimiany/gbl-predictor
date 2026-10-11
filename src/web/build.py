@@ -43,7 +43,8 @@ def update_site(sync: bool = True, log: bool = True, pull: bool = False) -> str:
         append_predictions(preds)
     out_dir = cfg.DASHBOARD_FILE.parent
     pages = write_pages(out_dir, render_site(data))
-    write_site_files(out_dir, paths=[p.path for p in site_pages(data)])
+    addresses = [p.path for p in site_pages(data) + site_pages(data, lang="en")]
+    write_site_files(out_dir, paths=addresses)
     lines.append(f"Site written: {pages} pages ({len(preds)} next-round prediction(s)).")
     return "\n".join(lines)
 

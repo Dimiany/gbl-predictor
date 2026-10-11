@@ -7,6 +7,14 @@ const HISTORY_WINNER_SHORT = {
   Panionios: 'ΠΑΝ.', Peristeri: 'ΠΕΡ.', 'Promitheas Vikos Cola': 'ΠΡΟΜ.',
   'Vikos Falcons Ioanninon': 'ΒΙΚΟΣ',
 };
+const HISTORY_WINNER_SHORT_EN = {
+  Olympiacos: 'OLY', Panathinaikos: 'PAO', AEK: 'AEK', PAOK: 'PAOK', Aris: 'ARIS',
+  'AS Karditsas Iaponiki': 'KAR', 'Doxa Lefkadas': 'DOXA', Iraklis: 'IRA',
+  'Kolossos Rodou': 'KOL', Maroussi: 'MAR', Mykonos: 'MYK',
+  Panionios: 'PAN', Peristeri: 'PER', 'Promitheas Vikos Cola': 'PROM',
+  'Vikos Falcons Ioanninon': 'VIKOS',
+};
+const winnerShort = t => (ENGLISH ? HISTORY_WINNER_SHORT_EN : HISTORY_WINNER_SHORT)[t] || tn(t);
 
 function historyTab() {
   const box = h('div');
@@ -27,33 +35,34 @@ function historyTab() {
     const totalMae = totalErrs.length ? (totalErrs.reduce((a, b) => a + b, 0) / totalErrs.length).toFixed(1) : null;
     box.replaceChildren(
       h('p', {class: 'summary-line'}, graded.length
-        ? `${ok}/${graded.length} αγώνες με σωστή πρόβλεψη νικητή (${pct(ok / graded.length)}) · μέσο σφάλμα διαφοράς ${mae} πόντοι · ${rows.length - graded.length} σε αναμονή`
-        : `${rows.length} προβλέψεις σε αναμονή`),
-      h('p', {class: 'summary-line'}, totalMae == null ? '' : `Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`),
+        ? T(`${ok}/${graded.length} αγώνες με σωστή πρόβλεψη νικητή (${pct(ok / graded.length)}) · μέσο σφάλμα διαφοράς ${mae} πόντοι · ${rows.length - graded.length} σε αναμονή`,
+          `${ok}/${graded.length} games with the winner called correctly (${pct(ok / graded.length)}) · average margin error ${mae} points · ${rows.length - graded.length} pending`)
+        : T(`${rows.length} προβλέψεις σε αναμονή`, `${rows.length} predictions pending`)),
+      h('p', {class: 'summary-line'}, totalMae == null ? '' : T(`Μέσο σφάλμα συνολικού σκορ: ${totalMae} πόντοι.`, `Average total-score error: ${totalMae} points.`)),
       table([
-        {label: 'Ημέρα', area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
-        {label: 'Αγώνας', area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
-        {label: h('span', {class: 'history-heading'}, 'Πρόβλεψη', h('small', null, 'σκορ · νικητής')), area: 'pred', cap: 'Πρόβλεψη · σκορ και νικητής', sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {class: 'history-detail'}, h('b', null, `${r.phs}–${r.pas}`), h('small', {title: r.w}, `${HISTORY_WINNER_SHORT[r.w] || r.w} · ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`))},
-        {label: h('span', {class: 'history-heading'}, 'Αποτέλεσμα', h('small', null, 'τελικό σκορ · απόκλιση')), area: 'result', cap: 'Αποτέλεσμα · τελικό σκορ και απόκλιση', sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'history-detail'}, h('b', null, `${r.ahs}–${r.aas}`), h('small', null, `Απόκλιση ${marginErr(r, r.ahs, r.aas)} π.`))},
-        {label: h('span', {class: 'total-heading'}, h('span', null, 'Σύνολο πόντων'), h('small', null, 'πρόβλεψη → τελικό')), area: 'total', cap: 'Σύνολο πόντων · πρόβλεψη → τελικό', sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
+        {label: T('Ημέρα', 'Date'), area: 'date', sort: r => r.d, render: r => dayLabel(r.d)},
+        {label: T('Αγώνας', 'Game'), area: 'match', sort: r => r.home, render: r => h('span', {style: 'display:inline-flex;gap:4px;align-items:center'}, tlink(r.home), h('span', {class: 'muted'}, '–'), tlink(r.away))},
+        {label: h('span', {class: 'history-heading'}, T('Πρόβλεψη', 'Prediction'), h('small', null, T('σκορ · νικητής', 'score · winner'))), area: 'pred', cap: T('Πρόβλεψη · σκορ και νικητής', 'Prediction · score and winner'), sort: r => Math.max(r.p, 1 - r.p), render: r => h('span', {class: 'history-detail'}, h('b', null, `${r.phs}–${r.pas}`), h('small', {title: tn(r.w)}, `${winnerShort(r.w)} · ${pctProb(r.w === r.home ? r.p : 1 - r.p)}`))},
+        {label: h('span', {class: 'history-heading'}, T('Αποτέλεσμα', 'Result'), h('small', null, T('τελικό σκορ · απόκλιση', 'final score · margin error'))), area: 'result', cap: T('Αποτέλεσμα · τελικό σκορ και απόκλιση', 'Result · final score and margin error'), sort: r => r.ahs == null ? 999 : marginErr(r, r.ahs, r.aas), render: r => r.ahs == null ? h('span', {class: 'muted'}, '–') : h('span', {class: 'history-detail'}, h('b', null, `${r.ahs}–${r.aas}`), h('small', null, T(`Απόκλιση ${marginErr(r, r.ahs, r.aas)} π.`, `Off by ${marginErr(r, r.ahs, r.aas)} pts`)))},
+        {label: h('span', {class: 'total-heading'}, h('span', null, T('Σύνολο πόντων', 'Total points')), h('small', null, T('πρόβλεψη → τελικό', 'predicted → final'))), area: 'total', cap: T('Σύνολο πόντων · πρόβλεψη → τελικό', 'Total points · predicted → final'), sort: r => r.ahs == null || r.phs == null ? 999 : Math.abs((r.phs + r.pas) - (r.ahs + r.aas)), render: r => {
           if (r.ahs == null || r.phs == null) return '';
           const predicted = r.phs + r.pas, actual = r.ahs + r.aas, error = Math.abs(predicted - actual);
-          return h('span', {class: 'total-points'}, h('span', null, h('small', null, 'Πρόβλεψη'), predicted), h('span', null, h('small', null, 'Τελικό'), actual), h('small', null, `Διαφορά ${error} π.`));
+          return h('span', {class: 'total-points'}, h('span', null, h('small', null, T('Πρόβλεψη', 'Predicted')), predicted), h('span', null, h('small', null, T('Τελικό', 'Final')), actual), h('small', null, T(`Διαφορά ${error} π.`, `Off by ${error} pts`)));
         }},
-        {label: 'Κατάσταση', area: 'out', cap: true, render: r => h('span', {class: 'history-status'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
+        {label: T('Κατάσταση', 'Status'), area: 'out', cap: true, render: r => h('span', {class: 'history-status'}, verdict(r.ok), isHit(r) ? hitBadge(Math.max(r.p, 1 - r.p)) : null,
           r.ok && r.ahs != null && marginErr(r, r.ahs, r.aas) <= SHARP_POINTS ? sharpBadge(marginErr(r, r.ahs, r.aas)) : null)},
-        {label: 'Μοντέλο', hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: `καταγράφηκε ${r.at}`}, r.v)},
-      ], rows, {sortIdx: 0, dir: -1, empty: 'Καμία πρόβλεψη με αυτά τα φίλτρα.', cards: 'log', paged: true,
+        {label: T('Μοντέλο', 'Model'), hideSm: true, render: r => h('span', {class: 'badge', style: 'margin:0', title: T(`καταγράφηκε ${r.at}`, `recorded ${r.at}`)}, r.v)},
+      ], rows, {sortIdx: 0, dir: -1, empty: T('Καμία πρόβλεψη με αυτά τα φίλτρα.', 'No predictions match these filters.'), cards: 'log', paged: true,
         rowClass: r => [isFocus(r.home, r.away) ? 'is-focus' : '', isHit(r) ? 'hit' : ''].join(' ').trim() || null}));
   };
   const filters = h('div', {class: 'filters'},
-    selectEl([['', 'Όλες οι σεζόν'], ...seasons.map(x => [x, x])], st.season, v => { st.season = v; draw(); }, 'Σεζόν'),
-    selectEl([['', 'Όλες οι ομάδες'], ...TEAMS.slice().sort().map(t => [t, t])], st.team, v => { st.team = v; draw(); }, 'Ομάδα'),
-    segCtrl([['all', 'Όλες'], ['hit', '🔥 Σίγουρες'], ['ok', 'Σωστές'], ['bad', 'Λάθος'], ['pending', 'Σε αναμονή']], st.status, v => { st.status = v; draw(); }),
-    versions.length > 1 ? selectEl([['', 'Όλα τα μοντέλα'], ...versions.map(v => [v, v])], st.model, v => { st.model = v; draw(); }, 'Μοντέλο') : null);
+    selectEl([['', T('Όλες οι σεζόν', 'All seasons')], ...seasons.map(x => [x, x])], st.season, v => { st.season = v; draw(); }, T('Σεζόν', 'Season')),
+    selectEl([['', T('Όλες οι ομάδες', 'All teams')], ...teamOptions()], st.team, v => { st.team = v; draw(); }, T('Ομάδα', 'Team')),
+    segCtrl([['all', T('Όλες', 'All')], ['hit', T('🔥 Σίγουρες', '🔥 Confident')], ['ok', T('Σωστές', 'Correct')], ['bad', T('Λάθος', 'Wrong')], ['pending', T('Σε αναμονή', 'Pending')]], st.status, v => { st.status = v; draw(); }),
+    versions.length > 1 ? selectEl([['', T('Όλα τα μοντέλα', 'All models')], ...versions.map(v => [v, v])], st.model, v => { st.model = v; draw(); }, T('Μοντέλο', 'Model')) : null);
   draw();
-  return [h('section', {class: 'panel'}, sectionHead('Ιστορικό προβλέψεων', 'καταγράφηκαν πριν από τους αγώνες', infoDot('record')), filters, box,
-    h('p', {class: 'foot-note'}, 'Κάθε γραμμή δείχνει την πρόβλεψη και το τελικό σκορ. Η φλόγα 🔥 δείχνει ότι το φαβορί είχε πιθανότητα ≥80% και κέρδισε. 🎯 σημαίνει ότι η προβλεπόμενη διαφορά απείχε έως 3 πόντους από την πραγματική. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026).'))];
+  return [h('section', {class: 'panel'}, sectionHead(T('Ιστορικό προβλέψεων', 'Prediction history'), T('καταγράφηκαν πριν από τους αγώνες', 'recorded before the games'), infoDot('record')), filters, box,
+    h('p', {class: 'foot-note'}, T('Κάθε γραμμή δείχνει την πρόβλεψη και το τελικό σκορ. Η φλόγα 🔥 δείχνει ότι το φαβορί είχε πιθανότητα ≥80% και κέρδισε. 🎯 σημαίνει ότι η προβλεπόμενη διαφορά απείχε έως 3 πόντους από την πραγματική. Το «ensemble-v1» είναι το παλιό μοντέλο (μέχρι 05/10/2026).', 'Each row shows the prediction and the final score. The flame 🔥 means the favourite had a ≥80% chance and won. 🎯 means the predicted margin was within 3 points of the real one. "ensemble-v1" is the old model (until 5 Oct 2026).')))];
 }
 
 function hitsTab() {
@@ -62,11 +71,11 @@ function hitsTab() {
   const sharp = played.filter(g => outcome(g)?.sharp);
   return [
     h('section', {class: 'kpis'},
-      kpi('🔥 Επιτυχίες ≥80%', String(hits.length), `από ${conf.length} προβλέψεις με πιθανότητα ≥80% (${conf.length ? pct(hits.length / conf.length) : '–'})`, {gold: true, info: 'hit', count: {to: hits.length}}),
-      kpi('🎯 Ακριβείς διαφορές', String(sharp.length), `σωστός νικητής και διαφορά μέσα σε ±${SHARP_POINTS} πόντους`, {count: {to: sharp.length}, info: 'mae'}),
-      kpi('Υψηλότερη πιθανότητα', hits.length ? pctProb(favProb(hits[0].pick)) : '–', hits.length ? `${hits[0].home} – ${hits[0].away}, ${dayLabel(hits[0].d)}` : '')),
-    hits.length ? h('div', {class: 'hof'}, hits.map(hofCard)) : h('p', {class: 'empty'}, 'Δεν υπάρχει ακόμη επιτυχία σε πρόβλεψη υψηλής πιθανότητας.'),
-    sharp.length ? h('section', {class: 'panel'}, sectionHead('🎯 Μικρό σφάλμα διαφοράς', `ο νικητής προβλέφθηκε σωστά και η διαφορά απείχε έως ${SHARP_POINTS} πόντους`), resultsTable(sharp)) : null,
+      kpi(T('🔥 Επιτυχίες ≥80%', '🔥 Hits ≥80%'), String(hits.length), T(`από ${conf.length} προβλέψεις με πιθανότητα ≥80% (${conf.length ? pct(hits.length / conf.length) : '–'})`, `of ${conf.length} predictions at ≥80% probability (${conf.length ? pct(hits.length / conf.length) : '–'})`), {gold: true, info: 'hit', count: {to: hits.length}}),
+      kpi(T('🎯 Ακριβείς διαφορές', '🎯 Accurate margins'), String(sharp.length), T(`σωστός νικητής και διαφορά μέσα σε ±${SHARP_POINTS} πόντους`, `right winner and margin within ±${SHARP_POINTS} points`), {count: {to: sharp.length}, info: 'mae'}),
+      kpi(T('Υψηλότερη πιθανότητα', 'Highest probability'), hits.length ? pctProb(favProb(hits[0].pick)) : '–', hits.length ? `${tn(hits[0].home)} – ${tn(hits[0].away)}, ${dayLabel(hits[0].d)}` : '')),
+    hits.length ? h('div', {class: 'hof'}, hits.map(hofCard)) : h('p', {class: 'empty'}, T('Δεν υπάρχει ακόμη επιτυχία σε πρόβλεψη υψηλής πιθανότητας.', 'No high-confidence hits yet.')),
+    sharp.length ? h('section', {class: 'panel'}, sectionHead(T('🎯 Μικρό σφάλμα διαφοράς', '🎯 Small margin error'), T(`ο νικητής προβλέφθηκε σωστά και η διαφορά απείχε έως ${SHARP_POINTS} πόντους`, `the winner was right and the margin was within ${SHARP_POINTS} points`)), resultsTable(sharp)) : null,
   ];
 }
 
@@ -74,18 +83,18 @@ function hitsTab() {
 function nextRoundBox() {
   if (!D.next.length) return null;
   return h('a', {class: 'round-box', href: url('predictions')},
-    h('small', null, 'Προβλέψεις επόμενης αγωνιστικής'),
-    h('b', null, `${roundNo}η αγωνιστική`),
-    h('span', null, `${nextRoundDates()} · ${D.next.length} αγώνες`));
+    h('small', null, T('Προβλέψεις επόμενης αγωνιστικής', 'Next round predictions')),
+    h('b', null, T(`${roundNo}η αγωνιστική`, `Round ${roundNo}`)),
+    h('span', null, `${nextRoundDates()} · ${nGames(D.next.length)}`));
 }
 
 pages.predictions = ({tab}) => [
-  pageBanner('Προβλέψεις', 'Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα, με το ακριβές σκορ, και βαθμολογείται μόλις βγει το αποτέλεσμα.', nextRoundBox()),
+  pageBanner(T('Προβλέψεις', 'Predictions'), T('Κάθε πρόβλεψη καταγράφεται πριν από τον αγώνα, με το ακριβές σκορ, και βαθμολογείται μόλις βγει το αποτέλεσμα.', 'Every prediction is recorded before the game, with an exact score, and graded as soon as the result is in.'), nextRoundBox()),
   tabs('predictions', [
-    {key: 'next', label: 'Επόμενη αγωνιστική', count: D.next.length, render: () => [nextRoundSection(false)]},
-    {key: 'history', label: 'Ιστορικό', count: D.log.length, render: historyTab},
-    {key: 'hits', label: '🔥 Επιτυχίες ≥80%', count: hitsSorted().length, render: hitsTab},
-    {key: 'all', label: 'Όλοι οι αγώνες', count: played.length, render: () => [h('section', {class: 'panel'},
-      sectionHead('Όλοι οι αγώνες', 'με την πρόβλεψη του μοντέλου'), resultsTable(played))]},
+    {key: 'next', label: T('Επόμενη αγωνιστική', 'Next round'), count: D.next.length, render: () => [nextRoundSection(false)]},
+    {key: 'history', label: T('Ιστορικό', 'History'), count: D.log.length, render: historyTab},
+    {key: 'hits', label: T('🔥 Επιτυχίες ≥80%', '🔥 Hits ≥80%'), count: hitsSorted().length, render: hitsTab},
+    {key: 'all', label: T('Όλοι οι αγώνες', 'All games'), count: played.length, render: () => [h('section', {class: 'panel'},
+      sectionHead(T('Όλοι οι αγώνες', 'All games'), T('με την πρόβλεψη του μοντέλου', 'with the model\'s prediction')), resultsTable(played))]},
   ], tab, k => url('predictions', k)),
 ];

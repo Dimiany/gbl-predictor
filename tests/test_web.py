@@ -24,6 +24,7 @@ from src.web.render import (
     bundle_js,
     js_modules,
     json_payload,
+    page_file,
     page_path,
     render_html,
     render_site,
@@ -89,6 +90,50 @@ def test_render_site_has_shared_files_and_one_page_per_address():
         assert name in files, name
         assert '<script src="/app.js" defer></script>' in files[name]
         assert 'data-theme="dark"' in files[name]
+
+
+def test_english_edition_has_an_en_address_for_every_page_and_a_language_switch():
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    english_pages = site_pages(SITE_DATA, lang="en")
+    assert len(english_pages) == len(site_pages(SITE_DATA))
+    assert all(page_file(page.path) in files for page in english_pages)
+
+    history = files["en/predictions/history.html"]
+    assert '<html lang="en"' in history
+    assert '<script src="/data-en.js" defer></script>' in history
+    assert 'href="/predictions/history"' in history
+    assert 'href="/en/help"' in history
+    assert 'content="en_US"' in history
+    # Each language points search engines at the other (hreflang), Greek is the default.
+    for code, path in (("el", "/predictions/history"), ("en", "/en/predictions/history")):
+        assert f'<link rel="alternate" hreflang="{code}" href="{cfg.SITE_URL}{path}">' in history
+    assert f'hreflang="x-default" href="{cfg.SITE_URL}/predictions/history"' in history
+
+    assert 'class="lang-switch" href="/en"' in files["index.html"]
+    assert 'class="lang-switch" href="/"' in files["en.html"]
+    assert 'class="lang-switch" href="/en/standings"' in files["standings.html"]
+    assert cfg.SITE_SLOGAN_EN in files["data-en.js"]
+    assert cfg.SITE_SLOGAN_EN not in files["data.js"]
+
+
+def test_english_team_names_and_short_names_cover_real_teams():
+    teams = set(pd.read_csv(ROOT / "data" / "team_logos.csv")["team"])
+
+    def keys(file: str, const: str) -> set[str]:
+        js = (JS_DIR / file).read_text(encoding="utf-8")
+        body = re.search(rf"const {const} = \{{(.*?)\}};", js, re.S).group(1)
+        return {a or b for a, b in re.findall(r"(?:'([^']+)'|(\w+)):", body)}
+
+    assert set(cfg.TEAM_NAMES_EN) <= teams
+    assert keys("11-predictions.js", "HISTORY_WINNER_SHORT_EN") == keys(
+        "11-predictions.js", "HISTORY_WINNER_SHORT"
+    )
+    assert teams <= keys("11-predictions.js", "HISTORY_WINNER_SHORT_EN")
+
+
+def test_language_switch_reloads_the_page():
+    # The other language has its own data file, so the in-page router must not handle it.
+    assert "a.hasAttribute('hreflang')" in bundle_js()
 
 
 def test_every_address_is_unique_and_has_its_own_title():

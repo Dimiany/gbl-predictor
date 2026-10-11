@@ -4,14 +4,15 @@
 
 /** Everything the pages show, from data.js (src/web/data.py + render.route_table). */
 const D = window.TIPOFF_DATA;
+const ENGLISH = D.lang === 'en';
 /** Site name and lines (src/config.py SITE_*). */
 const BRAND = D.brand || {name: 'TipOff', tagline: 'Greek Basketball Predictor', slogan: '', url: ''};
 const NS = 'http://www.w3.org/2000/svg';
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FINE_POINTER = matchMedia('(pointer: fine)').matches;
 
-const DAYS = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
-const MONTHS = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+const DAYS = ENGLISH ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
+const MONTHS = ENGLISH ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 
 /** A pick is a "hit" when the model gave the favourite at least this much and was right. */
 const HIT_THRESHOLD = 0.8;
@@ -40,7 +41,7 @@ const roundNo = (() => {
   const best = Object.entries(votes).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
   return best ? +best[0] : Math.max(0, ...D.standings.map(r => r.gp)) + 1;
 })();
-/** "Σαβ 10/10 – Κυρ 11/10" for the next round (one day: just that day). */
+/** "Σαβ 10/10 – Κυρ 11/10" ("Sat 10 Oct – Sun 11 Oct") for the next round (one day: just that day). */
 const nextRoundDates = () => {
   if (!D.next.length) return '';
   const a = D.next[0].d, b = D.next[D.next.length - 1].d;
@@ -56,13 +57,28 @@ const pages = {};
 const ROUTES = D.routes || {pages: {}, tabs: {}, meta: {}};
 /** Same rule as render.slug(): "AS Karditsas Iaponiki" -> "as-karditsas-iaponiki". */
 const slugOf = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const joinPath = (...parts) => '/' + parts.filter(Boolean).join('/');
+const joinPath = (...parts) => '/' + [ROUTES.prefix, ...parts].filter(Boolean).join('/');
 /** Address of a page and, optionally, one of its tabs: url('model', 'how') -> '/model/how-it-works'. */
 const url = (page, tab) => joinPath(ROUTES.pages[page || 'home'], tab && ROUTES.tabs[page]?.[tab]);
 /** Address of a team page (and tab). */
 const teamHref = (t, tab) => joinPath(ROUTES.pages.teams, slugOf(t), tab && ROUTES.tabs.team?.[tab]);
 /** Tab key for an address part ('' = the first tab, which lives at the page's own address). */
 const tabFromSlug = (group, part) => Object.keys(ROUTES.tabs[group] || {}).find(k => ROUTES.tabs[group][k] === (part || ''));
+
+/** Site text in the page's language: T('Βαθμολογία', 'Standings'). Both languages sit
+ *  side by side at every call, so a page never mixes them. The Greek edition is the original. */
+const T = (el, en) => ENGLISH ? en : el;
+/** English display names (config.TEAM_NAMES_EN, only in data-en.js). The data and the
+ *  addresses keep the canonical names; only the visible text changes. */
+const TEAM_NAMES = D.team_names || {};
+/** A team's name as shown on the page. */
+const tn = t => TEAM_NAMES[t] || t;
+/** [team, shown name] for team pickers, sorted by the shown name. */
+const teamOptions = (teams = TEAMS) => teams.map(t => [t, tn(t)]).sort((a, b) => a[1].localeCompare(b[1]));
+/** "1ος" / "1st". */
+/** "1 αγώνας" / "3 αγώνες", "1 game" / "3 games". */
+const nGames = n => ENGLISH ? `${n} game${n === 1 ? '' : 's'}` : `${n} ${n === 1 ? 'αγώνας' : 'αγώνες'}`;
+const ordinal = n => ENGLISH ? n + ({1: 'st', 2: 'nd', 3: 'rd'}[n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] || 'th') : `${n}ος`;
 
 /** Title, description and canonical for the current address (the static <head> of every
  *  page has them too; this keeps them right as the visitor moves around). */
@@ -107,14 +123,14 @@ const css = name => getComputedStyle(document.querySelector('.viz-root')).getPro
 // ---------------------------------------------------------------- formatting
 const parse = iso => new Date(iso + 'T12:00:00');
 const pad2 = n => String(n).padStart(2, '0');
-const dayLabel = iso => { const d = parse(iso); return `${DAYS[d.getDay()]} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`; };
+const dayLabel = iso => { const d = parse(iso); return ENGLISH ? `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : `${DAYS[d.getDay()]} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`; };
 const fullDate = iso => { const d = parse(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 const pct = x => x == null ? '–' : Math.round(x * 100) + '%';
 /** A model probability for display: never claims certainty (99.6% shows as 99%). */
 const pctProb = x => x == null ? '–' : Math.min(99, Math.max(1, Math.round(x * 100))) + '%';
 const fx = (x, n = 3) => x == null ? '–' : x.toFixed(n);
 const signed = x => (x > 0 ? '+' : '') + x;
-const streakGr = st => st.replace('W', 'Ν').replace('L', 'Η');
+const streakGr = st => ENGLISH ? st : st.replace('W', 'Ν').replace('L', 'Η');
 
 // ---------------------------------------------------------------- teams & picks
 const isFocus = (...teams) => teams.includes(state.focus);
@@ -137,7 +153,7 @@ function crest(team, size = 20) {
   const initials = team.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   return h('span', {class: 'crest crest-fallback', 'aria-hidden': 'true', style: `${style};font-size:${Math.round(size * 0.4)}px`}, initials);
 }
-const tlink = (t, size = 18) => h('a', {class: 'tlink', href: teamHref(t), title: t}, crest(t, size), h('span', {class: 'tname'}, t));
+const tlink = (t, size = 18) => h('a', {class: 'tlink', href: teamHref(t), title: tn(t)}, crest(t, size), h('span', {class: 'tname'}, tn(t)));
 
 // ---------------------------------------------------------------- motion
 let revealObserver = null;

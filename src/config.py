@@ -147,6 +147,16 @@ AUTO_SYNC_AFTER_HOURS: float = 6.0
 SITE_NAME: str = "TipOff"
 SITE_TAGLINE: str = "Greek Basketball Predictor"
 SITE_SLOGAN: str = "Οι αριθμοί, πριν το τζάμπολ."
+SITE_SLOGAN_EN: str = "The numbers, before tip-off."
+# Team names as the English edition shows them (11/10/2026, the user left the choice to
+# Claude). Addresses and data keep the canonical names; teams not listed show as they are.
+TEAM_NAMES_EN: dict[str, str] = {
+    "AS Karditsas Iaponiki": "Karditsa",
+    "Doxa Lefkadas": "Doxa Lefkada",
+    "Kolossos Rodou": "Kolossos Rhodes",
+    "Promitheas Vikos Cola": "Promitheas Patras",
+    "Vikos Falcons Ioanninon": "Vikos Falcons Ioannina",
+}
 SITE_URL: str = "https://tipoff.gr"
 # Share card (Open Graph image) shipped next to index.html; 1200x630.
 SHARE_CARD_FILE: str = "og-card.jpg"
