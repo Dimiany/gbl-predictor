@@ -247,6 +247,8 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   search: `render.english_pages()`. The EN / ΕΛ link (`hreflang`) reloads the page (the router
   skips it); on phones it sits in the Menu sheet. Live pages carry hreflang alternates and the
   sitemap lists both languages. The desktop-only manual in `18-help.js` stays Greek.
+  The EN / ΕΛ link carries the flag of the language it opens (`assets/flag-gb.svg` /
+  `flag-gr.svg`, copied by `build.write_site_files`): emoji flags don't render on Windows.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
 - Every section gets a `sectionHead(title, plain-Greek explanation)`; the user asked
   for explanatory headings. The footer carries only the user-approved disclaimer
@@ -257,6 +259,15 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   the dataviz palette checker. Re-validate if you change them or the surfaces.
 - "Hit" = favourite probability >= 0.8 and correct (gold). "Sharp" = correct
   and margin within 3 points (🎯). Constants live in `01-core.js`.
+- `table()` takes `opts.group = {col, of(row)}`: while sorted by that column, a full-width
+  separator row is drawn above each new key. Used by the prediction history for rounds
+  («*2η αγωνιστική* ──── 4/6 · 67%», the record counted over every logged row of the round,
+  not the filtered ones). Round numbers aren't in the data: `roundOf()` (01-core) derives
+  them from the calendar — game days <= 2 days apart are one round, a day with at most a
+  quarter of a full round is «Αγώνες εξ αναβολής», everything after the double round-robin
+  is «Playoffs». Verified against 2025/26 (13 teams, byes: 26 rounds) and 2026/27.
+- `/teams` is ordered by Elo, not by the table (user's call, 12/10/2026): each card shows
+  `#n Elo 1713` plus the league position in small print, under a short "what is Elo" panel.
 - `tests/test_web.py` runs `node --check` on the bundle and checks the CSP, the
   addresses (unique, titled, same slug rule in Python and JS), the local server's
   clean addresses, site modes and rules/form consistency.
@@ -273,11 +284,24 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   keeps stars. Kolossos' "H" is part of its official crest. FlashScore
   images are only the fallback. New team: add a row and rerun fetch_crests.
 
-## Current state (06/10/2026)
+## Current state (12/10/2026)
 
-- 181 games in history: 174 from 2025/26 (champion Olympiacos) and 7 from
-  2026/27 round 1. 175 upcoming fixtures (to April 2027). The site predicts
+- 188 games in history: 174 from 2025/26 (champion Olympiacos) and 14 from
+  2026/27 (rounds 1-2). 168 upcoming fixtures (to April 2027). The site predicts
   only the next round (`predict.next_round`, 4-day window).
+- Shipped on 11-12/10/2026, in this order: the English edition written out in full
+  (PR #27), flags on the language switch (#28), round separators + team alignment in
+  the prediction history (#29), `/teams` ranked by Elo with an explanation (#30).
+- **Open: draft PR #31 `experiment/next`** — Monte Carlo season simulation
+  (`/standings/projections`) and the installable app (manifest + service worker), live on
+  the test site only. Before merging, the user must confirm the league format assumed in
+  `config.PLAYOFF_SPOTS` (8) and `RELEGATION_SPOTS` (1). Start the next session there.
+- `gh` (GitHub CLI) is installed and logged in as `Dimiany` on the original machine, so
+  Claude opens and merges PRs itself. On a new machine: `winget install GitHub.cli`, then
+  `gh auth login` (the user does the browser step).
+- Audited 12/10/2026 with Lighthouse (headless Edge): mobile 96/100/100/100, desktop
+  100/100/100/100 (performance / a11y / best practices / SEO). The site is already fast
+  and clean — improvements belong in features and reach, not in a rewrite.
 - 14 teams in 2026/27. Panionios was relegated. New teams are "Doxa Lefkadas"
   (API: Lefkadas) and "Vikos Falcons Ioanninon" (API: Vikos), names chosen by
   the user.
@@ -294,7 +318,25 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   (papaki.gr DNS: A 199.36.158.100, TXT hosting-site=gbl-predictor, CNAME www →
   gbl-predictor.web.app.; Firebase redirects www → apex) live since 06/10/2026.
   Search Console: verified (Domain property, TXT google-site-verification at
-  papaki); sitemap submitted as the full URL https://tipoff.gr/sitemap.xml.
+  papaki); sitemap submitted as the full URL https://tipoff.gr/sitemap.xml (it lists both
+  languages, 112 addresses; the URL never changes, so no resubmission is needed).
+
+## Money (user's goal, 12/10/2026)
+
+The user wants the project to earn money one day, ideally thousands of euros a month.
+Claude's honest read, to repeat rather than re-derive: a Greek-league-only site has a
+small audience (a few thousand visits a month at best) and Greek display ads pay about
+1-3 EUR per 1000 views, so revenue follows audience, not the other way round. Order:
+1. **More leagues** — EuroLeague, BCL, then other countries. The code is ready for it
+   (FlashScore covers them, the `/en` edition exists); EuroLeague's audience is ~20x.
+2. **Shareable content** — season projections already are; next: AI match previews in
+   Greek, a weekly newsletter, auto-generated cards for Instagram/X.
+3. **User-vs-model prediction game** (Firestore + Auth, free tier) for repeat visits.
+4. **Revenue once there is an audience** — a season sponsor, a ~2-3 EUR/month premium
+   tier (detailed simulations, alerts, no ads), and B2B: predictions or an embeddable
+   widget for sports media / fantasy sites. B2B is the most realistic four-figure path.
+5. **Betting affiliates** pay best in this space but clash with the site's «σε καμία
+   περίπτωση» stance and need an ΕΕΕΠ licence in Greece. The user's call, not Claude's.
 
 ## Ideas backlog (agreed with the user, not started)
 
@@ -306,9 +348,15 @@ Offer these when the user asks "what next". Ask before starting any of them.
 - AI (Claude API, key as a GitHub secret): match previews in Greek, per-team
   news summary, injury hints from news (user approves before they count),
   weekly report. A live "ask the model" chat needs a server (Blaze plan: ask).
-- Model: Monte Carlo season simulation
-  (title / playoff / relegation odds); real rosters + absences (names from the
-  user only).
+- Model: Monte Carlo season simulation (title / playoff / relegation odds) — **built on
+  `experiment/next`, PR #31, waiting for the user**: `src/simulate.py` plays the remaining
+  fixtures `SIM_RUNS` times with margins ~ N(predicted margin, walk-forward RMSE), ranks by
+  win % then point difference, and feeds `data["projection"]` into Βαθμολογία →
+  «Πιθανότητες σεζόν». Also on that branch: the installable app (PWA) —
+  `render.manifest_json()` + `render.service_worker()` (network first, offline copy, cache
+  name = hash of app.css/app.js/data*.js, never `/api/`), registered by 90-app.js on the
+  public site over https only, with `icon-192/512.png` rasterised from favicon.svg.
+  Real rosters + absences (player names from the user only) are still untouched.
 - Site: user-vs-model prediction game (Firestore + Auth), side-by-side team
   comparison, Open Graph share card, custom domain (avoid "GBL"/"Stoiximan"
   in the name: trademarks), App Check on the contact form.
@@ -322,9 +370,14 @@ When the user says "στήσε το περιβάλλον" on another computer:
    and `FLASHSCORE_SEASON_ID=190`. No secret is needed for normal work: sync and
    deploys run in GitHub Actions. Add `RAPIDAPI_KEY` only if they want direct API
    calls; they get it from rapidapi.com, never copied over chat or email.
-3. `gh auth login` (browser flow), then `python -m pytest tests/` and `ruff check .`.
+3. `gh auth login` (browser flow: Claude prints the code, the user approves in the
+   browser), then `python -m pytest tests/` and `ruff check .`.
 4. Optional: desktop shortcut "TipOff" to `TipOff.bat`.
-5. Claude's memory (preferences, history) is per machine. Everything the next
+5. Checking the site visually without Chrome: headless Edge at
+   `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe` — `--dump-dom` for text,
+   `--screenshot`, or CDP over `--remote-debugging-port` for phone emulation (390/360 px)
+   and Lighthouse (`npx lighthouse --port=...` against an already-running Edge).
+6. Claude's memory (preferences, history) is per machine. Everything the next
    session needs must live in this file.
 Never work on two machines at once without `git pull` first.
 
