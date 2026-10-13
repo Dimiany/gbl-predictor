@@ -301,6 +301,15 @@ tbody tr:hover td{background:var(--surface-2)}
 .match-cell .m-home{display:flex;justify-content:flex-end;min-width:0}
 .match-cell .m-home .tlink{flex-direction:row-reverse}
 .match-cell .m-away{display:flex;justify-content:flex-start;min-width:0}
+/* Season projections: chance meters and the places strip */
+.pmeter{display:inline-flex;align-items:center;gap:8px;min-width:118px;width:100%}
+.pm-bar{flex:1;height:6px;border-radius:3px;background:var(--border);overflow:hidden;min-width:48px}
+.pm-fill{display:block;height:100%;width:0;background:var(--accent);border-radius:3px;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.pm-fill.bad{background:var(--neg)}
+.pmeter b{min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+.pos-strip{display:inline-flex;gap:2px;vertical-align:middle}
+.pos-strip i{display:block;width:11px;height:16px;border-radius:2px;background:var(--accent)}
+.pos-strip i.cut{margin-right:6px;box-shadow:4px 0 0 -1px var(--text-secondary)}
 /* Round separator in the history: ──── 2η αγωνιστική ──── */
 /* Right padding keeps the round's record clear of the table's scroll fade. */
 tr.group-row td{padding:26px 34px 8px 6px;border-bottom:0;background:none!important}

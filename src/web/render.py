@@ -14,6 +14,7 @@ absolute path.
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -59,6 +60,9 @@ ICON_FILES = {
     # Language switch: the flag of the language the link opens (UK flag for English).
     "flag-gr.svg": "flag-gr.svg",
     "flag-gb.svg": "flag-gb.svg",
+    # Installable app (manifest.json icons).
+    "icon-192.png": "icon-192.png",
+    "icon-512.png": "icon-512.png",
 }
 
 
@@ -70,6 +74,7 @@ def icon_links() -> str:
             '<link rel="icon" type="image/svg+xml" href="/favicon.svg">',
             '<link rel="icon" href="/favicon.ico" sizes="any">',
             '<link rel="apple-touch-icon" href="/apple-touch-icon.png">',
+            '<link rel="manifest" href="/manifest.json">',
             '<meta name="theme-color" content="#0b1647">',
         ]
     )
@@ -90,6 +95,8 @@ def content_security_policy() -> str:
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data:",
             "connect-src 'self' https://firestore.googleapis.com",
+            "manifest-src 'self'",
+            "worker-src 'self'",
             "base-uri 'none'",
             "form-action 'none'",
         ]
@@ -114,6 +121,7 @@ PAGE_SLUGS: dict[str, str] = {
 #: Tab key -> address per tab group. The first tab lives at the page's own address.
 TAB_SLUGS: dict[str, dict[str, str]] = {
     "predictions": {"next": "", "history": "history", "hits": "hall-of-fame", "all": "games"},
+    "standings": {"table": "", "projections": "projections"},
     "model": {"performance": "", "metrics": "metrics", "how": "how-it-works"},
     "team": {"overview": "", "results": "results", "schedule": "schedule"},
 }
@@ -136,6 +144,7 @@ PAGE_LABELS: dict[str, str] = {**dict(NAV_PAGES), "help": "Οδηγίες"}
 #: Short names of the tabs that have their own address (breadcrumbs).
 TAB_LABELS: dict[str, dict[str, str]] = {
     "predictions": {"history": "Ιστορικό", "hits": "Επιτυχίες", "all": "Όλοι οι αγώνες"},
+    "standings": {"projections": "Πιθανότητες σεζόν"},
     "model": {"metrics": "Οδηγός δεικτών", "how": "Πώς δουλεύει"},
     "team": {"results": "Αποτελέσματα", "schedule": "Πρόγραμμα"},
 }
@@ -152,6 +161,7 @@ EN_NAV_PAGES: list[tuple[str, str]] = [
 EN_PAGE_LABELS: dict[str, str] = {**dict(EN_NAV_PAGES), "help": "Help"}
 EN_TAB_LABELS: dict[str, dict[str, str]] = {
     "predictions": {"history": "History", "hits": "High-confidence hits", "all": "All games"},
+    "standings": {"projections": "Season projections"},
     "model": {"metrics": "Metrics guide", "how": "How it works"},
     "team": {"results": "Results", "schedule": "Schedule"},
 }
@@ -185,7 +195,7 @@ def address_labels(teams: list[str], lang: str = "el") -> dict[str, str]:
     page_labels = EN_PAGE_LABELS if lang == "en" else PAGE_LABELS
     tab_labels = EN_TAB_LABELS if lang == "en" else TAB_LABELS
     labels = {page_path(k, lang=lang): v for k, v in page_labels.items()}
-    for group in ("predictions", "model"):
+    for group in ("predictions", "standings", "model"):
         labels |= {page_path(group, t, lang=lang): v for t, v in tab_labels[group].items()}
     for team in teams:
         labels[page_path("team", team=team, lang=lang)] = (
@@ -264,6 +274,12 @@ def site_pages(data: dict, lang: str = "el") -> list[Page]:
             f"Βαθμολογία Basket League {season}",
             f"Η βαθμολογία της {league}: νίκες, ήττες, διαφορά πόντων, έδρα, φόρμα "
             "και δείκτης Elo για κάθε ομάδα.",
+        ),
+        page(
+            page_path("standings", "projections"),
+            f"Πιθανότητες σεζόν {season}: τίτλος, πλέι-οφ, υποβιβασμός",
+            f"Προσομοίωση των αγώνων που απομένουν στη {league}: πόσο πιθανό είναι "
+            "κάθε ομάδα να πάρει τον τίτλο, να μπει στα πλέι-οφ ή να υποβιβαστεί.",
         ),
         page(
             page_path("teams"),
@@ -383,6 +399,11 @@ def english_pages(data: dict) -> list[Page]:
             path("standings"),
             f"Greek Basketball Standings {season}",
             f"{league} standings: wins, losses, point difference, home and away record, form and Elo rating.",
+        ),
+        page(
+            path("standings", "projections"),
+            f"Season Projections {season}: Title, Playoff and Relegation Chances",
+            f"The remaining {league} games simulated thousands of times: each team's chance of the title, a playoff spot or relegation.",
         ),
         page(
             path("teams"),
@@ -623,7 +644,7 @@ def render_page(
     <a class="brand" href="{page_path("home", lang=lang)}" aria-label="{name}, {t("αρχική", "home")}"><span class="brand-badge" aria-hidden="true"><img src="/favicon.svg" alt=""></span><span class="brand-text"><b>{name}</b><small>{tagline}</small></span></a>
     <nav id="nav" aria-label="{t("Κύρια πλοήγηση", "Main navigation")}">{static_nav(page.path, lang)}</nav>
     <div class="head-tools">
-      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("English", "Ελληνικά")}" title="{t("English", "Ελληνικά")}"><img class="flag" src="/flag-{t("gb", "gr")}.svg" alt="" width="21" height="14">{t("EN", "ΕΛ")}</a>
+      <a class="lang-switch" href="{language_url}" hreflang="{other}" lang="{other}" aria-label="{t("EN: English", "ΕΛ: Ελληνικά")}" title="{t("English", "Ελληνικά")}"><img class="flag" src="/flag-{t("gb", "gr")}.svg" alt="" width="21" height="14">{t("EN", "ΕΛ")}</a>
       <button id="refresh" class="btn btn-primary" type="button" title="{t("Φέρνει νέα αποτελέσματα και ξαναβγάζει τις προβλέψεις", "Fetches new results and makes the predictions again")}"><span class="spin" aria-hidden="true">⟳</span> {t("Ανανέωση", "Refresh")}</button>
       <label class="focus-pick"><span>{t("Η ομάδα μου", "My team")}</span><select id="focus" aria-label="{t("Η ομάδα μου", "My team")}"></select></label>
       <a class="icon-btn" href="{page_path("help", lang=lang)}" aria-label="{t("Οδηγίες", "Help")}" title="{t("Οδηγίες", "Help")}">?</a>
@@ -645,6 +666,66 @@ def render_page(
 def render_html(data: dict) -> str:
     """The home page (index.html)."""
     return render_page(data, site_pages(data)[0])
+
+
+def manifest_json() -> str:
+    """Web app manifest: lets phones install the site as an app (icon on the home
+    screen, full-screen window). Icons are rasterised from favicon.svg."""
+    return json.dumps(
+        {
+            "name": f"{cfg.SITE_NAME} · {cfg.SITE_TAGLINE}",
+            "short_name": cfg.SITE_NAME,
+            "description": cfg.SITE_SLOGAN,
+            "lang": "el",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#0b1647",
+            "theme_color": "#0b1647",
+            "icons": [
+                {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                {"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml"},
+            ],
+        },
+        ensure_ascii=False,
+        indent=1,
+    )
+
+
+SERVICE_WORKER = """// TipOff service worker: makes the site installable and readable offline.
+// Network first, so fresh data always wins; the cached copy serves when offline.
+// Only this site's GET requests are handled (never the local /api/, never Firestore).
+const CACHE = 'tipoff-__VERSION__';
+const SHELL = ['/', '/en', '/app.css', '/app.js', '/data.js', '/data-en.js', '/favicon.svg', '/manifest.json'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  const req = e.request, url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  e.respondWith(fetch(req).then(res => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+    return res;
+  }).catch(() => caches.match(req).then(hit => {
+    // Offline on an uncached address: the home shell renders any address (the router reads the URL).
+    if (hit || req.mode !== 'navigate') return hit;
+    return caches.match(url.pathname === '/en' || url.pathname.startsWith('/en/') ? '/en' : '/');
+  })));
+});
+"""
+
+
+def service_worker(files: dict[str, str]) -> str:
+    """sw.js with a cache name that changes whenever the code or the data changes,
+    so visitors never keep an old copy longer than one visit."""
+    digest = hashlib.sha1(
+        "".join(files[n] for n in ("app.css", "app.js", "data.js", "data-en.js")).encode("utf-8")
+    ).hexdigest()[:10]
+    return SERVICE_WORKER.replace("__VERSION__", digest)
 
 
 def render_site(data: dict) -> dict[str, str]:
@@ -676,4 +757,6 @@ def render_site(data: dict) -> dict[str, str]:
     files.update(
         {page_file(p.path): render_page(data, p, labels=en_labels, lang="en") for p in en_pages}
     )
+    files["manifest.json"] = manifest_json()
+    files["sw.js"] = service_worker(files)
     return files

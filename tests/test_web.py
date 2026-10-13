@@ -483,6 +483,35 @@ def test_page_links_favicon_and_touch_icon_files(tmp_path):
         "flag-gb.svg",
     ):
         assert (tmp_path / name).stat().st_size > 100, name
+    for name in ("icon-192.png", "icon-512.png"):
+        assert (tmp_path / name).stat().st_size > 1000, name
+
+
+def test_installable_app_files_and_offline_worker():
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    manifest = json.loads(files["manifest.json"])
+    assert manifest["short_name"] == cfg.SITE_NAME and manifest["display"] == "standalone"
+    assert {i["src"] for i in manifest["icons"]} >= {"/icon-192.png", "/icon-512.png"}
+    assert '<link rel="manifest" href="/manifest.json">' in files["index.html"]
+    assert "manifest-src 'self'" in files["index.html"]
+    sw = files["sw.js"]
+    assert "startsWith('/api/')" in sw  # the desktop Refresh / contact API is never cached
+    assert "'/data.js'" in sw and "'/data-en.js'" in sw
+    # The cache name follows the code and the data, so an update replaces the old copy.
+    other = render_site({**SITE_DATA, "season": "2027/28", "site": {"mode": "live"}})
+    assert re.search(r"tipoff-[0-9a-f]{10}", sw) and other["sw.js"] != sw
+    # Registered on the public site only.
+    assert "navigator.serviceWorker.register('/sw.js')" in files["app.js"]
+    assert "PUBLIC && location.protocol === 'https:'" in files["app.js"]
+
+
+def test_standings_has_a_projections_tab_in_both_languages():
+    files = render_site({**SITE_DATA, "site": {"mode": "live"}})
+    assert "standings/projections.html" in files and "en/standings/projections.html" in files
+    page = files["standings/projections.html"]
+    assert "<h1>Πιθανότητες σεζόν 2026/27: τίτλος, πλέι-οφ, υποβιβασμός</h1>" in page
+    assert page_path("standings", "projections") == "/standings/projections"
+    assert page_path("standings", "table") == "/standings"
 
 
 def test_site_uses_the_brand_name_everywhere():

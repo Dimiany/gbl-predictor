@@ -308,6 +308,14 @@ TARGET_TOTAL: str = COL_TOTAL
 # (HistGradientBoosting classifier blended with Elo, until 05/10/2026).
 MODEL_VERSION: str = "margin-v3"
 
+# Season simulation (src/simulate.py): how many seasons to play out, and the
+# league format it assumes. ASSUMPTION (12/10/2026, to confirm with the user):
+# the top 8 reach the playoffs and the last team is relegated.
+SIM_RUNS: int = 10_000
+SIM_SEED: int = 7
+PLAYOFF_SPOTS: int = 8
+RELEGATION_SPOTS: int = 1
+
 # Inputs of the margin model (derived in model.model_inputs):
 #   elo_diff_adj — Elo gap incl. home court; form_diff — L5 margin difference;
 #   win_pct_diff — season win-% difference.
