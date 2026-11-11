@@ -126,6 +126,14 @@ const METRICS = {
     good: T('Στη βαθμολογία: Ν = νίκη, Η = ήττα, από τον παλαιότερο στον πιο πρόσφατο.', 'In the standings: W = win, L = loss, from oldest to most recent.'),
     now: () => T(`${M.coef[1]} π. ανά πόντο φόρμας`, `${M.coef[1]} pts per point of form`),
   },
+  sim: {
+    icon: '🎲', title: T('Πιθανότητες σεζόν', 'Season projections'),
+    short: T('Οι αγώνες που απομένουν παίζονται χιλιάδες φορές στον υπολογιστή: πόσο συχνά παίρνει κάθε ομάδα τον τίτλο, μπαίνει στα πλέι-οφ ή πέφτει.', 'The remaining games are played out thousands of times: how often each team wins the title, makes the playoffs or goes down.'),
+    long: T('Για κάθε αγώνα που απομένει, το μοντέλο δίνει μια αναμενόμενη διαφορά πόντων. Σε κάθε προσομοίωση, η διαφορά «κληρώνεται» γύρω από αυτή την τιμή, όπως ακριβώς υπολογίζεται και η πιθανότητα νίκης. Οι νίκες προστίθενται στη σημερινή βαθμολογία, η σεζόν κατατάσσεται, και αυτό επαναλαμβάνεται χιλιάδες φορές. Το ποσοστό των σεζόν όπου μια ομάδα τερματίζει πρώτη είναι η πιθανότητα τίτλου της.',
+      'For every remaining game the model gives an expected point margin. In each simulation the margin is drawn around that value, exactly as the win probability is computed. Wins are added to today\'s table, the season is ranked, and this is repeated thousands of times. The share of seasons a team finishes first is its title chance.'),
+    good: T('Η δύναμη των ομάδων θεωρείται σταθερή ως το τέλος, και οι ισοβαθμίες λύνονται με τη διαφορά πόντων. Νωρίς στη σεζόν, μία αγωνιστική αλλάζει πολύ τα ποσοστά.', 'Team strength is held fixed to the end, and ties are broken by point difference. Early in the season a single round moves the numbers a lot.'),
+    now: () => D.projection ? T(`${D.projection.runs.toLocaleString('el-GR')} προσομοιώσεις`, `${D.projection.runs.toLocaleString('en-GB')} simulations`) : '–',
+  },
 };
 
 /** All graded picks where the model gave the favourite ≥ HIT_THRESHOLD. */

@@ -26,7 +26,7 @@ function siteGuide() {
     h('dl', {class: 'glossary'},
       ...[[url('home'), T('Αρχική', 'Home'), T('Η επόμενη αγωνιστική, οι επιτυχίες σε προβλέψεις υψηλής πιθανότητας, η βαθμολογία και τα τελευταία αποτελέσματα.', 'The next round, the high-confidence hits, the standings and the latest results.')],
         [url('predictions'), T('Προβλέψεις', 'Predictions'), T('Καρτέλες: Επόμενη αγωνιστική, ιστορικό με φίλτρα, 🔥 επιτυχίες, όλοι οι αγώνες.', 'Tabs: next round, history with filters, 🔥 hits, all games.')],
-        [url('standings'), T('Βαθμολογία', 'Standings'), T('Πλήρης πίνακας με ταξινόμηση, Elo και η εξέλιξή του.', 'The full sortable table, Elo and how it has moved.')],
+        [url('standings'), T('Βαθμολογία', 'Standings'), T('Πλήρης πίνακας με ταξινόμηση, Elo και η εξέλιξή του. Καρτέλα «Πιθανότητες σεζόν»: τίτλος, πλέι-οφ και υποβιβασμός από χιλιάδες προσομοιώσεις.', 'The full sortable table, Elo and how it has moved. The "Season projections" tab: title, playoff and relegation chances from thousands of simulations.')],
         [url('teams'), T('Ομάδες', 'Teams'), T('Σελίδα για κάθε ομάδα: επισκόπηση, αποτελέσματα, πρόγραμμα.', 'A page for every team: overview, results, schedule.')],
         [url('schedule'), T('Πρόγραμμα', 'Schedule'), T('Όλοι οι αγώνες ανά μήνα ή ανά ομάδα.', 'Every game by month or by team.')],
         [url('model'), T('Μοντέλο', 'Model'), T('Απόδοση, ο οδηγός με όλους τους δείκτες, και πώς δουλεύει.', 'Performance, the guide to every metric, and how it works.')],

@@ -224,6 +224,9 @@ if (location.hash.startsWith('#/')) {
 }
 
 // ---------------------------------------------------------------- boot
+// Installable app with an offline copy (sw.js): public site only. The desktop app must
+// never cache, or Refresh would show stale pages.
+if (PUBLIC && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 let resizeTimer;
 addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => drawCharts(app), 150); });
 route(false);

@@ -25,6 +25,7 @@ from src.features import build_features, elo_update, game_k, season_of, team_sta
 from src.model import PredictorBundle
 from src.predict import Prediction, load_fixtures_from_csv, next_round, predict_fixtures
 from src.prediction_log import RESCHEDULE_TOLERANCE_DAYS, build_accuracy_view
+from src.simulate import simulate_season
 from src.web.render import slug
 
 # The team highlighted by default until the viewer picks their own.
@@ -316,6 +317,34 @@ def _prediction_dict(p: Prediction, elo: dict[str, float]) -> dict:
     }
 
 
+def _projection(
+    standings: list[dict],
+    fixtures: list,
+    dates: list[pd.Timestamp],
+    season: int,
+    bundle: PredictorBundle,
+) -> dict | None:
+    """Title / playoff / relegation chances from simulating this season's remaining
+    fixtures (src/simulate.py). The margins come from the same model as the next-round
+    predictions, computed once from today's team states. None when something is off
+    (an unmapped team name in a far fixture must not block the build)."""
+    left = [(f, d) for f, d in zip(fixtures, dates, strict=True) if season_of(d) == season]
+    try:
+        preds = (
+            predict_fixtures([f for f, _ in left], [d for _, d in left], bundle=bundle)
+            if left
+            else []
+        )
+    except ValueError:
+        return None
+    sigma = float(bundle.metrics.get("margin_rmse", bundle.margin_sigma))
+    return simulate_season(
+        {r["team"]: (r["w"], r["l"], r["diff"]) for r in standings},
+        [(p.home, p.away, p.predicted_margin) for p in preds],
+        sigma,
+    )
+
+
 def build_dashboard(
     bundle: PredictorBundle | None = None,
     history: pd.DataFrame | None = None,
@@ -342,6 +371,7 @@ def build_dashboard(
     next_keys = {(p.date, p.home, p.away): i for i, p in enumerate(preds)}
     log_rows = _log_rows(build_accuracy_view())
     standings = _standings(history, season, elo)
+    projection = _projection(standings, fixtures, dates, season, bundle)
     m = bundle.metrics
 
     data = {
@@ -352,6 +382,7 @@ def build_dashboard(
         if any(r["team"] == DEFAULT_FOCUS_TEAM for r in standings)
         else (standings[0]["team"] if standings else ""),
         "standings": standings,
+        "projection": projection,
         "games": _games(history, log_rows, bundle.test_predictions),
         "log": log_rows,
         "next": [_prediction_dict(p, elo) for p in preds],

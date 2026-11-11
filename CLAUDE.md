@@ -196,6 +196,13 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   0.506, Elo 0.522), Brier 0.167, margin MAE 9.96, R² 0.33, total MAE 15.4.
 - Compare models on log-loss / Brier, not accuracy: differences of 3-4 points
   on ~120 games are noise.
+- Season simulation (`src/simulate.py`, since 12/10/2026): the remaining fixtures of the
+  season are predicted once (`predict_fixtures`, today's states) and played out
+  `SIM_RUNS` times with margins ~ N(predicted margin, walk-forward RMSE); ranking by
+  win %, then point difference. Output `data["projection"]` → Βαθμολογία → «Πιθανότητες
+  σεζόν» (`/standings/projections`). Format is an ASSUMPTION in config (`PLAYOFF_SPOTS`
+  8, `RELEGATION_SPOTS` 1): confirm with the user. Not a prediction-method change, so
+  no `MODEL_VERSION` bump.
 
 ## Website conventions
 
@@ -205,7 +212,7 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
 - Real addresses in English terms (user's call, 07/10/2026): `/predictions`,
   `/standings`, `/teams`, `/teams/<slug>`, `/schedule`, `/model`, `/about`,
   `/contact`, `/help`; tabs below them (`/predictions/history`,
-  `/predictions/hall-of-fame`, `/predictions/games`, `/model/metrics`,
+  `/predictions/hall-of-fame`, `/predictions/games`, `/standings/projections`, `/model/metrics`,
   `/model/how-it-works`, `/teams/paok/results`, `/teams/paok/schedule`); a page's
   first tab lives at the page's own address. The first public addresses
   (06/10/2026) were greeklish (`/vathmologia`, `/omades/...`): `firebase.json`
@@ -249,6 +256,11 @@ Elo toward 1500 (`ELO_SEASON_CARRYOVER = 0.75`). Standings rank within a season.
   sitemap lists both languages. The desktop-only manual in `18-help.js` stays Greek.
   The EN / ΕΛ link carries the flag of the language it opens (`assets/flag-gb.svg` /
   `flag-gr.svg`, copied by `build.write_site_files`): emoji flags don't render on Windows.
+- Installable app (PWA, since 12/10/2026): `render.manifest_json()` → `manifest.json`,
+  `render.service_worker()` → `sw.js` (network first, cached copy offline, cache name =
+  hash of app.css/app.js/data*.js, never `/api/`). Registered by 90-app.js on the
+  public site over https only: the desktop app must never cache. Icons `icon-192/512.png`
+  are rasterised from favicon.svg (headless Edge); regenerate them if the favicon changes.
 - Every metric shown gets an entry in `02-metrics.js` (ⓘ tooltip + guide card).
 - Every section gets a `sectionHead(title, plain-Greek explanation)`; the user asked
   for explanatory headings. The footer carries only the user-approved disclaimer
@@ -341,6 +353,14 @@ small audience (a few thousand visits a month at best) and Greek display ads pay
 ## Ideas backlog (agreed with the user, not started)
 
 Offer these when the user asks "what next". Ask before starting any of them.
+- Business goal (user, 12/10/2026): the site should eventually earn money, ideally
+  thousands of euros a month. Claude's assessment: the realistic path is audience first
+  (more leagues → EuroLeague / BCL / other countries, the `/en` edition, AI match previews,
+  a prediction game), then sponsorships, a premium tier (season simulation details,
+  alerts) and B2B (data/widgets for media). Betting affiliates are the obvious money
+  but clash with the site's «σε καμία περίπτωση» stance and need an ΕΕΕΠ licence in
+  Greece: the user decides. Audits (12/10/2026): Lighthouse 96–100 on every category,
+  so "state of the art" means features and reach, not a rewrite.
 - User's notes (07/10/2026): «Απόκλιση» (= |predicted − actual margin|) confuses,
   because it ignores each team's points. Rename it (e.g. «Λάθος διαφοράς») or keep only 🎯.
   Also show the total-points error («Σύνολο: 169 αντί 194»): the total isn't graded anywhere.
