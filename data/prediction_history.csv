@@ -69,3 +69,10 @@ fixture_date,home,away,predicted_home_score,predicted_away_score,predicted_winne
 21/11/2026,PAOK,Aris,82,79,PAOK,0.5848,2026-11-21 03:24:04,margin-v3
 22/11/2026,Mykonos,Vikos Falcons Ioanninon,81,80,Mykonos,0.5266,2026-11-22 02:33:57,margin-v3
 22/11/2026,AS Karditsas Iaponiki,Olympiacos,72,86,Olympiacos,0.1323,2026-11-22 02:33:57,margin-v3
+05/12/2026,PAOK,Promitheas Vikos Cola,98,67,PAOK,0.9932,2026-11-23 03:00:59,margin-v3
+05/12/2026,AEK,Kolossos Rodou,81,79,AEK,0.5508,2026-11-23 03:00:59,margin-v3
+05/12/2026,Maroussi,Iraklis,84,83,Maroussi,0.5373,2026-11-23 03:00:59,margin-v3
+05/12/2026,Peristeri,AS Karditsas Iaponiki,83,77,Peristeri,0.6973,2026-11-23 03:00:59,margin-v3
+05/12/2026,Aris,Vikos Falcons Ioanninon,96,75,Aris,0.9546,2026-11-23 03:00:59,margin-v3
+06/12/2026,Mykonos,Panathinaikos,71,88,Panathinaikos,0.0896,2026-11-23 03:00:59,margin-v3
+06/12/2026,Doxa Lefkadas,Olympiacos,74,89,Olympiacos,0.118,2026-11-23 03:00:59,margin-v3
